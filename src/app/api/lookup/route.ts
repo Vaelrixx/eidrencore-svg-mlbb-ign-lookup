@@ -30,6 +30,67 @@ function cleanNickname(value: string) {
   }
 }
 
+const GENERIC_NICKNAMES = new Set([
+  "null", "undefined", "not found", "invalid id", "invalid user",
+  "invalid player", "unknown", "unknown user", "error", "success",
+  "ok", "true", "false", "n/a", "none",
+]);
+
+function record(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function stringField(source: Record<string, unknown> | null, keys: string[]): string {
+  if (!source) return "";
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
+function confirmedNickname(payload: unknown): string {
+  const root = record(payload);
+  if (!root) return "";
+
+  // Error-shaped responses must never be mistaken for a player's nickname.
+  if (root.success === false || root.error === true || root.status === false) return "";
+  const data = record(root.data);
+  const result = record(root.result);
+  const nested = record(data?.data);
+  const candidates = [root, data, result, nested];
+
+  for (const candidate of candidates) {
+    const value = stringField(candidate, [
+      "username", "nickname", "name", "ign", "gameName", "playerName", "roleName",
+    ]);
+    if (!value) continue;
+    const cleaned = cleanNickname(value);
+    if (
+      cleaned.length > 0 &&
+      cleaned.length <= 64 &&
+      !GENERIC_NICKNAMES.has(cleaned.toLowerCase()) &&
+      !/^(error|failed|invalid|not found)\b/i.test(cleaned)
+    ) return cleaned;
+  }
+  return "";
+}
+
+function explicitlyNotFound(payload: unknown): boolean {
+  const root = record(payload);
+  if (!root) return false;
+  const data = record(root.data);
+  const message = [
+    root.message, root.msg, root.error, root.reason,
+    data?.message, data?.msg, data?.error, data?.reason,
+  ].filter((value): value is string => typeof value === "string").join(" ");
+  return root.success === false || root.valid === false || data?.valid === false
+    ? /not found|does not exist|invalid|cannot find|can't find|no such|wrong (player|user|game)?\s*id/i.test(message)
+    : /not found|does not exist|invalid (player|user|game)?\s*id|cannot find|can't find|no such account/i.test(message);
+}
+
 /**
  * Primary provider: public community-run MLBB identity endpoint.
  * Its contract and availability are outside our control.
@@ -39,7 +100,7 @@ async function lookupPrimary(playerId: string, zoneId: string): Promise<LookupAt
   try {
     const upstream = await fetch(`${LOOKUP_ENDPOINT}?${query.toString()}`, {
       method: "GET",
-      headers: { Accept: "application/json", "User-Agent": "NexusMLBBLookup/1.0" },
+      headers: { Accept: "application/json", "User-Agent": "EidrenMLBBLookup/1.0" },
       cache: "no-store",
       signal: AbortSignal.timeout(7000),
     });
@@ -58,8 +119,7 @@ async function lookupPrimary(playerId: string, zoneId: string): Promise<LookupAt
         : { kind: "unavailable" };
     }
 
-    const rawName = typeof data.name === "string" ? data.name : "";
-    const nickname = cleanNickname(rawName);
+    const nickname = confirmedNickname(payload);
     if (!nickname) return { kind: "unavailable" };
 
     return {
@@ -100,39 +160,17 @@ async function lookupRapidApi(playerId: string, zoneId: string): Promise<LookupA
     });
 
     if (upstream.status === 429) return { kind: "rate_limited" };
-    if (upstream.status === 404 || upstream.status === 400) return { kind: "not_found" };
+    if (upstream.status === 404 || upstream.status === 400) return { kind: "unavailable" };
     if (!upstream.ok) return { kind: "unavailable" };
 
     const payload: unknown = await upstream.json().catch(() => null);
-    if (!payload || typeof payload !== "object") return { kind: "unavailable" };
-
-    const response = payload as Record<string, unknown>;
-    const responseData =
-      response.data && typeof response.data === "object"
-        ? response.data as Record<string, unknown>
-        : response;
-
-    if (response.success === false || response.error === true) {
-      const errorText = [response.msg, response.message, response.error]
-        .filter((value) => typeof value === "string")
-        .join(" ");
-      return /not found|can't find|cannot find|does not exist|invalid (player|user|game)?\s*id/i.test(errorText)
-        ? { kind: "not_found" }
-        : { kind: "unavailable" };
+    const nickname = confirmedNickname(payload);
+    if (nickname) {
+      return { kind: "success", nickname, source: "rapidapi_id_game_checker" };
     }
+    if (explicitlyNotFound(payload)) return { kind: "not_found" };
+    return { kind: "unavailable" };
 
-    const rawName =
-      (typeof responseData.username === "string" && responseData.username) ||
-      (typeof responseData.nickname === "string" && responseData.nickname) ||
-      (typeof responseData.name === "string" && responseData.name) ||
-      (typeof response.username === "string" && response.username) ||
-      (typeof response.nickname === "string" && response.nickname) ||
-      (typeof response.name === "string" && response.name) ||
-      "";
-    const nickname = cleanNickname(rawName);
-    if (!nickname) return { kind: "unavailable" };
-
-    return { kind: "success", nickname, source: "rapidapi_id_game_checker" };
   } catch {
     return { kind: "unavailable" };
   }
@@ -158,19 +196,18 @@ async function lookupIsan(playerId: string, zoneId: string): Promise<LookupAttem
     });
 
     if (upstream.status === 429) return { kind: "rate_limited" };
-    if (upstream.status === 404 || upstream.status === 400) return { kind: "not_found" };
+    if (upstream.status === 404 || upstream.status === 400) return { kind: "unavailable" };
     if (!upstream.ok) return { kind: "unavailable" };
 
     const payload: unknown = await upstream.json().catch(() => null);
-    if (!payload || typeof payload !== "object") return { kind: "unavailable" };
-    const data = payload as Record<string, unknown>;
-    const rawName = typeof data.name === "string" ? data.name : "";
-    const nickname = cleanNickname(rawName);
-    if (data.success === true && nickname) {
+    const data = record(payload);
+    const nickname = confirmedNickname(payload);
+    if (data?.success === true && nickname) {
       return { kind: "success", nickname, source: "isan_nickname_api" };
     }
-    if (data.success === false || data.valid === false) return { kind: "not_found" };
+    if (explicitlyNotFound(payload)) return { kind: "not_found" };
     return { kind: "unavailable" };
+
   } catch {
     return { kind: "unavailable" };
   }
@@ -197,22 +234,13 @@ async function lookupEliteDias(playerId: string, zoneId: string): Promise<Lookup
     });
 
     if (upstream.status === 429) return { kind: "rate_limited" };
-    if (upstream.status === 404 || upstream.status === 400) return { kind: "not_found" };
+    if (upstream.status === 404 || upstream.status === 400) return { kind: "unavailable" };
     if (!upstream.ok) return { kind: "unavailable" };
 
     const payload: unknown = await upstream.json().catch(() => null);
-    if (!payload || typeof payload !== "object") return { kind: "unavailable" };
-    const data = payload as Record<string, unknown>;
-    const rawName =
-      (typeof data.name === "string" && data.name) ||
-      (typeof data.username === "string" && data.username) ||
-      (typeof data.nickname === "string" && data.nickname) ||
-      "";
-    const nickname = cleanNickname(rawName);
-    if (nickname && !/^(null|undefined|not found|invalid id)$/i.test(nickname)) {
-      return { kind: "success", nickname, source: "elitedias_role_check" };
-    }
-    if (data.valid === false || data.success === false) return { kind: "not_found" };
+    const nickname = confirmedNickname(payload);
+    if (nickname) return { kind: "success", nickname, source: "elitedias_role_check" };
+    if (explicitlyNotFound(payload)) return { kind: "not_found" };
     return { kind: "unavailable" };
   } catch {
     return { kind: "unavailable" };
@@ -250,24 +278,13 @@ async function lookupSmileOne(playerId: string, zoneId: string): Promise<LookupA
     });
 
     if (upstream.status === 429) return { kind: "rate_limited" };
-    if (upstream.status === 404 || upstream.status === 400) return { kind: "not_found" };
+    if (upstream.status === 404 || upstream.status === 400) return { kind: "unavailable" };
     if (!upstream.ok) return { kind: "unavailable" };
 
     const payload: unknown = await upstream.json().catch(() => null);
-    if (!payload || typeof payload !== "object") return { kind: "unavailable" };
-    const data = payload as Record<string, unknown>;
-    const rawName =
-      (typeof data.username === "string" && data.username) ||
-      (typeof data.name === "string" && data.name) ||
-      (typeof data.nickname === "string" && data.nickname) ||
-      "";
-    const nickname = cleanNickname(rawName);
-    if (nickname && !/^(null|undefined|not found|invalid id)$/i.test(nickname)) {
-      return { kind: "success", nickname, source: "smileone_role_check" };
-    }
-    if (data.valid === false || data.success === false || data.code === 404) {
-      return { kind: "not_found" };
-    }
+    const nickname = confirmedNickname(payload);
+    if (nickname) return { kind: "success", nickname, source: "smileone_role_check" };
+    if (explicitlyNotFound(payload)) return { kind: "not_found" };
     return { kind: "unavailable" };
   } catch {
     return { kind: "unavailable" };
@@ -306,32 +323,13 @@ async function lookupDuniaGames(playerId: string, zoneId: string): Promise<Looku
     });
 
     if (upstream.status === 429) return { kind: "rate_limited" };
-    if (upstream.status === 404 || upstream.status === 400) return { kind: "not_found" };
+    if (upstream.status === 404 || upstream.status === 400) return { kind: "unavailable" };
     if (!upstream.ok) return { kind: "unavailable" };
 
     const payload: unknown = await upstream.json().catch(() => null);
-    if (!payload || typeof payload !== "object") return { kind: "unavailable" };
-    const response = payload as Record<string, unknown>;
-    const data = response.data && typeof response.data === "object"
-      ? response.data as Record<string, unknown>
-      : null;
-    const gameDetail = data?.gameDetail;
-    const detail = gameDetail && typeof gameDetail === "object"
-      ? gameDetail as Record<string, unknown>
-      : null;
-    const rawName =
-      (typeof gameDetail === "string" && gameDetail) ||
-      (detail && typeof detail.username === "string" && detail.username) ||
-      (detail && typeof detail.name === "string" && detail.name) ||
-      (detail && typeof detail.nickname === "string" && detail.nickname) ||
-      "";
-    const nickname = cleanNickname(rawName);
-    if (nickname && !/^(null|undefined|not found|invalid id)$/i.test(nickname)) {
-      return { kind: "success", nickname, source: "duniagames_role_check" };
-    }
-    if (response.success === false || response.status === false || data?.valid === false) {
-      return { kind: "not_found" };
-    }
+    const nickname = confirmedNickname(payload);
+    if (nickname) return { kind: "success", nickname, source: "duniagames_role_check" };
+    if (explicitlyNotFound(payload)) return { kind: "not_found" };
     return { kind: "unavailable" };
   } catch {
     return { kind: "unavailable" };
@@ -387,12 +385,10 @@ async function lookupCodashopFallback(playerId: string, zoneId: string): Promise
       return { kind: "not_found" };
     }
 
-    const fields = data.confirmationFields && typeof data.confirmationFields === "object"
-      ? data.confirmationFields as Record<string, unknown>
-      : null;
+    const fields = record(data.confirmationFields);
     const rawName = fields && typeof fields.username === "string" ? fields.username : "";
     const nickname = cleanNickname(rawName);
-    if (!nickname) return { kind: "not_found" };
+    if (!nickname || GENERIC_NICKNAMES.has(nickname.toLowerCase())) return { kind: "not_found" };
 
     return { kind: "success", nickname, source: "codashop_fallback" };
   } catch {
@@ -402,7 +398,7 @@ async function lookupCodashopFallback(playerId: string, zoneId: string): Promise
 
 /**
  * Resolve an MLBB nickname without collecting a password or requiring a game login.
- * Neither provider is an official Moonton API; upstream behaviour may change.
+ * Providers are unofficial third-party integrations and may change or fail independently.
  */
 export async function POST(request: NextRequest) {
   let body: unknown;
@@ -424,27 +420,11 @@ export async function POST(request: NextRequest) {
     return jsonError("Enter a numeric Player ID (4–20 digits) and Zone ID (1–10 digits).", 400, "INVALID_ID");
   }
 
-  // Only accept identity data when at least one upstream positively confirms a nickname.
-  const primary = await lookupPrimary(playerId, zoneId);
-  if (primary.kind === "success") {
-    return NextResponse.json(
-      {
-        success: true,
-        data: {
-          nickname: primary.nickname,
-          playerId,
-          zoneId,
-          ...(primary.country ? { country: primary.country } : {}),
-          source: primary.source,
-        },
-      },
-      { headers: { "Cache-Control": "no-store" } },
-    );
-  }
-
-  // Try independent backup providers concurrently after the primary fails. Only
-  // a positively returned nickname is accepted; errors never become fake names.
-  const backups = await Promise.all([
+  // Query independent providers concurrently. A success must include a plausible
+  // nickname from a recognized response field; an HTTP error alone never proves
+  // that an account does not exist.
+  const attempts = await Promise.all([
+    lookupPrimary(playerId, zoneId),
     lookupRapidApi(playerId, zoneId),
     lookupIsan(playerId, zoneId),
     lookupEliteDias(playerId, zoneId),
@@ -453,7 +433,8 @@ export async function POST(request: NextRequest) {
     lookupCodashopFallback(playerId, zoneId),
   ]);
 
-  const confirmed = backups.find((attempt) => attempt.kind === "success");
+  // Stable provider priority keeps results predictable when providers disagree.
+  const confirmed = attempts.find((attempt) => attempt.kind === "success");
   if (confirmed && confirmed.kind === "success") {
     return NextResponse.json(
       {
@@ -462,21 +443,28 @@ export async function POST(request: NextRequest) {
           nickname: confirmed.nickname,
           playerId,
           zoneId,
-          source: confirmed.source,
           ...(confirmed.country ? { country: confirmed.country } : {}),
+          source: confirmed.source,
         },
       },
       { headers: { "Cache-Control": "no-store" } },
     );
   }
 
-  const allAttempts: LookupAttempt[] = [primary, ...backups];
-  if (allAttempts.every((attempt) => attempt.kind === "not_found")) {
-    return jsonError("No provider found an MLBB account for that Player ID and Zone ID.", 404, "PLAYER_NOT_FOUND");
+  if (attempts.every((attempt) => attempt.kind === "not_found")) {
+    return jsonError(
+      "No provider found an MLBB account for that Player ID and Zone ID.",
+      404,
+      "PLAYER_NOT_FOUND",
+    );
   }
 
-  if (allAttempts.every((attempt) => attempt.kind === "rate_limited")) {
-    return jsonError("All lookup providers are rate-limiting requests. Try again shortly.", 429, "UPSTREAM_RATE_LIMIT");
+  if (attempts.every((attempt) => attempt.kind === "rate_limited")) {
+    return jsonError(
+      "All lookup providers are rate-limiting requests. Try again shortly.",
+      429,
+      "UPSTREAM_RATE_LIMIT",
+    );
   }
 
   return jsonError(
