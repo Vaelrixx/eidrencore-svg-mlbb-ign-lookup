@@ -19,9 +19,15 @@ Open http://localhost:3000.
 
 ## API
 
-`POST /api/lookup`
+`GET /api/lookup?playerId=123456789&zoneId=1234` or `POST /api/lookup`
 
-Request:
+Opening `/api/lookup` in a browser with no query parameters returns service status and usage examples. For a browser-based lookup, pass both IDs as query parameters:
+
+```text
+/api/lookup?playerId=1114917746&zoneId=13486
+```
+
+For server-to-server usage, send JSON with POST:
 
 ```json
 { "playerId": "123456789", "zoneId": "1234" }
