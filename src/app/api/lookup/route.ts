@@ -479,3 +479,45 @@ export async function POST(request: NextRequest) {
     "UPSTREAM_UNAVAILABLE",
   );
 }
+
+
+/**
+ * Browser-friendly GET interface:
+ * - No query parameters: return concise endpoint usage information.
+ * - With playerId and zoneId: run the same validation/provider flow as POST.
+ */
+export async function GET(request: NextRequest) {
+  const url = new URL(request.url);
+  const hasLookupInput = url.searchParams.has("playerId") || url.searchParams.has("zoneId");
+
+  if (!hasLookupInput) {
+    return NextResponse.json(
+      {
+        success: true,
+        service: "Eidren MLBB IGN Lookup API",
+        status: "online",
+        message: "This endpoint is an API, not a standalone lookup form.",
+        methods: ["GET", "POST"],
+        getExample: `${url.origin}/api/lookup?playerId=1114917746&zoneId=13486`,
+        postExample: {
+          url: "/api/lookup",
+          method: "POST",
+          body: { playerId: "1114917746", zoneId: "13486" },
+        },
+        note: "Nickname lookup depends on unofficial third-party providers and their availability.",
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
+  const body = JSON.stringify({
+    playerId: url.searchParams.get("playerId") ?? "",
+    zoneId: url.searchParams.get("zoneId") ?? "",
+  });
+  const postRequest = new NextRequest(request.url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+  });
+  return POST(postRequest);
+}
