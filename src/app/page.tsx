@@ -53,9 +53,9 @@ export default function Home() {
   return (
     <main className="shell">
       <nav className="nav">
-        <Link className="brand" href="/" aria-label="Nexus home">
+        <Link className="brand" href="/" aria-label="Eidren home">
           <span className="brand-mark"><Swords size={19} strokeWidth={2.4} /></span>
-          <span>NEXUS<span className="brand-dot">.</span></span>
+          <span>EIDREN<span className="brand-dot">.</span></span>
         </Link>
         <div className="nav-right"><span className="live-dot" /> PLAYER INTELLIGENCE <span className="nav-divider" /> <span className="nav-version">BETA 01</span></div>
       </nav>
@@ -115,7 +115,7 @@ export default function Home() {
       </section>
 
       <section className="bottom-strip"><div><span className="strip-icon"><Sparkles size={16} /></span><div><strong>Built for the community</strong><p>A focused identity tool. Nothing more, nothing hidden.</p></div></div><div className="strip-right">MLBB COMMUNITY TOOL <span>·</span> NOT AFFILIATED WITH MOONTON</div></section>
-      <footer><span>© {new Date().getFullYear()} NEXUS LOOKUP</span><span>ACCOUNT VALIDATION · UPSTREAM DEPENDENCY</span></footer>
+      <footer><span>© {new Date().getFullYear()} EIDREN LOOKUP</span><span>ACCOUNT VALIDATION · UPSTREAM DEPENDENCY</span></footer>
     </main>
   );
 }
