@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const CODASHOP_ENDPOINT = "https://order-sg.codashop.com/initPayment.action";
+const LOOKUP_ENDPOINT = "https://mlbb-api.isan.eu.org/find";
 const PLAYER_ID_PATTERN = /^\d{4,20}$/;
 const ZONE_ID_PATTERN = /^\d{1,10}$/;
 
@@ -15,8 +15,8 @@ function jsonError(message: string, status: number, code: string) {
 }
 
 /**
- * Uses Codashop's account-validation flow to resolve a real nickname.
- * This is not an official Moonton API and its upstream contract can change.
+ * Resolves an MLBB nickname through a public community-run lookup endpoint.
+ * This is not an official Moonton API; the upstream service can change or rate-limit requests.
  */
 export async function POST(request: NextRequest) {
   let body: unknown;
@@ -38,76 +38,69 @@ export async function POST(request: NextRequest) {
     return jsonError("Enter a numeric Player ID (4–20 digits) and Zone ID (1–10 digits).", 400, "INVALID_ID");
   }
 
-  const form = new URLSearchParams({
-    "voucherPricePoint.id": "4150",
-    "voucherPricePoint.price": "1579.0",
-    "voucherPricePoint.variablePrice": "0",
-    "user.userId": playerId,
-    "user.zoneId": zoneId,
-    "voucherTypeName": "MOBILE_LEGENDS",
-    "shopLang": "id_ID",
-    "voucherTypeId": "1",
-    "gvtId": "1",
-  });
+  const query = new URLSearchParams({ id: playerId, zone: zoneId });
 
   try {
-    const upstream = await fetch(CODASHOP_ENDPOINT, {
-      method: "POST",
+    const upstream = await fetch(`${LOOKUP_ENDPOINT}?${query.toString()}`, {
+      method: "GET",
       headers: {
-        Accept: "application/json, text/plain, */*",
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "X-Requested-With": "XMLHttpRequest",
-        Origin: "https://www.codashop.com",
-        Referer: "https://www.codashop.com/",
-        "User-Agent": "Mozilla/5.0 (compatible; NexusMLBBLookup/1.0)",
+        Accept: "application/json",
+        "User-Agent": "NexusMLBBLookup/1.0",
       },
-      body: form.toString(),
       cache: "no-store",
       signal: AbortSignal.timeout(9000),
     });
 
     if (upstream.status === 429) {
-      return jsonError("Account validation is rate-limited upstream. Try again shortly.", 429, "UPSTREAM_RATE_LIMIT");
+      return jsonError("The lookup provider is rate-limiting requests. Try again shortly.", 429, "UPSTREAM_RATE_LIMIT");
+    }
+    if (upstream.status === 404) {
+      return jsonError("No valid MLBB account was found for that Player ID and Zone ID.", 404, "PLAYER_NOT_FOUND");
     }
     if (!upstream.ok) {
-      return jsonError("Account validation is temporarily unavailable.", 502, "UPSTREAM_UNAVAILABLE");
+      return jsonError("The lookup provider is temporarily unavailable. Try again shortly.", 502, "UPSTREAM_UNAVAILABLE");
     }
 
     let payload: unknown;
     try {
       payload = await upstream.json();
     } catch {
-      return jsonError("The account-validation endpoint returned an unreadable response.", 502, "UPSTREAM_BAD_RESPONSE");
+      return jsonError("The lookup provider returned an unreadable response.", 502, "UPSTREAM_BAD_RESPONSE");
     }
 
     if (!payload || typeof payload !== "object") {
-      return jsonError("The account-validation endpoint returned an unexpected response.", 502, "UPSTREAM_BAD_RESPONSE");
+      return jsonError("The lookup provider returned an unexpected response.", 502, "UPSTREAM_BAD_RESPONSE");
     }
 
     const response = payload as Record<string, unknown>;
-    if (response.success !== true) {
-      return jsonError("No valid MLBB account was confirmed for that Player ID and Zone ID.", 404, "PLAYER_NOT_FOUND");
+    const nickname = typeof response.name === "string" ? response.name.trim() : "";
+
+    if (response.success !== true || !nickname) {
+      if (response.success === false || response.message === "Not found") {
+        return jsonError("No valid MLBB account was found for that Player ID and Zone ID.", 404, "PLAYER_NOT_FOUND");
+      }
+      return jsonError("The lookup provider did not return a verified nickname.", 502, "NICKNAME_MISSING");
     }
 
-    const confirmation = response.confirmationFields && typeof response.confirmationFields === "object"
-      ? response.confirmationFields as Record<string, unknown>
-      : null;
-    const nickname = confirmation && typeof confirmation.username === "string"
-      ? confirmation.username.trim()
-      : "";
-
-    if (!nickname) {
-      return jsonError("The upstream response did not include a verified nickname.", 502, "NICKNAME_MISSING");
-    }
+    const country = typeof response.countryName === "string" ? response.countryName : undefined;
 
     return NextResponse.json(
-      { success: true, data: { nickname, playerId, zoneId, source: "account_validation" } },
+      {
+        success: true,
+        data: {
+          nickname,
+          playerId,
+          zoneId,
+          ...(country ? { country } : {}),
+          source: "mlbb_account_lookup",
+        },
+      },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
     if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
       return jsonError("Account validation timed out. Try again.", 504, "UPSTREAM_TIMEOUT");
     }
-    return jsonError("Could not connect to the account-validation endpoint.", 502, "UPSTREAM_CONNECTION_FAILED");
+    return jsonError("Could not connect to the lookup provider.", 502, "UPSTREAM_CONNECTION_FAILED");
   }
 }
