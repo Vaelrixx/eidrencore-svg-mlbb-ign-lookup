@@ -74,6 +74,71 @@ async function lookupPrimary(playerId: string, zoneId: string): Promise<LookupAt
 }
 
 /**
+ * Secondary provider: RapidAPI's ID Game Checker endpoint.
+ * The API key is read only on the server and is never returned to callers.
+ */
+async function lookupRapidApi(playerId: string, zoneId: string): Promise<LookupAttempt> {
+  const apiKey = process.env.RAPIDAPI_KEY?.trim() || process.env.RAPIDAPI_APP_TOKEN?.trim();
+  if (!apiKey) return { kind: "unavailable" };
+
+  const endpoint =
+    "https://id-game-checker.p.rapidapi.com/mlbb/" +
+    encodeURIComponent(playerId) +
+    "/" +
+    encodeURIComponent(zoneId);
+
+  try {
+    const upstream = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "x-rapidapi-host": "id-game-checker.p.rapidapi.com",
+        "x-rapidapi-key": apiKey,
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(7000),
+    });
+
+    if (upstream.status === 429) return { kind: "rate_limited" };
+    if (upstream.status === 404 || upstream.status === 400) return { kind: "not_found" };
+    if (!upstream.ok) return { kind: "unavailable" };
+
+    const payload: unknown = await upstream.json().catch(() => null);
+    if (!payload || typeof payload !== "object") return { kind: "unavailable" };
+
+    const response = payload as Record<string, unknown>;
+    const responseData =
+      response.data && typeof response.data === "object"
+        ? response.data as Record<string, unknown>
+        : response;
+
+    if (response.success === false || response.error === true) {
+      const errorText = [response.msg, response.message, response.error]
+        .filter((value) => typeof value === "string")
+        .join(" ");
+      return /not found|can't find|cannot find|does not exist|invalid (player|user|game)?\s*id/i.test(errorText)
+        ? { kind: "not_found" }
+        : { kind: "unavailable" };
+    }
+
+    const rawName =
+      (typeof responseData.username === "string" && responseData.username) ||
+      (typeof responseData.nickname === "string" && responseData.nickname) ||
+      (typeof responseData.name === "string" && responseData.name) ||
+      (typeof response.username === "string" && response.username) ||
+      (typeof response.nickname === "string" && response.nickname) ||
+      (typeof response.name === "string" && response.name) ||
+      "";
+    const nickname = cleanNickname(rawName);
+    if (!nickname) return { kind: "unavailable" };
+
+    return { kind: "success", nickname, source: "rapidapi_id_game_checker" };
+  } catch {
+    return { kind: "unavailable" };
+  }
+}
+
+/**
  * Fallback provider: Codashop's public initPayment identity-validation flow.
  * Parameters follow a published, reverse-engineered implementation. No payment
  * is submitted; this calls only the validation/init endpoint, not checkout.
@@ -177,6 +242,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const rapidApi = await lookupRapidApi(playerId, zoneId);
+  if (rapidApi.kind === "success") {
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          nickname: rapidApi.nickname,
+          playerId,
+          zoneId,
+          source: rapidApi.source,
+        },
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
   const fallback = await lookupCodashopFallback(playerId, zoneId);
   if (fallback.kind === "success") {
     return NextResponse.json(
@@ -193,11 +274,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (primary.kind === "not_found" && fallback.kind === "not_found") {
+  if (
+    primary.kind === "not_found" &&
+    rapidApi.kind === "not_found" &&
+    fallback.kind === "not_found"
+  ) {
     return jsonError("Neither provider found an MLBB account for that Player ID and Zone ID.", 404, "PLAYER_NOT_FOUND");
   }
 
-  if (primary.kind === "rate_limited" && fallback.kind === "rate_limited") {
+  if (
+    primary.kind === "rate_limited" &&
+    rapidApi.kind === "rate_limited" &&
+    fallback.kind === "rate_limited"
+  ) {
     return jsonError("Both lookup providers are rate-limiting requests. Try again shortly.", 429, "UPSTREAM_RATE_LIMIT");
   }
 
