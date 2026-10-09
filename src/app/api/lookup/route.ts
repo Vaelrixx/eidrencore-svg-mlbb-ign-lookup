@@ -56,8 +56,14 @@ function confirmedNickname(payload: unknown): string {
   if (!root) return "";
 
   // Error-shaped responses must never be mistaken for a player's nickname.
-  if (root.success === false || root.error === true || root.status === false) return "";
   const data = record(root.data);
+  if (
+    root.success === false ||
+    root.error === true ||
+    root.status === false ||
+    root.valid === false ||
+    data?.valid === false
+  ) return "";
   const result = record(root.result);
   const nested = record(data?.data);
   const candidates = [root, data, result, nested];
@@ -364,7 +370,7 @@ async function lookupCodashopFallback(playerId: string, zoneId: string): Promise
         "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
         Origin: "https://www.codashop.com",
         Referer: "https://www.codashop.com/",
-        "User-Agent": "Mozilla/5.0 (compatible; NexusMLBBLookup/1.0)",
+        "User-Agent": "Mozilla/5.0 (compatible; EidrenMLBBLookup/1.0)",
       },
       body: form.toString(),
       cache: "no-store",
