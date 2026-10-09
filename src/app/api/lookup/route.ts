@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 const LOOKUP_ENDPOINT = "https://mlbb-api.isan.eu.org/find";
 const CODASHOP_ENDPOINT = "https://order-sg.codashop.com/initPayment.action";
-const PLAYER_ID_PATTERN = /^\\d{4,20}$/;
+const PLAYER_ID_PATTERN = /^\d{4,20}$/;
 const ZONE_ID_PATTERN = /^\\d{1,10}$/;
 
 type LookupAttempt =
@@ -22,7 +22,7 @@ function jsonError(message: string, status: number, code: string) {
 }
 
 function cleanNickname(value: string) {
-  const normalized = value.replace(/\\+/g, "%20");
+  const normalized = value.replaceAll("+", "%20");
   try {
     return decodeURIComponent(normalized).trim();
   } catch {
