@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { ArrowRight, Check, Copy, Gamepad2, LoaderCircle, Search, ShieldCheck, Sparkles, Swords, Zap } from "lucide-react";
 
 type LookupResult = { nickname: string; playerId: string; zoneId: string };
@@ -52,10 +53,10 @@ export default function Home() {
   return (
     <main className="shell">
       <nav className="nav">
-        <a className="brand" href="/" aria-label="Nexus home">
+        <Link className="brand" href="/" aria-label="Nexus home">
           <span className="brand-mark"><Swords size={19} strokeWidth={2.4} /></span>
           <span>NEXUS<span className="brand-dot">.</span></span>
-        </a>
+        </Link>
         <div className="nav-right"><span className="live-dot" /> PLAYER INTELLIGENCE <span className="nav-divider" /> <span className="nav-version">BETA 01</span></div>
       </nav>
 
