@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 const LOOKUP_ENDPOINT = "https://mlbb-api.isan.eu.org/find";
 const CODASHOP_ENDPOINT = "https://order-sg.codashop.com/initPayment.action";
 const PLAYER_ID_PATTERN = /^\d{4,20}$/;
-const ZONE_ID_PATTERN = /^\\d{1,10}$/;
+const ZONE_ID_PATTERN = /^\d{1,10}$/;
 
 type LookupAttempt =
   | { kind: "success"; nickname: string; country?: string; source: string }
