@@ -498,7 +498,7 @@ export async function GET(request: NextRequest) {
         status: "online",
         message: "This endpoint is an API, not a standalone lookup form.",
         methods: ["GET", "POST"],
-        getExample: `${url.origin}/api/lookup?playerId=1114917746&zoneId=13486`,
+        getExample: "/api/lookup?playerId=1114917746&zoneId=13486",
         postExample: {
           url: "/api/lookup",
           method: "POST",
