@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireUser, newApiKey, hashApiKey, PLAN_FALLBACKS } from "@/lib/platform";
+import { emitDeveloperEvent, writeAuditLog } from "@/lib/developer-events";
 
 export const runtime = "nodejs";
 export async function GET() {
@@ -27,5 +28,7 @@ export async function POST(request: Request) {
   const generated = newApiKey();
   const { data, error } = await admin.from("api_keys").insert({ user_id: user.id, name, key_hash: hashApiKey(generated.value), key_prefix: generated.prefix, plan_slug: planSlug }).select("id,name,key_prefix,plan_slug,created_at").single();
   if (error || !data) return NextResponse.json({ error: "Could not create API key." }, { status: 500 });
+  await writeAuditLog({ userId: user.id, action: "api.key.created", resourceType: "api_key", resourceId: data.id, metadata: { name, prefix: data.key_prefix, plan: data.plan_slug } });
+  await emitDeveloperEvent({ userId: user.id, type: "api.key.created", data: { key_id: data.id, name: data.name, key_prefix: data.key_prefix, plan: data.plan_slug } });
   return NextResponse.json({ key: generated.value, record: data, monthlyLimit: Number(plan?.monthly_limit ?? PLAN_FALLBACKS[0].monthly_limit) }, { status: 201, headers: { "Cache-Control": "no-store" } });
 }
