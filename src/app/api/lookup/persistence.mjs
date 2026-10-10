@@ -3,6 +3,9 @@ import { createHmac } from "node:crypto";
 const DEFAULT_WINDOW_SECONDS = 60;
 const DEFAULT_MAX_REQUESTS = 30;
 const REQUEST_TIMEOUT_MS = 1200;
+// Log inserts run in the background, so they can afford a timeout that covers
+// cross-region latency (e.g. Railway iad -> Supabase ap-northeast-1).
+const LOG_TIMEOUT_MS = 1500;
 const LOG_STATUSES = new Set(["success", "invalid_input", "not_found", "upstream_error", "rate_limited"]);
 const LOG_SOURCES = new Set([
   "mlbb_lookup_api",
@@ -113,6 +116,6 @@ export async function persistLookupLog({ status, responseMs, source = "mlbb_look
     response_ms: Number.isFinite(responseMs) ? Math.max(0, Math.min(2_147_483_647, Math.round(responseMs))) : null,
     source: LOG_SOURCES.has(source) ? source : "mlbb_lookup_api",
   };
-  const result = await requestSupabase("lookup_logs", payload, options);
+  const result = await requestSupabase("lookup_logs", payload, { timeoutMs: LOG_TIMEOUT_MS, ...options });
   return { persisted: result.configured && result.ok, configured: result.configured };
 }
