@@ -22,7 +22,7 @@ export async function GET() {
   const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString().slice(0, 10);
   const keyIds = (keyRows || []).map(key => key.id);
   const activeKeyIds = (keyRows || []).filter(key => !key.revoked_at).map(key => key.id);
-  let monthlyUsage = 0;
+  let monthlyUsage: number;
   let dailyRows: { usage_day: string; request_count: number; api_key_id: string }[] = [];
   const monthlyQuery = activeKeyIds.length
     ? admin.from("developer_api_usage").select("request_count").in("api_key_id", activeKeyIds).eq("month_start", monthStart)
