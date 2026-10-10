@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let developerAuth: { userId: string; apiKeyId: string } | null = null;
+  let developerAuth: { userId: string; apiKeyId: string; workspaceId: string | null } | null = null;
 
   // API keys are optional for the public lookup, but any Eidren key supplied
   // in the Authorization header must validate and pass its monthly quota.
@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
       const code = status === 429 ? "API_QUOTA_EXCEEDED" : status === 503 ? "QUOTA_UNAVAILABLE" : "INVALID_API_KEY";
       return jsonError(typeof keyAuth.error === "string" ? keyAuth.error : "API key rejected.", status, code, requestId);
     } else {
-      developerAuth = { userId: keyAuth.userId, apiKeyId: keyAuth.keyId };
+      developerAuth = { userId: keyAuth.userId, apiKeyId: keyAuth.keyId, workspaceId: keyAuth.workspaceId };
     }
   }
 
