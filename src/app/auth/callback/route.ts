@@ -8,7 +8,11 @@ export async function GET(request: Request) {
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return NextResponse.redirect(new URL(next?.startsWith("/") && !next.startsWith("//") ? next : "/dashboard", url.origin));
+    if (!error) {
+      const target = next ? new URL(next, url.origin) : new URL("/dashboard", url.origin);
+      if (target.origin !== url.origin) return NextResponse.redirect(new URL("/dashboard", url.origin));
+      return NextResponse.redirect(target);
+    }
   }
   return NextResponse.redirect(new URL("/login?error=oauth_callback_failed", url.origin));
 }
