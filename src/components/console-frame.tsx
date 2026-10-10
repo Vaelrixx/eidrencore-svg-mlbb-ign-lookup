@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, BookOpen, CreditCard, LayoutDashboard, LogOut, Settings2, Swords, KeyRound } from "lucide-react";
+import { Activity, BookOpen, CreditCard, LayoutDashboard, LogOut, Settings2, Swords, KeyRound, Building2, Webhook, ScrollText } from "lucide-react";
 
 const items = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
@@ -11,6 +11,9 @@ const items = [
   { href: "/dashboard/docs", label: "API reference", icon: BookOpen },
   { href: "/dashboard/billing", label: "Billing & plans", icon: CreditCard },
   { href: "/dashboard/account", label: "Account & sessions", icon: Settings2 },
+  { href: "/dashboard/workspaces", label: "Workspaces", icon: Building2 },
+  { href: "/dashboard/webhooks", label: "Webhooks", icon: Webhook },
+  { href: "/dashboard/logs", label: "Logs & audit", icon: ScrollText },
 ];
 
 export function ConsoleFrame({ children }: { children: React.ReactNode }) {

@@ -29,11 +29,14 @@ export async function POST(request: Request) {
   const paymentId = payment?.id;
   if (!orderId || !paymentId) return NextResponse.json({ received: true });
   const admin = createAdminClient();
-  const { data: sub } = await admin.from("developer_subscriptions").select("user_id,plan_slug,razorpay_order_id").eq("razorpay_order_id", orderId).maybeSingle();
+  const { data: sub } = await admin.from("developer_subscriptions").select("user_id,plan_slug,razorpay_order_id,razorpay_payment_id,status").eq("razorpay_order_id", orderId).maybeSingle();
   if (!sub) return NextResponse.json({ received: true });
   if (payment?.status && payment.status !== "captured") return NextResponse.json({ received: true });
-  const { error } = await admin.from("developer_subscriptions").update({ status: "active", razorpay_payment_id: paymentId, current_period_end: new Date(Date.now() + 30 * 86400000).toISOString(), updated_at: new Date().toISOString() }).eq("user_id", sub.user_id).eq("razorpay_order_id", orderId);
+  if (sub.status === "active" && sub.razorpay_payment_id === paymentId) return NextResponse.json({ received: true, duplicate: true });
+  if (sub.razorpay_payment_id && sub.razorpay_payment_id !== paymentId) return NextResponse.json({ error: "Order already has a different payment." }, { status: 409 });
+  const { data: activated, error } = await admin.from("developer_subscriptions").update({ status: "active", razorpay_payment_id: paymentId, current_period_end: new Date(Date.now() + 30 * 86400000).toISOString(), updated_at: new Date().toISOString() }).eq("user_id", sub.user_id).eq("razorpay_order_id", orderId).eq("status", "pending").select("status,razorpay_payment_id").maybeSingle();
   if (error) return NextResponse.json({ error: "Could not update subscription." }, { status: 500 });
+  if (!activated || activated.status !== "active" || activated.razorpay_payment_id !== paymentId) return NextResponse.json({ received: true, duplicate: true });
   await admin.from("api_keys").update({ plan_slug: sub.plan_slug }).eq("user_id", sub.user_id).is("revoked_at", null);
   return NextResponse.json({ received: true });
 }

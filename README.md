@@ -142,3 +142,29 @@ The console is split into dedicated areas under /dashboard:
 Apply supabase/migrations/20261011090000_daily_api_analytics.sql to the linked Supabase project before expecting the 14-day usage chart to populate. It creates developer_api_usage_daily and replaces the quota RPC with a transactionally updated daily counter. Only accepted API-key requests are added to the daily chart; quota-rejected requests are not counted as successful usage. The table has RLS enabled and is accessible only to the server-side service_role.
 
 The account page intentionally shows the current session rather than claiming to list every device. “Revoke all sessions” delegates to Supabase Auth's global sign-out scope. Password reset links must be allowed by the project's Supabase Auth URL configuration and email delivery must be configured.
+
+
+## Team workspaces, webhooks, and audit logs
+
+The developer console includes new sections at:
+
+- `/dashboard/workspaces` — create workspaces, view members, invite by a single-use seven-day link, and remove members.
+- `/dashboard/webhooks` — register public HTTPS endpoints, select event types, pause/delete endpoints, and review recent delivery attempts.
+- `/dashboard/logs` — view recent authenticated API request records and administrative audit events.
+
+### Database migration
+
+Apply `supabase/migrations/20261011120000_workspace_audit_webhooks.sql` to the linked Supabase project before deploying these routes. It creates workspace, membership, invitation, audit, webhook endpoint, delivery, and sanitized API request log tables. RLS is enabled on all new tables, and `anon`/`authenticated` table access is revoked; the server uses its secret role only after verifying the current user in the route.
+
+### Required Railway secret
+
+Set `APP_ENCRYPTION_KEY` to a unique cryptographically random secret of at least 32 characters before creating webhook endpoints. The application uses AES-256-GCM to encrypt webhook signing secrets at rest. Do not reuse a Razorpay secret or expose this value to client code.
+
+Webhook requests contain `Eidren-Event-Id`, `Eidren-Event`, and `Eidren-Signature` headers. The signature is HMAC-SHA256 over `timestamp + "." + raw JSON body` and is formatted as `t=<unix timestamp>,v1=<hex digest>`. Consumers should compare signatures in constant time and reject stale timestamps. Endpoints must be HTTPS; private/special-use IP literals and hostnames resolving to non-public IPv4 addresses are rejected. DNS-based egress filtering should still be enforced at the network layer in hardened production environments.
+
+### Scope and current limitations
+
+- Workspaces manage members, but existing API keys remain owned by their creator. Shared workspace keys and shared billing are not yet implemented.
+- Invitation links are generated for manual delivery; SMTP/email sending is not configured.
+- Webhook attempts are sent synchronously with a short timeout and logged. Durable queueing, exponential retry, dead-letter handling, and replay controls are follow-up work.
+- API request logs include request ID, endpoint, status, latency, key reference, and timestamp. They deliberately exclude player/zone IDs, nicknames, bearer keys, and webhook secrets. Logs start after this release is deployed; historic traffic cannot be backfilled.
