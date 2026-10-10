@@ -199,6 +199,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // API keys are optional for the public lookup, but any Eidren key supplied
+  // in the Authorization header must validate and pass its monthly quota.
+  if ((request.headers.get("authorization") || "").startsWith("Bearer eid_")) {
+    const keyAuth = await getUserFromRequest(request);
+    if (!keyAuth) return jsonError("Invalid API key.", 401, "INVALID_API_KEY", requestId);
+    if ("error" in keyAuth) {
+      const code = keyAuth.status === 429 ? "API_QUOTA_EXCEEDED" : keyAuth.status === 503 ? "QUOTA_UNAVAILABLE" : "INVALID_API_KEY";
+      return jsonError(keyAuth.error, keyAuth.status, code, requestId);
+    }
+  }
+
   // Structured telemetry deliberately excludes player IDs, zone IDs, nicknames,
   // upstream payloads, headers, and credentials.
   const lookupStartedAt = Date.now();
