@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   const payment = await paymentResponse.json().catch(() => null);
   if (!paymentResponse.ok || payment?.order_id !== orderId || payment?.status !== "captured") return NextResponse.json({ error: "Payment is not captured yet." }, { status: 409 });
   if (subscription.status === "active" && subscription.razorpay_payment_id === paymentId) return NextResponse.json({ success: true, plan: subscription.plan_slug, duplicate: true });
-  if (subscription.razorpay_payment_id && subscription.razorpay_payment_id !== paymentId) return NextResponse.json({ error: "Checkout order already has a different payment." }, { status: 409 });
+  if (subscription.razorpay_order_id === orderId && subscription.razorpay_payment_id && subscription.razorpay_payment_id !== paymentId) return NextResponse.json({ error: "Checkout order already has a different payment." }, { status: 409 });
   const now = Date.now();
   const previousEnd = subscription.current_period_end ? Date.parse(subscription.current_period_end) : 0;
   const periodStart = Math.max(now, Number.isFinite(previousEnd) ? previousEnd : 0);
