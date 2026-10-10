@@ -1,0 +1,29 @@
+name: Live fallback takeover smoke test
+
+on:
+  pull_request:
+    paths:
+      - "src/app/api/lookup/providers/isan.mjs"
+      - "src/app/api/lookup/providers/isan.d.mts"
+      - "src/app/api/lookup/resolve-lookup.mjs"
+      - "tests/live-fallback-takeover.test.mjs"
+      - "package.json"
+      - ".github/workflows/fallback-live-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-fallback-takeover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run controlled outage + real secondary provider smoke test
+        run: npm run test:lookup:live
