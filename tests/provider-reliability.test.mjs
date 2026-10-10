@@ -85,3 +85,26 @@ test("invalid successful payloads remain unavailable", () => {
     error: false, status: 200, msg: "id_found", data: { username: "N/A" },
   }).kind, "unavailable");
 });
+
+
+test("resolver returns the first confirmed fallback without awaiting a slow fallback", async () => {
+  let finishSlowFallback;
+  const slowFallback = new Promise((resolve) => {
+    finishSlowFallback = resolve;
+  });
+
+  const result = await resolveLookupWithFallbacks(
+    async () => ({ kind: "unavailable" }),
+    [
+      async () => ({ kind: "success", nickname: "Fast Confirmed IGN", source: "fast_provider" }),
+      async () => slowFallback,
+    ],
+  );
+
+  assert.equal(result.confirmed?.source, "fast_provider");
+  assert.equal(result.fallbacks.length, 1);
+  assert.equal(result.pendingFallbacks, 1);
+
+  // Let the still-running promise settle after asserting that it did not block the caller.
+  finishSlowFallback({ kind: "unavailable" });
+});

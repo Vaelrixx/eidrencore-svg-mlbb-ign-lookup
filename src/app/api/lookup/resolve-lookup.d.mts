@@ -11,4 +11,5 @@ export function resolveLookupWithFallbacks(
   primary: LookupAttempt;
   fallbacks: LookupAttempt[];
   confirmed: LookupAttempt | null;
+  pendingFallbacks: number;
 }>;
