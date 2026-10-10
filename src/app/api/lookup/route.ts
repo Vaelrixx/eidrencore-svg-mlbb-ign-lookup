@@ -56,11 +56,13 @@ async function loggedError(
   logStatus: "invalid_input" | "not_found" | "upstream_error" | "rate_limited",
   extraHeaders: Record<string, string> = {},
 ) {
-  await persistLookupLog({
+  // Best-effort background write: persistLookupLog never throws, and a slow
+  // database must not delay the response.
+  void persistLookupLog({
     status: logStatus,
     responseMs: Date.now() - startedAt,
     source: "mlbb_lookup_api",
-  }, { timeoutMs: 300 });
+  });
   return jsonError(message, status, code, requestId, extraHeaders);
 }
 
@@ -246,11 +248,11 @@ export async function POST(request: NextRequest) {
 
   if (confirmed?.kind === "success") {
     if (developerAuth) await recordDeveloperRequest({ ...developerAuth, requestId, status: 200, responseMs: Date.now() - requestStartedAt });
-    await persistLookupLog({
+    void persistLookupLog({
       status: "success",
       responseMs: Date.now() - requestStartedAt,
       source: confirmed.source,
-    }, { timeoutMs: 300 });
+    });
     return jsonSuccess(confirmed, playerId, zoneId, requestId);
   }
 
