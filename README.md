@@ -64,9 +64,9 @@ Not affiliated with or endorsed by MOONTON Games, Codashop, or any listed third-
 
 ## Provider observability
 
-Production logs emit structured JSON events for each provider attempt and each completed lookup. Provider events include a request correlation ID, provider label, outcome, latency in milliseconds, and the selected source only on success. The summary records total duration and outcome counts. Player IDs, zone IDs, nicknames, upstream payloads, URLs, request headers, and credentials are intentionally excluded. Logging is best-effort and cannot change lookup results. Use Railway deployment logs to compare provider latency and availability over time; these are event logs, not a persistent metrics dashboard.
+Production logs emit structured JSON events for each provider attempt and each completed lookup. Provider events include a request correlation ID, provider label, outcome, latency in milliseconds, and the selected source only on success. Failed attempts may also include a bounded failure reason (`missing_config`, `http_error`, `network_or_timeout`, or `unrecognized_response`) and an upstream HTTP status code. The summary records total duration and outcome counts. Player IDs, zone IDs, nicknames, upstream payloads, URLs, request headers, and credentials are intentionally excluded. Logging is best-effort and cannot change lookup results. Use Railway deployment logs to compare provider latency and availability over time; these are event logs, not a persistent metrics dashboard.
 
-Run `npm run test:observability` to check the telemetry shape, verify identity fields are not logged, and ensure logging failures do not break lookups.
+Run `npm run test:observability` to check telemetry shape, verify identity fields and raw provider data are not logged, and ensure logging failures do not break lookups.
 
 ## Live fallback takeover smoke test
 
