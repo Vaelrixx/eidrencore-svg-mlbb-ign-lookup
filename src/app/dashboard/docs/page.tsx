@@ -1,3 +1,10 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { Check, Code2, Copy, ExternalLink, FileJson, ShieldCheck, Terminal } from "lucide-react";
+import { ConsoleFrame } from "@/components/console-frame";
+
 const baseUrl = "https://nexus-mlbb-ign-lookup-production.up.railway.app";
 const curlExample = "curl -X POST \"" + baseUrl + "/api/lookup\" -H \"Content-Type: application/json\" -H \"Authorization: Bearer eid_YOUR_API_KEY\" -d '{\"playerId\":\"123456789\",\"zoneId\":\"1234\"}'";
 const jsExample = [
