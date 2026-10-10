@@ -1,6 +1,7 @@
 export type RapidApiDiagnostic = {
   reason: "missing_config" | "http_error" | "network_or_timeout" | "unrecognized_response" | "provider_error";
   statusCode?: number;
+  responseKind?: "id_game_checker_schema" | "nested_status_error" | "gateway_message_json" | "other_json_object" | "json_array" | "empty_or_non_json";
 };
 
 export type RapidApiAttempt =
