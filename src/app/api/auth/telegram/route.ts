@@ -7,7 +7,16 @@ export async function GET(request: Request) {
   if (!clientId || !process.env.TELEGRAM_CLIENT_SECRET) {
     return NextResponse.redirect(new URL("/login?error=telegram_not_configured", request.url));
   }
-  const origin = new URL(request.url).origin;
+  // Use the configured public origin behind Railway/proxies; request.url can reflect an internal host.
+  const configuredOrigin = process.env.APP_URL?.trim() || "https://nexus-mlbb-ign-lookup-production.up.railway.app";
+  let origin: string;
+  try {
+    const parsedOrigin = new URL(configuredOrigin);
+    if (parsedOrigin.protocol !== "https:" || parsedOrigin.username || parsedOrigin.password) throw new Error("APP_URL must be an HTTPS origin");
+    origin = parsedOrigin.origin;
+  } catch {
+    return NextResponse.redirect(new URL("/login?error=telegram_redirect_misconfigured", request.url));
+  }
   const state = randomBytes(32).toString("base64url");
   const nonce = randomBytes(32).toString("base64url");
   const verifier = randomBytes(48).toString("base64url");
