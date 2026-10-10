@@ -18,8 +18,9 @@ export async function POST(request: Request) {
   const name = typeof body?.name === "string" ? body.name.trim().slice(0, 80) : "";
   if (!name) return NextResponse.json({ error: "Give this key a name." }, { status: 400 });
   const admin = createAdminClient();
-  const { data: subscription } = await admin.from("developer_subscriptions").select("plan_slug,status").eq("user_id", user.id).maybeSingle();
-  const planSlug = subscription?.status === "active" ? subscription.plan_slug : "free";
+  const { data: subscription } = await admin.from("developer_subscriptions").select("plan_slug,status,current_period_end").eq("user_id", user.id).maybeSingle();
+  const paidIsCurrent = subscription?.status === "active" && !!subscription.current_period_end && Date.parse(subscription.current_period_end) > Date.now();
+  const planSlug = paidIsCurrent ? subscription.plan_slug : "free";
   const { data: plan } = await admin.from("developer_plans").select("monthly_limit").eq("slug", planSlug).maybeSingle();
   const { count } = await admin.from("api_keys").select("id", { count: "exact", head: true }).eq("user_id", user.id).is("revoked_at", null);
   if ((count || 0) >= 10) return NextResponse.json({ error: "You can have up to 10 active API keys." }, { status: 409 });
