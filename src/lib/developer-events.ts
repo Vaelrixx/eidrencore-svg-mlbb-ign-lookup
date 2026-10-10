@@ -17,7 +17,7 @@ export function encryptWebhookSecret(secret: string) {
   return [iv.toString("base64url"), cipher.getAuthTag().toString("base64url"), ciphertext.toString("base64url")].join(".");
 }
 
-function decryptWebhookSecret(value: string) {
+export function decryptWebhookSecret(value: string) {
   const [iv, tag, data] = value.split(".");
   if (!iv || !tag || !data) throw new Error("Invalid encrypted webhook secret.");
   const decipher = createDecipheriv("aes-256-gcm", encryptionKey(), Buffer.from(iv, "base64url"));
