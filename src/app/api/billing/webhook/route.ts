@@ -38,7 +38,8 @@ export async function POST(request: Request) {
     if (sub.razorpay_order_id === orderId && sub.razorpay_payment_id && sub.razorpay_payment_id !== paymentId) return NextResponse.json({ error: "Order already has a different payment." }, { status: 409 });
     const now = Date.now();
     const previousEnd = sub.current_period_end ? Date.parse(sub.current_period_end) : 0;
-    const periodEnd = new Date(Math.max(now, Number.isFinite(previousEnd) ? previousEnd : 0) + 30 * 86400000).toISOString();
+    const periodStart = sub.plan_slug === sub.pending_plan_slug ? Math.max(now, Number.isFinite(previousEnd) ? previousEnd : 0) : now;
+    const periodEnd = new Date(periodStart + 30 * 86400000).toISOString();
     const { data: activated, error } = await admin.from("developer_subscriptions").update({
       plan_slug: sub.pending_plan_slug, status: "active", razorpay_order_id: orderId, razorpay_payment_id: paymentId,
       current_period_end: periodEnd, pending_order_id: null, pending_plan_slug: null, pending_started_at: null, updated_at: new Date().toISOString(),
