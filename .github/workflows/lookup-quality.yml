@@ -1,0 +1,23 @@
+name: Lookup quality checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lookup-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run nickname regression tests
+        run: npm run test:lookup
+      - name: Build Next.js app
+        run: npm run build
