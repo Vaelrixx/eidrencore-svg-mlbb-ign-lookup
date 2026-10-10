@@ -315,7 +315,7 @@ export async function GET(request: NextRequest) {
     zoneId: url.searchParams.get("zoneId") ?? "",
   });
   const forwardedHeaders = new Headers({ "Content-Type": "application/json" });
-  for (const name of ["x-real-ip", "x-forwarded-for"]) {
+  for (const name of ["x-real-ip", "x-forwarded-for", "authorization"]) {
     const value = request.headers.get(name);
     if (value) forwardedHeaders.set(name, value);
   }
