@@ -25,7 +25,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const periodCurrent = subscription?.status === "active" && !!subscription.current_period_end && Date.parse(subscription.current_period_end) > Date.now();
   const effectivePlan = periodCurrent ? subscription?.plan_slug || "free" : "free";
   const plan = plans.find(item => item.slug === effectivePlan) || PLAN_FALLBACKS[0];
-  const { data: keys } = await admin.from("api_keys").select("id").eq("workspace_id", id).is("revoked_at", null);
+  const { data: keys } = await admin.from("api_keys").select("id").eq("workspace_id", id);
   const keyIds = (keys || []).map(key => key.id);
   const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString().slice(0, 10);
   let monthlyUsage = 0;
