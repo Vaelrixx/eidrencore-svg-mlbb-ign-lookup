@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, ArrowDownRight, ArrowRight, Check, CircleHelp, Copy, CreditCard, KeyRound, LoaderCircle, LogOut, Plus, RefreshCw, ShieldCheck, Swords, Trash2, Zap } from "lucide-react";
+import { Activity, ArrowDownRight, ArrowRight, Check, CircleHelp, Copy, CreditCard, KeyRound, LoaderCircle, LogOut, Plus, RefreshCw, ShieldCheck, Swords, Trash2, Zap, Building2, Webhook, ScrollText } from "lucide-react";
 
 type ApiKey = { id: string; name: string; key_prefix: string; plan_slug: string; created_at: string; last_used_at: string | null; revoked_at: string | null };
 type Plan = { slug: string; name: string; price_paise: number; monthly_limit: number; enabled: boolean; description: string };
@@ -108,6 +108,9 @@ export default function DashboardPage() {
       <Link href="/dashboard/docs"><CircleHelp size={14}/> API reference</Link>
       <Link href="/dashboard/billing"><CreditCard size={14}/> Billing</Link>
       <Link href="/dashboard/account"><ShieldCheck size={14}/> Account & sessions</Link>
+      <Link href="/dashboard/workspaces"><Building2 size={14}/> Workspaces</Link>
+      <Link href="/dashboard/webhooks"><Webhook size={14}/> Webhooks</Link>
+      <Link href="/dashboard/logs"><ScrollText size={14}/> Logs & audit</Link>
     </nav>
     <div className="dashboard-heading"><div><span className="platform-eyebrow">DEVELOPER CONSOLE / OVERVIEW</span><h1>Your API.<br/><span>Your rules.</span></h1><p>Manage access, monitor quota, and configure your developer plan.</p></div><button className="quiet-button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={15} className={loading ? "spin" : ""}/> Refresh</button></div>
     {error && <div className="platform-alert error" role="alert">{error}</div>}{notice && <div className="platform-alert success"><Check size={16}/>{notice}</div>}
