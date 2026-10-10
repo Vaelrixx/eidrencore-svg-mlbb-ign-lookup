@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   if (subscription.razorpay_order_id === orderId && subscription.razorpay_payment_id && subscription.razorpay_payment_id !== paymentId) return NextResponse.json({ error: "Checkout order already has a different payment." }, { status: 409 });
   const now = Date.now();
   const previousEnd = subscription.current_period_end ? Date.parse(subscription.current_period_end) : 0;
-  const periodStart = Math.max(now, Number.isFinite(previousEnd) ? previousEnd : 0);
+  const periodStart = subscription.plan_slug === subscription.pending_plan_slug ? Math.max(now, Number.isFinite(previousEnd) ? previousEnd : 0) : now;
   const periodEnd = new Date(periodStart + 30 * 86400000).toISOString();
   const { data: activated, error } = await admin.from("developer_subscriptions").update({ plan_slug: subscription.pending_plan_slug, status: "active", razorpay_order_id: orderId, razorpay_payment_id: paymentId, current_period_end: periodEnd, pending_order_id: null, pending_plan_slug: null, pending_started_at: null, updated_at: new Date().toISOString() }).eq("user_id", user.id).eq("pending_order_id", orderId).select("user_id,plan_slug").maybeSingle();
   if (error) return NextResponse.json({ error: "Payment was verified, but the plan could not be activated. Contact support." }, { status: 500 });
