@@ -40,7 +40,7 @@ function clientHash(address, secret) {
   return createHmac("sha256", secret).update(address).digest("hex");
 }
 
-async function requestSupabase(path, payload, { fetchImpl = fetch, env = process.env } = {}) {
+async function requestSupabase(path, payload, { fetchImpl = fetch, env = process.env, timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
   const config = configuration(env);
   if (!config) return { configured: false, ok: false, data: null };
   try {
@@ -49,7 +49,7 @@ async function requestSupabase(path, payload, { fetchImpl = fetch, env = process
       headers: { ...authHeaders(config.key), Prefer: "return=minimal" },
       body: JSON.stringify(payload),
       cache: "no-store",
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!response.ok) return { configured: true, ok: false, data: null };
     if (path.startsWith("rpc/")) {
