@@ -28,7 +28,7 @@ export default function UsagePage() {
     finally { setLoading(false); }
   }, [router]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { const timer = window.setTimeout(() => { void refresh(); }, 0); return () => window.clearTimeout(timer); }, [refresh]);
   const peak = Math.max(1, ...(usage?.daily.map(day => day.requests) || [1]));
   const percent = usage ? Math.min(100, Math.round(usage.monthlyUsage / Math.max(1, usage.monthlyLimit) * 100)) : 0;
 
