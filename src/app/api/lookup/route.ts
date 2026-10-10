@@ -14,7 +14,7 @@ const PLAYER_ID_PATTERN = /^\d{4,20}$/;
 const ZONE_ID_PATTERN = /^\d{1,10}$/;
 
 type LookupDiagnostic = {
-  reason: "missing_config" | "http_error" | "network_or_timeout";
+  reason: "missing_config" | "http_error" | "network_or_timeout" | "unrecognized_response";
   statusCode?: number;
 };
 
@@ -89,17 +89,17 @@ async function lookupPrimary(playerId: string, zoneId: string): Promise<LookupAt
     if (!upstream.ok) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
 
     const payload: unknown = await upstream.json().catch(() => null);
-    if (!payload || typeof payload !== "object") return { kind: "unavailable" };
+    if (!payload || typeof payload !== "object") return { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
 
     const data = payload as Record<string, unknown>;
     if (data.success !== true) {
       return explicitlyNotFound(payload)
         ? { kind: "not_found" }
-        : { kind: "unavailable" };
+        : { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
     }
 
     const nickname = confirmedNickname(payload);
-    if (!nickname) return { kind: "unavailable" };
+    if (!nickname) return { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
 
     return {
       kind: "success",
@@ -148,7 +148,7 @@ async function lookupRapidApi(playerId: string, zoneId: string): Promise<LookupA
       return { kind: "success", nickname, source: "rapidapi_id_game_checker" };
     }
     if (explicitlyNotFound(payload)) return { kind: "not_found" };
-    return { kind: "unavailable" };
+    return { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
   } catch {
     return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
   }
@@ -182,7 +182,7 @@ async function lookupEliteDias(playerId: string, zoneId: string): Promise<Lookup
     const nickname = confirmedNickname(payload);
     if (nickname) return { kind: "success", nickname, source: "elitedias_role_check" };
     if (explicitlyNotFound(payload)) return { kind: "not_found" };
-    return { kind: "unavailable" };
+    return { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
   } catch {
     return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
   }
@@ -223,7 +223,7 @@ async function lookupSmileOne(playerId: string, zoneId: string): Promise<LookupA
     const nickname = confirmedNickname(payload);
     if (nickname) return { kind: "success", nickname, source: "smileone_role_check" };
     if (explicitlyNotFound(payload)) return { kind: "not_found" };
-    return { kind: "unavailable" };
+    return { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
   } catch {
     return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
   }
@@ -265,7 +265,7 @@ async function lookupDuniaGames(playerId: string, zoneId: string): Promise<Looku
     const nickname = confirmedNickname(payload);
     if (nickname) return { kind: "success", nickname, source: "duniagames_role_check" };
     if (explicitlyNotFound(payload)) return { kind: "not_found" };
-    return { kind: "unavailable" };
+    return { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
   } catch {
     return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
   }
@@ -309,21 +309,21 @@ async function lookupCodashopFallback(playerId: string, zoneId: string): Promise
     if (!upstream.ok) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
 
     const payload: unknown = await upstream.json().catch(() => null);
-    if (!payload || typeof payload !== "object") return { kind: "unavailable" };
+    if (!payload || typeof payload !== "object") return { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
 
     const data = payload as Record<string, unknown>;
-    if (String(data.RESULT_CODE ?? "") === "10001") return { kind: "rate_limited" };
-    if (String(data.errorCode ?? "") === "-200") return { kind: "unavailable" };
+    if (String(data.RESULT_CODE ?? "") === "10001") return { kind: "rate_limited", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
+    if (String(data.errorCode ?? "") === "-200") return { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
 
     // Provider error payloads are not proof that the player ID is absent.
     if (data.success !== true || Boolean(data.errorMsg)) {
-      return explicitlyNotFound(payload) ? { kind: "not_found" } : { kind: "unavailable" };
+      return explicitlyNotFound(payload) ? { kind: "not_found" } : { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
     }
 
     const fields = record(data.confirmationFields);
     const rawName = fields && typeof fields.username === "string" ? fields.username : "";
     if (!isUsableNickname(rawName)) {
-      return explicitlyNotFound(payload) ? { kind: "not_found" } : { kind: "unavailable" };
+      return explicitlyNotFound(payload) ? { kind: "not_found" } : { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
     }
     const nickname = cleanNickname(rawName);
     return { kind: "success", nickname, source: "codashop_fallback" };
