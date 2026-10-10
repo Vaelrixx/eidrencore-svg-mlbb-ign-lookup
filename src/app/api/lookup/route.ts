@@ -76,7 +76,7 @@ async function lookupPrimary(playerId: string, zoneId: string): Promise<LookupAt
     });
 
     if (upstream.status === 429) return { kind: "rate_limited" };
-    if (upstream.status === 404) return { kind: "not_found" };
+    if (upstream.status === 404) return { kind: "unavailable" };
     if (!upstream.ok) return { kind: "unavailable" };
 
     const payload: unknown = await upstream.json().catch(() => null);
@@ -84,7 +84,7 @@ async function lookupPrimary(playerId: string, zoneId: string): Promise<LookupAt
 
     const data = payload as Record<string, unknown>;
     if (data.success !== true) {
-      return data.success === false || data.message === "Not found"
+      return explicitlyNotFound(payload)
         ? { kind: "not_found" }
         : { kind: "unavailable" };
     }
