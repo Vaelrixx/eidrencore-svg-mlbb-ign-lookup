@@ -8,7 +8,7 @@ const RESPONSE_KINDS = new Set(["id_game_checker_schema", "nested_status_error",
  * Emit low-cardinality provider telemetry. Never log IDs, nicknames, payloads,
  * URLs, request headers, or credentials. Logging must not affect lookup results.
  */
-export async function observeProvider({ requestId, provider, lookup, logger = console.info, clock = () => performance.now() }) {
+export async function observeProvider({ requestId, provider, lookup, logger = undefined, clock = () => performance.now() }) {
   const startedAt = clock();
   let result;
   try {
@@ -36,7 +36,14 @@ export async function observeProvider({ requestId, provider, lookup, logger = co
   };
 
   try {
-    logger(JSON.stringify(event));
+    const line = JSON.stringify(event);
+    if (logger) {
+      logger(line);
+    } else if (outcome === "unavailable" || outcome === "rate_limited") {
+      console.warn(line);
+    } else {
+      console.info(line);
+    }
   } catch {
     // Observability is best-effort and must never break a lookup.
   }
@@ -44,7 +51,7 @@ export async function observeProvider({ requestId, provider, lookup, logger = co
   return OUTCOMES.has(result?.kind) ? result : { kind: "unavailable" };
 }
 
-export function logLookupSummary({ requestId, durationMs, primary, fallbacks, confirmed, logger = console.info }) {
+export function logLookupSummary({ requestId, durationMs, primary, fallbacks, confirmed, logger = undefined }) {
   const event = {
     event: "lookup.summary",
     requestId,
@@ -63,7 +70,14 @@ export function logLookupSummary({ requestId, durationMs, primary, fallbacks, co
   };
 
   try {
-    logger(JSON.stringify(event));
+    const line = JSON.stringify(event);
+    if (logger) {
+      logger(line);
+    } else if (event.outcome === "unavailable" || event.outcome === "rate_limited") {
+      console.warn(line);
+    } else {
+      console.info(line);
+    }
   } catch {
     // Do not allow a logging sink failure to affect the response.
   }

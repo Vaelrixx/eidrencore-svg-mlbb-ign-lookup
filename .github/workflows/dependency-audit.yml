@@ -1,0 +1,121 @@
+name: Dependency audit
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  npm-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Resolve dependencies without running install scripts
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Run audit and publish a concise advisory summary
+        shell: bash
+        run: |
+          set +e
+          npm audit --json > npm-audit-report.json
+          audit_exit_code=$?
+          set -e
+          export NPM_AUDIT_EXIT_CODE="$audit_exit_code"
+
+          node <<'NODE'
+          const fs = require("node:fs");
+          const report = JSON.parse(fs.readFileSync("npm-audit-report.json", "utf8"));
+          const counts = report.metadata?.vulnerabilities ?? {};
+          const vulnerabilities = Object.entries(report.vulnerabilities ?? {});
+          const total = Number(counts.total ?? vulnerabilities.length);
+          const escapeCell = (value) => String(value ?? "").replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
+          const lines = [
+            "# npm audit report",
+            "",
+            `- Audit exit code: ${process.env.NPM_AUDIT_EXIT_CODE}`,
+            `- Vulnerable packages: ${total}`,
+            `- Severity totals: critical ${counts.critical ?? 0}, high ${counts.high ?? 0}, moderate ${counts.moderate ?? 0}, low ${counts.low ?? 0}, info ${counts.info ?? 0}`,
+            "",
+            "| Package | Severity | Direct | Fix available | Advisory |",
+            "|---|---|---:|---|---|",
+          ];
+          for (const [name, item] of vulnerabilities) {
+            const advisories = (item.via ?? [])
+              .filter((entry) => typeof entry === "object" && entry !== null)
+              .map((entry) => entry.title ? `${entry.title}${entry.url ? ` (${entry.url})` : ""}` : "")
+              .filter(Boolean);
+            const fix = item.fixAvailable === true
+              ? "yes"
+              : item.fixAvailable && typeof item.fixAvailable === "object"
+                ? `${item.fixAvailable.name ?? name}@${item.fixAvailable.version ?? "unknown"}`
+                : "not indicated";
+            lines.push(`|${escapeCell(name)}|${escapeCell(item.severity)}|${item.isDirect ? "yes" : "no"}|${escapeCell(fix)}|${escapeCell(advisories.join("; ") || (item.range ?? "see full report"))}|`);
+          }
+          lines.push("", "The full JSON report and generated lockfile are attached as a workflow artifact.");
+          const summary = lines.join("\n") + "\n";
+          fs.writeFileSync("npm-audit-summary.md", summary);
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+          process.stdout.write(summary);
+          if (total > 0) {
+            process.stderr.write("Full dependency audit includes advisories in development/build tooling; production dependencies are gated separately.\n");
+          }
+          NODE
+
+      - name: Gate production dependencies
+        shell: bash
+        run: |
+          set +e
+          npm audit --omit=dev --json > npm-audit-production-report.json
+          audit_exit_code=$?
+          set -e
+          export NPM_PRODUCTION_AUDIT_EXIT_CODE="$audit_exit_code"
+
+          node <<'NODE'
+          const fs = require("node:fs");
+          const report = JSON.parse(fs.readFileSync("npm-audit-production-report.json", "utf8"));
+          const counts = report.metadata?.vulnerabilities ?? {};
+          const vulnerabilities = Object.entries(report.vulnerabilities ?? {});
+          const summary = [
+            "",
+            "# Production dependency audit gate",
+            "",
+            `- Audit exit code: ${process.env.NPM_PRODUCTION_AUDIT_EXIT_CODE}`,
+            `- Vulnerable packages: ${counts.total ?? vulnerabilities.length}`,
+            `- Severity totals: critical ${counts.critical ?? 0}, high ${counts.high ?? 0}, moderate ${counts.moderate ?? 0}, low ${counts.low ?? 0}, info ${counts.info ?? 0}`,
+            "",
+          ].join("\n");
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+          process.stdout.write(summary);
+          const blockers = vulnerabilities.filter(([, item]) => ["high", "critical"].includes(item.severity));
+          if (blockers.length > 0 || (process.env.NPM_PRODUCTION_AUDIT_EXIT_CODE !== "0" && vulnerabilities.length === 0)) {
+            process.stderr.write("Production dependency audit found high/critical advisories or could not complete.\n");
+            process.exitCode = 1;
+          }
+          NODE
+
+      - name: Upload audit report and resolved dependency lockfile
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-report-${{ github.run_id }}
+          path: |
+            npm-audit-report.json
+            npm-audit-production-report.json
+            npm-audit-summary.md
+            package-lock.json
+          if-no-files-found: warn
+          retention-days: 14
