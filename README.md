@@ -4,7 +4,7 @@ Standalone Next.js + TypeScript API for resolving Mobile Legends: Bang Bang nick
 
 The service owns input validation, provider orchestration, response normalization, and deployment. It uses a primary community lookup and best-effort fallback providers, including RapidAPI's ID Game Checker when `RAPIDAPI_KEY` (or the legacy `RAPIDAPI_APP_TOKEN`) is configured.
 
-These integrations are unofficial third-party endpoints, not an official Moonton API. Their contracts and availability can change. RapidAPI ID Game Checker uses its documented response body to distinguish an explicit `id_not_found` result from `no_content_0` (provider could not retrieve source data); an HTTP 404 without the documented body remains an upstream-unavailable result. Provider failures and timeouts are **not** treated as proof that an account is invalid.
+These integrations are unofficial third-party endpoints, not an official Moonton API. Their contracts and availability can change. The RapidAPI adapter uses the provider's documented `mobile-legends` game slug rather than the former `mlbb` path. RapidAPI ID Game Checker uses its documented response body to distinguish an explicit `id_not_found` result from `no_content_0` (provider could not retrieve source data); an HTTP 404 without the documented body remains an upstream-unavailable result. Provider failures and timeouts are **not** treated as proof that an account is invalid.
 
 ## Run locally
 
