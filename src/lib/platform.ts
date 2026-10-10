@@ -23,10 +23,17 @@ export async function getUserFromRequest(request: Request) {
     if (token.startsWith("eid_")) {
       const admin = createAdminClient();
       const { data: key, error } = await admin.from("api_keys")
-        .select("id,user_id,plan_slug,revoked_at")
+        .select("id,user_id,workspace_id,plan_slug,revoked_at")
         .eq("key_hash", hashApiKey(token)).maybeSingle();
       if (error || !key || key.revoked_at) return { error: "Invalid or revoked API key.", status: 401 as const };
-      const { data: subscription } = await admin.from("developer_subscriptions").select("plan_slug,status,current_period_end").eq("user_id", key.user_id).maybeSingle();
+      let subscription: { plan_slug: string; status: string; current_period_end: string | null } | null = null;
+      if (key.workspace_id) {
+        const { data } = await admin.from("developer_workspace_subscriptions").select("plan_slug,status,current_period_end").eq("workspace_id", key.workspace_id).maybeSingle();
+        subscription = data;
+      } else {
+        const { data } = await admin.from("developer_subscriptions").select("plan_slug,status,current_period_end").eq("user_id", key.user_id).maybeSingle();
+        subscription = data;
+      }
       const paidIsCurrent = subscription?.status === "active" && subscription.plan_slug === key.plan_slug && !!subscription.current_period_end && Date.parse(subscription.current_period_end) > Date.now();
       const planSlug = key.plan_slug === "free" ? "free" : paidIsCurrent ? key.plan_slug : "free";
       if (planSlug !== key.plan_slug) await admin.from("api_keys").update({ plan_slug: planSlug }).eq("id", key.id);
