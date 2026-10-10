@@ -8,7 +8,7 @@ const RESPONSE_KINDS = new Set(["id_game_checker_schema", "nested_status_error",
  * Emit low-cardinality provider telemetry. Never log IDs, nicknames, payloads,
  * URLs, request headers, or credentials. Logging must not affect lookup results.
  */
-export async function observeProvider({ requestId, provider, lookup, logger, clock = () => performance.now() }) {
+export async function observeProvider({ requestId, provider, lookup, logger = undefined, clock = () => performance.now() }) {
   const startedAt = clock();
   let result;
   try {
@@ -51,7 +51,7 @@ export async function observeProvider({ requestId, provider, lookup, logger, clo
   return OUTCOMES.has(result?.kind) ? result : { kind: "unavailable" };
 }
 
-export function logLookupSummary({ requestId, durationMs, primary, fallbacks, confirmed, logger }) {
+export function logLookupSummary({ requestId, durationMs, primary, fallbacks, confirmed, logger = undefined }) {
   const event = {
     event: "lookup.summary",
     requestId,
