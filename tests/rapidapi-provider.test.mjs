@@ -144,7 +144,7 @@ test("lookupRapidApi does not return an upstream body on failures", async () => 
     const result = await lookupRapidApi("1114917746", "13486");
     assert.deepEqual(result, {
       kind: "unavailable",
-      diagnostic: { reason: "provider_error", statusCode: 200 },
+      diagnostic: { reason: "provider_error", statusCode: 200, responseKind: "id_game_checker_schema" },
     });
     assert.equal(JSON.stringify(result).includes("unit-test-key"), false);
   } finally {
