@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { performance } from "node:perf_hooks";
 import { confirmedNickname } from "../src/app/api/lookup/nickname-validation.mjs";
 import { lookupIsan } from "../src/app/api/lookup/providers/isan.mjs";
+import { normalizeProviderOutcome } from "./helpers/provider-outcome-normalization.mjs";
 
 const playerId = process.env.LIVE_LOOKUP_PLAYER_ID ?? "1114917746";
 const zoneId = process.env.LIVE_LOOKUP_ZONE_ID ?? "13486";
@@ -38,9 +39,10 @@ async function probeHttp({ provider, url, init }) {
       signal: AbortSignal.timeout(timeoutMs),
     });
     const payload = await response.json().catch(() => null);
+    const classification = normalizeProviderOutcome(classify(provider, response, payload));
     return {
       provider,
-      outcome: classify(provider, response, payload),
+      ...classification,
       upstreamStatus: response.status,
       responseShape: safePayloadShape(payload, response.headers.get("content-type")),
       ...(!confirmedNickname(payload) ? safeProviderErrorMetadata(payload) : {}),
@@ -49,7 +51,7 @@ async function probeHttp({ provider, url, init }) {
   } catch {
     return {
       provider,
-      outcome: "network_or_timeout",
+      ...normalizeProviderOutcome("network_or_timeout"),
       durationMs: Math.round(performance.now() - startedAt),
     };
   }
@@ -121,7 +123,7 @@ test("live provider sweep reports sanitized status for a known-valid test accoun
   const isan = await lookupIsan(playerId, zoneId);
   results.push({
     provider: "isan_nickname_api",
-    outcome: isan.kind,
+    ...normalizeProviderOutcome(isan.kind, isan.diagnostic?.reason),
     ...(Number.isInteger(isan.diagnostic?.statusCode) ? { upstreamStatus: isan.diagnostic.statusCode } : {}),
     durationMs: Math.round(performance.now() - isanStartedAt),
   });
@@ -253,9 +255,7 @@ test("live provider sweep reports sanitized status for a known-valid test accoun
   // intentionally does not call it. No purchase or payment endpoint is exercised.
 
   const allowedOutcomes = new Set([
-    "success", "not_found", "rate_limited", "upstream_unavailable",
-    "http_error", "unrecognized_response", "network_or_timeout",
-    "unavailable", "skipped_missing_ci_secret",
+    "success", "not_found", "rate_limited", "unavailable", "skipped_missing_ci_secret",
   ]);
   assert.ok(results.length >= 5);
   assert.ok(results.every((result) =>
