@@ -101,7 +101,7 @@ export async function POST(request: Request) {
     }
 
     const now = new Date().toISOString();
-    const { error: deliveryError } = await admin.from("developer_webhook_deliveries").insert({
+    const { error: deliveryError } = await admin.from("developer_webhook_deliveries").upsert({
       endpoint_id: job.endpoint_id,
       event_id: job.event_id,
       event_type: job.event_type,
@@ -110,7 +110,7 @@ export async function POST(request: Request) {
       attempt: attemptNumber,
       delivered: success,
       error_code: errorCode,
-    });
+    }, { onConflict: "endpoint_id,event_id,attempt", ignoreDuplicates: true });
     if (deliveryError) {
       console.error("[webhook-worker] delivery log failed", deliveryError.message);
       // Keep the lease so the row can be reclaimed after timeout rather than losing delivery history.
