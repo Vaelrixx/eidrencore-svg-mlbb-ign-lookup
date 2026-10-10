@@ -164,9 +164,9 @@ Webhook requests contain `Eidren-Event-Id`, `Eidren-Event`, and `Eidren-Signatur
 
 ### Scope and current limitations
 
-- Workspaces manage members, but existing API keys remain owned by their creator. Shared workspace keys and shared billing are not yet implemented.
+- Personal API keys remain account-scoped. Workspace-scoped keys are anchored to the workspace owner and use the workspace subscription and shared quota.
 - Invitation links are generated for manual delivery; SMTP/email sending is not configured.
-- Webhook attempts are sent synchronously with a short timeout and logged. Durable queueing, exponential retry, dead-letter handling, and replay controls are follow-up work.
+- Webhook events use a durable outbox with bounded exponential retries, dead-letter handling, manual replay, and scheduled retention. SMTP invitation delivery remains unconfigured.
 - API request logs include request ID, endpoint, status, latency, key reference, and timestamp. They deliberately exclude player/zone IDs, nicknames, bearer keys, and webhook secrets. Logs start after this release is deployed; historic traffic cannot be backfilled.
 
 
