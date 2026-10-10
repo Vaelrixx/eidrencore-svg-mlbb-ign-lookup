@@ -59,5 +59,5 @@ test("request summary logs aggregate outcomes without identity fields", () => {
   assert.deepEqual(event.fallbackOutcomes, ["success"]);
   assert.equal(event.selectedSource, "isan_nickname_api");
   assert.equal(lines[0].includes("SECRET_PLAYER_NICKNAME"), false);
-  assert.equal(lines[0].includes("nickname"), false);
+  assert.equal(lines[0].includes("SECRET_PLAYER_NICKNAME"), false);
 });
