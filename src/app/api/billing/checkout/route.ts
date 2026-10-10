@@ -18,15 +18,29 @@ export async function POST(request: Request) {
   const price = Number(plan?.price_paise ?? fallback?.price_paise ?? 0);
   const enabled = plan?.enabled ?? fallback?.enabled ?? false;
   if (!enabled || price < 100) return NextResponse.json({ error: "This paid plan is not enabled yet. Set its price and enable it in the developer_plans table." }, { status: 409 });
+  const { data: current } = await admin.from("developer_subscriptions").select("plan_slug,status,current_period_end,pending_order_id,pending_started_at").eq("user_id", user.id).maybeSingle();
+  if (current?.pending_order_id && current.pending_started_at && Date.now() - Date.parse(current.pending_started_at) < 20 * 60 * 1000) {
+    return NextResponse.json({ error: "A checkout is already pending. Finish it or wait 20 minutes before starting another." }, { status: 409 });
+  }
   const response = await fetch("https://api.razorpay.com/v1/orders", {
     method: "POST",
-    headers: { Authorization: "Basic " + Buffer.from(`${keyId}:${secret}`).toString("base64"), "Content-Type": "application/json" },
-    body: JSON.stringify({ amount: price, currency: "INR", receipt: `eidren_${user.id.slice(0, 8)}_${Date.now()}`, notes: { user_id: user.id, plan_slug: slug } }),
+    headers: { Authorization: "Basic " + Buffer.from(keyId + ":" + secret).toString("base64"), "Content-Type": "application/json" },
+    body: JSON.stringify({ amount: price, currency: "INR", receipt: "eidren_" + user.id.slice(0, 8) + "_" + Date.now(), notes: { user_id: user.id, plan_slug: slug } }),
     cache: "no-store",
+    signal: AbortSignal.timeout(10000),
   });
   const order = await response.json().catch(() => null);
   if (!response.ok || !order?.id) return NextResponse.json({ error: "Razorpay could not create an order." }, { status: 502 });
-  const { error } = await admin.from("developer_subscriptions").upsert({ user_id: user.id, plan_slug: slug, status: "pending", razorpay_order_id: order.id, updated_at: new Date().toISOString() });
+  const active = current?.status === "active" && !!current.current_period_end && Date.parse(current.current_period_end) > Date.now();
+  const { error } = await admin.from("developer_subscriptions").upsert({
+    user_id: user.id,
+    plan_slug: current?.plan_slug || "free",
+    status: active ? "active" : "pending",
+    pending_order_id: order.id,
+    pending_plan_slug: slug,
+    pending_started_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  });
   if (error) return NextResponse.json({ error: "Could not save checkout state." }, { status: 500 });
   return NextResponse.json({ keyId, orderId: order.id, amount: price, currency: "INR", name: "Eidren Developer Platform", description: `${plan?.name || fallback?.name || slug} monthly plan`, prefill: { email: user.email || "" } }, { headers: { "Cache-Control": "no-store" } });
 }
