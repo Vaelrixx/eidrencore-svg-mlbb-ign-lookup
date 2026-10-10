@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Activity, ArrowDownRight, ArrowRight, Check, CircleHelp, Copy, CreditCard, KeyRound, LoaderCircle, LogOut, Plus, RefreshCw, ShieldCheck, Swords, Trash2, Zap } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 
 type ApiKey = { id: string; name: string; key_prefix: string; plan_slug: string; created_at: string; last_used_at: string | null; revoked_at: string | null };
 type Plan = { slug: string; name: string; price_paise: number; monthly_limit: number; enabled: boolean; description: string };
@@ -30,13 +29,11 @@ export default function DashboardPage() {
   const refresh = useCallback(async () => {
     setLoading(true); setError("");
     try {
-      const auth = await createClient().auth.getUser();
-      if (!auth.data.user) { router.replace("/login?next=/dashboard"); return; }
-      setUserEmail(auth.data.user.email || "Connected account");
       const [keyResponse, planResponse, accountResponse] = await Promise.all([fetch("/api/keys"), fetch("/api/billing/plans"), fetch("/api/billing/me")]);
       const keyBody = await keyResponse.json(); const planBody = await planResponse.json(); const accountBody = await accountResponse.json();
-      if (keyResponse.status === 401) { router.replace("/login?next=/dashboard"); return; }
+      if (accountResponse.status === 401 || keyResponse.status === 401) { router.replace("/login?next=/dashboard"); return; }
       if (!keyResponse.ok) throw new Error(keyBody.error || "Could not load API keys.");
+      setUserEmail(accountBody.user?.email || "Connected account");
       setKeys(keyBody.keys || []); setPlans(planBody.plans || []);
       if (accountResponse.ok) setAccount(accountBody);
     } catch (e) { setError(e instanceof Error ? e.message : "Could not load your developer account."); }
@@ -96,7 +93,7 @@ export default function DashboardPage() {
     } catch (e) { setError(e instanceof Error ? e.message : "Checkout failed."); }
     finally { setBillingBusy(""); }
   }
-  async function signOut() { await createClient().auth.signOut(); router.replace("/"); router.refresh(); }
+  async function signOut() { await fetch("/api/auth/signout", { method: "POST" }); router.replace("/"); router.refresh(); }
 
   const activeKeys = keys.filter(k => !k.revoked_at).length;
   const currentPlan = plans.find(p => p.slug === (account?.plan || "free")) || plans.find(p => p.slug === "free");
