@@ -57,7 +57,7 @@ export default function Home() {
           <span className="brand-mark"><Swords size={19} strokeWidth={2.4} /></span>
           <span>EIDREN<span className="brand-dot">.</span></span>
         </Link>
-        <div className="nav-right"><span className="live-dot" /> PLAYER INTELLIGENCE <span className="nav-divider" /> <span className="nav-version">BETA 01</span></div>
+        <div className="nav-right"><span className="live-dot" /> PLAYER INTELLIGENCE <span className="nav-divider" /> <span className="nav-version">BETA 01</span><Link href="/login" className="developer-link">Developer console <ArrowRight size={13}/></Link></div>
       </nav>
 
       <section className="hero">
