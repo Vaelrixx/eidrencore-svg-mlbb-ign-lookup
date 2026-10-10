@@ -49,7 +49,7 @@ Successful response:
 
 Error responses preserve a stable `{ success: false, error, code }` shape. Common codes include `INVALID_JSON`, `INVALID_INPUT`, `INVALID_ID`, `PLAYER_NOT_FOUND`, `UPSTREAM_RATE_LIMIT`, and `UPSTREAM_UNAVAILABLE`. Every POST response includes an `X-Lookup-Request-Id` header for correlating a caller's result with sanitized server-side provider diagnostics without logging player identifiers.
 
-A success is returned only when a provider returns a plausible nickname in a recognized response field. Generic error text is rejected. The primary provider is attempted first. If it cannot confirm a nickname, fallbacks run concurrently and the result uses the configured provider priority if multiple sources return different names. A separate live smoke test can simulate primary unavailability while querying the real Isan secondary provider.
+A success is returned only when a provider returns a plausible nickname in a recognized response field. Generic error text is rejected. The primary provider is attempted first. If it cannot confirm a nickname, only the currently validated Isan and RapidAPI adapters run concurrently; the first confirmed nickname is returned without waiting for slower attempts. If no fallback confirms a nickname, the route waits for all results before deciding whether the account is not found or the providers are unavailable. Unreliable 403/500 sources and the Codashop checkout-initialization endpoint are not called by the production lookup path. A separate live smoke test can simulate primary unavailability while querying the real Isan secondary provider.
 
 ## Production checklist
 
