@@ -19,5 +19,7 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Run nickname regression tests
         run: npm run test:lookup
+      - name: Run observability privacy tests
+        run: npm run test:observability
       - name: Build Next.js app
         run: npm run build

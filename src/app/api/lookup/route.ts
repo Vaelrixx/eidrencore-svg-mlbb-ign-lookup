@@ -1,7 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { cleanNickname, confirmedNickname, isUsableNickname } from "./nickname-validation.mjs";
 import { resolveLookupWithFallbacks } from "./resolve-lookup.mjs";
 import { lookupIsan } from "./providers/isan.mjs";
+import { logLookupSummary, observeProvider } from "./observability.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -349,20 +351,36 @@ export async function POST(request: NextRequest) {
     return jsonError("Enter a numeric Player ID (4–20 digits) and Zone ID (1–10 digits).", 400, "INVALID_ID");
   }
 
+  // Structured telemetry deliberately excludes player IDs, zone IDs, nicknames,
+  // upstream payloads, headers, and credentials.
+  const requestId = randomUUID();
+  const lookupStartedAt = Date.now();
+
   // Primary-first lookup with deterministic, concurrent fallback takeover.
   // This orchestration is separately unit-tested with a simulated primary outage.
   const resolution = await resolveLookupWithFallbacks(
-    () => lookupPrimary(playerId, zoneId),
+    () => observeProvider({
+      requestId,
+      provider: "isan_find",
+      lookup: () => lookupPrimary(playerId, zoneId),
+    }),
     [
-      () => lookupRapidApi(playerId, zoneId),
-      () => lookupIsan(playerId, zoneId),
-      () => lookupEliteDias(playerId, zoneId),
-      () => lookupSmileOne(playerId, zoneId),
-      () => lookupDuniaGames(playerId, zoneId),
-      () => lookupCodashopFallback(playerId, zoneId),
+      () => observeProvider({ requestId, provider: "rapidapi_id_game_checker", lookup: () => lookupRapidApi(playerId, zoneId) }),
+      () => observeProvider({ requestId, provider: "isan_nickname_api", lookup: () => lookupIsan(playerId, zoneId) }),
+      () => observeProvider({ requestId, provider: "elitedias_role_check", lookup: () => lookupEliteDias(playerId, zoneId) }),
+      () => observeProvider({ requestId, provider: "smileone_role_check", lookup: () => lookupSmileOne(playerId, zoneId) }),
+      () => observeProvider({ requestId, provider: "duniagames_role_check", lookup: () => lookupDuniaGames(playerId, zoneId) }),
+      () => observeProvider({ requestId, provider: "codashop_fallback", lookup: () => lookupCodashopFallback(playerId, zoneId) }),
     ],
   );
   const { primary, fallbacks, confirmed } = resolution;
+  logLookupSummary({
+    requestId,
+    durationMs: Date.now() - lookupStartedAt,
+    primary,
+    fallbacks,
+    confirmed,
+  });
   if (confirmed?.kind === "success") return jsonSuccess(confirmed, playerId, zoneId);
   const attempts: LookupAttempt[] = [primary, ...fallbacks];
 

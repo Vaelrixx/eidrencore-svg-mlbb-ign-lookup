@@ -62,6 +62,12 @@ A success is returned only when a provider returns a plausible nickname in a rec
 Not affiliated with or endorsed by MOONTON Games, Codashop, or any listed third-party provider.
 
 
+## Provider observability
+
+Production logs emit structured JSON events for each provider attempt and each completed lookup. Provider events include a request correlation ID, provider label, outcome, latency in milliseconds, and the selected source only on success. The summary records total duration and outcome counts. Player IDs, zone IDs, nicknames, upstream payloads, URLs, request headers, and credentials are intentionally excluded. Logging is best-effort and cannot change lookup results. Use Railway deployment logs to compare provider latency and availability over time; these are event logs, not a persistent metrics dashboard.
+
+Run `npm run test:observability` to check the telemetry shape, verify identity fields are not logged, and ensure logging failures do not break lookups.
+
 ## Live fallback takeover smoke test
 
 Run `npm run test:lookup:live` to simulate an unavailable primary and call the real Isan secondary adapter through the same resolver used by the API route. It reports the selected source, returned nickname, and elapsed time. This test requires network access and a working response from the third-party Isan service; it is separate from deterministic unit tests and does not modify production.
