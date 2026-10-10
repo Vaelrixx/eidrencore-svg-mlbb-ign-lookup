@@ -99,7 +99,7 @@ revoke all on public.developer_workspaces, public.developer_workspace_members, p
 grant select, insert, update, delete on public.developer_workspaces, public.developer_workspace_members,
   public.developer_workspace_invites, public.developer_audit_logs, public.developer_webhook_endpoints,
   public.developer_webhook_deliveries, public.developer_api_request_logs to service_role;
-grant usage, select on all sequences in schema public to service_role;
+grant usage, select on sequence public.developer_audit_logs_id_seq, public.developer_webhook_deliveries_id_seq, public.developer_api_request_logs_id_seq to service_role;
 
 -- The server uses the service role only after checking the authenticated user in application code.
 -- Workspace owner rows are inserted alongside workspace creation and keep owner membership explicit.
