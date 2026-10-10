@@ -7,6 +7,7 @@ import { lookupRapidApi } from "./providers/rapidapi.mjs";
 import { logLookupSummary, observeProvider } from "./observability.mjs";
 import { enforceLookupRateLimit, persistLookupLog } from "./persistence.mjs";
 import { getUserFromRequest } from "@/lib/platform";
+import { recordDeveloperRequest } from "@/lib/developer-events";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -200,6 +201,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  let developerAuth: { userId: string; keyId: string } | null = null;
+
   // API keys are optional for the public lookup, but any Eidren key supplied
   // in the Authorization header must validate and pass its monthly quota.
   if ((request.headers.get("authorization") || "").startsWith("Bearer eid_")) {
@@ -209,6 +212,8 @@ export async function POST(request: NextRequest) {
       const status = typeof keyAuth.status === "number" ? keyAuth.status : 401;
       const code = status === 429 ? "API_QUOTA_EXCEEDED" : status === 503 ? "QUOTA_UNAVAILABLE" : "INVALID_API_KEY";
       return jsonError(typeof keyAuth.error === "string" ? keyAuth.error : "API key rejected.", status, code, requestId);
+    } else {
+      developerAuth = { userId: keyAuth.userId, keyId: keyAuth.keyId };
     }
   }
 
@@ -240,6 +245,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (confirmed?.kind === "success") {
+    if (developerAuth) await recordDeveloperRequest({ ...developerAuth, requestId, status: 200, responseMs: Date.now() - requestStartedAt });
     await persistLookupLog({
       status: "success",
       responseMs: Date.now() - requestStartedAt,
@@ -251,6 +257,7 @@ export async function POST(request: NextRequest) {
   const attempts: LookupAttempt[] = [primary, ...fallbacks];
 
   if (attempts.every((attempt) => attempt.kind === "not_found")) {
+    if (developerAuth) await recordDeveloperRequest({ ...developerAuth, requestId, status: 404, responseMs: Date.now() - requestStartedAt });
     return loggedError(
       "No provider found an MLBB account for that Player ID and Zone ID.",
       404,
@@ -262,6 +269,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (attempts.every((attempt) => attempt.kind === "rate_limited")) {
+    if (developerAuth) await recordDeveloperRequest({ ...developerAuth, requestId, status: 429, responseMs: Date.now() - requestStartedAt });
     return loggedError(
       "All lookup providers are rate-limiting requests. Try again shortly.",
       429,
@@ -272,6 +280,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (developerAuth) await recordDeveloperRequest({ ...developerAuth, requestId, status: 502, responseMs: Date.now() - requestStartedAt });
   return loggedError(
     "We couldn't verify this ID right now because lookup providers are unavailable. Please retry shortly.",
     502,
