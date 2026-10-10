@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireUser } from "@/lib/platform";
+import { emitDeveloperEvent, writeAuditLog } from "@/lib/developer-events";
 
 export const runtime = "nodejs";
 export async function POST(request: Request) {
@@ -27,5 +28,7 @@ export async function POST(request: Request) {
   const { error } = await admin.from("developer_subscriptions").update({ status: "active", razorpay_payment_id: paymentId, current_period_end: new Date(Date.now() + 30 * 86400000).toISOString(), updated_at: new Date().toISOString() }).eq("user_id", user.id).eq("razorpay_order_id", orderId);
   if (error) return NextResponse.json({ error: "Payment was verified, but the plan could not be activated. Contact support." }, { status: 500 });
   await admin.from("api_keys").update({ plan_slug: subscription.plan_slug }).eq("user_id", user.id).is("revoked_at", null);
+  await writeAuditLog({ userId: user.id, action: "billing.subscription.activated", resourceType: "subscription", resourceId: orderId, metadata: { plan: subscription.plan_slug, paymentId } });
+  await emitDeveloperEvent({ userId: user.id, type: "billing.subscription.activated", data: { plan: subscription.plan_slug, payment_id: paymentId, period_end: new Date(Date.now() + 30 * 86400000).toISOString() } });
   return NextResponse.json({ success: true, plan: subscription.plan_slug });
 }
