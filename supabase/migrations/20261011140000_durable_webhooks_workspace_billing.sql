@@ -32,6 +32,9 @@ create table if not exists public.developer_workspace_subscriptions (
   current_period_end timestamptz,
   razorpay_order_id text unique,
   razorpay_payment_id text unique,
+  pending_order_id text unique,
+  pending_plan_slug text references public.developer_plans(slug),
+  pending_started_at timestamptz,
   updated_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
