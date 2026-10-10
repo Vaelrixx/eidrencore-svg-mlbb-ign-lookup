@@ -24,9 +24,20 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const plans = databasePlans?.length ? databasePlans : PLAN_FALLBACKS;
   const periodCurrent = subscription?.status === "active" && !!subscription.current_period_end && Date.parse(subscription.current_period_end) > Date.now();
   const effectivePlan = periodCurrent ? subscription?.plan_slug || "free" : "free";
+  const plan = plans.find(item => item.slug === effectivePlan) || PLAN_FALLBACKS[0];
+  const { data: keys } = await admin.from("api_keys").select("id").eq("workspace_id", id).is("revoked_at", null);
+  const keyIds = (keys || []).map(key => key.id);
+  const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString().slice(0, 10);
+  let monthlyUsage = 0;
+  if (keyIds.length) {
+    const { data: usage } = await admin.from("developer_api_usage").select("request_count").in("api_key_id", keyIds).eq("month_start", monthStart);
+    monthlyUsage = (usage || []).reduce((sum, row) => sum + Number(row.request_count || 0), 0);
+  }
   return NextResponse.json({
     subscription: subscription ? { plan: subscription.plan_slug, status: periodCurrent ? "active" : subscription.status === "pending" ? "pending" : "expired", currentPeriodStart: subscription.current_period_start, currentPeriodEnd: subscription.current_period_end, checkoutPending: !!subscription.pending_order_id, pendingPlan: subscription.pending_plan_slug } : { plan: "free", status: "active", currentPeriodStart: null, currentPeriodEnd: null, checkoutPending: false, pendingPlan: null },
     effectivePlan,
+    monthlyUsage,
+    monthlyLimit: Number(plan.monthly_limit || 100),
     plans,
     currentRole: role,
   }, { headers: { "Cache-Control": "no-store" } });
