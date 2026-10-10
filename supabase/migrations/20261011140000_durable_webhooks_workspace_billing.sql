@@ -4,6 +4,8 @@ create extension if not exists pg_net with schema extensions;
 alter table public.developer_subscriptions add column if not exists pending_order_id text unique;
 alter table public.developer_subscriptions add column if not exists pending_plan_slug text references public.developer_plans(slug);
 alter table public.developer_subscriptions add column if not exists pending_started_at timestamptz;
+alter table public.developer_api_request_logs add column if not exists workspace_id uuid references public.developer_workspaces(id) on delete set null;
+create index if not exists developer_api_request_logs_workspace_created_idx on public.developer_api_request_logs(workspace_id, created_at desc);
 create table if not exists public.developer_webhook_outbox (
   id uuid primary key default gen_random_uuid(),
   endpoint_id uuid not null references public.developer_webhook_endpoints(id) on delete cascade,
