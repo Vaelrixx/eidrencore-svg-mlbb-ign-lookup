@@ -29,7 +29,6 @@
     "typescript": "^5.7.2"
   },
   "overrides": {
-    "braces": "^3.0.4",
     "postcss": "^8.5.23"
   }
 }
