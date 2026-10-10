@@ -1,18 +1,18 @@
 const baseUrl = "https://nexus-mlbb-ign-lookup-production.up.railway.app";
-const curlExample = "curl -X POST \\"" + baseUrl + "/api/lookup\\" -H \\"Content-Type: application/json\\" -H \\"Authorization: Bearer eid_YOUR_API_KEY\\" -d '{\\"playerId\\":\\"123456789\\",\\"zoneId\\":\\"1234\\"}'";
+const curlExample = "curl -X POST \"" + baseUrl + "/api/lookup\" -H \"Content-Type: application/json\" -H \"Authorization: Bearer eid_YOUR_API_KEY\" -d '{\"playerId\":\"123456789\",\"zoneId\":\"1234\"}'";
 const jsExample = [
-  "const response = await fetch(\\"" + baseUrl + "/api/lookup\\", {",
-  "  method: \\"POST\\",",
+  "const response = await fetch(\"" + baseUrl + "/api/lookup\", {",
+  "  method: \"POST\",",
   "  headers: {",
-  "    \\"Content-Type\\": \\"application/json\\",",
-  "    \\"Authorization\\": \\"Bearer \\" + process.env.EIDREN_API_KEY,",
+  "    \"Content-Type\": \"application/json\",",
+  "    \"Authorization\": \"Bearer \" + process.env.EIDREN_API_KEY,",
   "  },",
-  "  body: JSON.stringify({ playerId: \\"123456789\\", zoneId: \\"1234\\" }),",
+  "  body: JSON.stringify({ playerId: \"123456789\", zoneId: \"1234\" }),",
   "});",
   "const result = await response.json();",
   "if (result.success) console.log(result.data.nickname);",
   "else console.error(result.code, result.error);",
-].join("\\n");
+].join("\n");
 
 export default function DocsPage() {
   const [copied, setCopied] = useState("");
