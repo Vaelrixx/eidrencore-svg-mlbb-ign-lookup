@@ -36,7 +36,9 @@ export async function getUserFromRequest(request: Request) {
       const { data: plan } = await admin.from("developer_plans").select("monthly_limit").eq("slug", planSlug).maybeSingle();
       const fallback = PLAN_FALLBACKS.find((p) => p.slug === planSlug);
       const limit = Number(plan?.monthly_limit ?? fallback?.monthly_limit ?? 100);
-      const { data: quota, error: quotaError } = await admin.rpc("consume_developer_api_quota", { p_key_id: key.id, p_monthly_limit: limit });
+      const { data: quota, error: quotaError } = key.workspace_id
+        ? await admin.rpc("consume_workspace_api_quota", { p_workspace_id: key.workspace_id, p_key_id: key.id, p_monthly_limit: limit })
+        : await admin.rpc("consume_developer_api_quota", { p_key_id: key.id, p_monthly_limit: limit });
       if (quotaError) return { error: "API quota service is temporarily unavailable.", status: 503 as const };
       const result = Array.isArray(quota) ? quota[0] : quota;
       if (!result?.allowed) return { error: "Monthly API key quota exceeded.", status: 429 as const, remaining: 0 };
