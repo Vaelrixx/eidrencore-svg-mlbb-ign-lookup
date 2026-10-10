@@ -6,6 +6,27 @@ function record(value) {
     : null;
 }
 
+function responseKind(payload) {
+  const root = record(payload);
+  if (!payload || typeof payload !== "object") return "empty_or_non_json";
+  if (Array.isArray(payload)) return "json_array";
+  if (["error", "status", "msg"].every((key) => key in root)) return "id_game_checker_schema";
+  if (
+    root.status && typeof root.status === "object" && !Array.isArray(root.status) &&
+    typeof root.status.message === "string"
+  ) return "nested_status_error";
+  if (typeof root.message === "string") return "gateway_message_json";
+  return "other_json_object";
+}
+
+function diagnosticForStatus(httpStatus, payload) {
+  return {
+    reason: "http_error",
+    statusCode: httpStatus,
+    responseKind: responseKind(payload),
+  };
+}
+
 /**
  * ID Game Checker documents three important response states:
  * - error:false, status:200, msg:id_found with data.username: verified name
@@ -23,7 +44,7 @@ export function classifyRapidApiResponse(httpStatus, payload) {
   if (httpStatus === 429) {
     return {
       kind: "rate_limited",
-      diagnostic: { reason: "http_error", statusCode: 429 },
+      diagnostic: diagnosticForStatus(429, payload),
     };
   }
 
@@ -40,6 +61,7 @@ export function classifyRapidApiResponse(httpStatus, payload) {
       diagnostic: {
         reason: "provider_error",
         statusCode: Number.isInteger(httpStatus) ? httpStatus : 204,
+        responseKind: responseKind(payload),
       },
     };
   }
@@ -47,7 +69,7 @@ export function classifyRapidApiResponse(httpStatus, payload) {
   if (!Number.isInteger(httpStatus) || httpStatus < 200 || httpStatus >= 300) {
     return {
       kind: "unavailable",
-      diagnostic: { reason: "http_error", statusCode: httpStatus },
+      diagnostic: diagnosticForStatus(httpStatus, payload),
     };
   }
 
@@ -76,7 +98,11 @@ export function classifyRapidApiResponse(httpStatus, payload) {
 
   return {
     kind: "unavailable",
-    diagnostic: { reason: "unrecognized_response", statusCode: httpStatus },
+    diagnostic: {
+      reason: "unrecognized_response",
+      statusCode: httpStatus,
+      responseKind: responseKind(payload),
+    },
   };
 }
 
