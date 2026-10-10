@@ -130,7 +130,7 @@ test("live provider sweep reports sanitized status for a known-valid test accoun
   if (rapidApiKey) {
     results.push(await probeHttp({
       provider: "rapidapi_id_game_checker",
-      url: "https://id-game-checker.p.rapidapi.com/mlbb/" + encodeURIComponent(playerId) + "/" + encodeURIComponent(zoneId),
+      url: "https://id-game-checker.p.rapidapi.com/mobile-legends/" + encodeURIComponent(playerId) + "/" + encodeURIComponent(zoneId),
       init: {
         method: "GET",
         headers: {
