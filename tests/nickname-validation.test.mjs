@@ -30,3 +30,52 @@ test("decodes provider nickname strings safely", () => {
   assert.equal(cleanNickname("Player%20One"), "Player One");
   assert.equal(cleanNickname("%E0%A4%A"), "%E0%A4%A");
 });
+
+
+import { resolveLookupWithFallbacks } from "../src/app/api/lookup/resolve-lookup.mjs";
+
+test("fallback takes over when primary is unavailable", async () => {
+  let primaryCalls = 0;
+  let secondaryCalls = 0;
+  const result = await resolveLookupWithFallbacks(
+    async () => {
+      primaryCalls += 1;
+      return { kind: "unavailable" };
+    },
+    [
+      async () => {
+        secondaryCalls += 1;
+        return { kind: "success", nickname: "Outrageous Dominance", source: "isan_nickname_api" };
+      },
+      async () => ({ kind: "unavailable" }),
+    ],
+  );
+
+  assert.equal(primaryCalls, 1);
+  assert.equal(secondaryCalls, 1);
+  assert.equal(result.confirmed?.source, "isan_nickname_api");
+  assert.equal(result.confirmed?.nickname, "Outrageous Dominance");
+  assert.equal(result.fallbacks.length, 2);
+});
+
+test("fallback providers are not called when primary succeeds", async () => {
+  let fallbackCalls = 0;
+  const result = await resolveLookupWithFallbacks(
+    async () => ({ kind: "success", nickname: "Primary IGN", source: "community_lookup" }),
+    [async () => { fallbackCalls += 1; return { kind: "unavailable" }; }],
+  );
+  assert.equal(result.confirmed?.source, "community_lookup");
+  assert.equal(fallbackCalls, 0);
+  assert.equal(result.fallbacks.length, 0);
+});
+
+test("fallback priority is deterministic when multiple providers succeed", async () => {
+  const result = await resolveLookupWithFallbacks(
+    async () => ({ kind: "unavailable" }),
+    [
+      async () => ({ kind: "success", nickname: "First", source: "rapidapi_id_game_checker" }),
+      async () => ({ kind: "success", nickname: "Second", source: "isan_nickname_api" }),
+    ],
+  );
+  assert.equal(result.confirmed?.nickname, "First");
+});
