@@ -25,4 +25,7 @@ jobs:
         with:
           node-version: 20
       - name: Probe independent identity providers
+        env:
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+          RAPIDAPI_APP_TOKEN: ${{ secrets.RAPIDAPI_APP_TOKEN }}
         run: npm run test:provider-sweep:live
