@@ -9,8 +9,8 @@ test("live RapidAPI contract matches the known-valid fixture nickname", async (t
   }
 
   const result = await lookupRapidApi("1114917746", "13486");
-  assert.equal(result.kind, "success", "RapidAPI did not return a confirmed nickname for the known-valid fixture");
-  assert.equal(result.nickname, "Outrageous Dominance", "RapidAPI response did not match the expected fixture nickname");
-  assert.equal(result.source, "rapidapi_id_game_checker");
-  // Do not log the fixture ID, nickname, provider payload, or credentials.
+  assert.equal(result.kind === "success", true, "RapidAPI did not return a confirmed nickname for the known-valid fixture");
+  assert.equal(result.nickname === "Outrageous Dominance", true, "RapidAPI response did not match the expected fixture nickname");
+  assert.equal(result.source === "rapidapi_id_game_checker", true, "RapidAPI returned an unexpected provider source");
+  // Boolean assertions avoid including actual nicknames or provider data in assertion diffs.
 });
