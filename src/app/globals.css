@@ -499,3 +499,9 @@ html::-webkit-scrollbar-thumb:hover, body::-webkit-scrollbar-thumb:hover, *::-we
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+
+/* Keep the auth introduction and its form card on the same top alignment. */
+@media (min-width: 761px) {
+  .auth-layout { align-items: start; }
+}
