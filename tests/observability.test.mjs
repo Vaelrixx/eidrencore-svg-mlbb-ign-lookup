@@ -105,3 +105,28 @@ test("unrecognized responses are logged as a bounded failure category", async ()
   assert.equal(event.failureReason, "unrecognized_response");
   assert.equal(event.upstreamStatus, 200);
 });
+
+
+test("provider response kind telemetry logs only an allowlisted schema label", async () => {
+  const lines = [];
+  await observeProvider({
+    requestId: "req-test-6",
+    provider: "rapidapi_id_game_checker",
+    lookup: async () => ({
+      kind: "unavailable",
+      diagnostic: {
+        reason: "http_error",
+        statusCode: 404,
+        responseKind: "gateway_message_json",
+        rawPayload: "SECRET_GATEWAY_MESSAGE",
+      },
+    }),
+    logger: (line) => lines.push(line),
+  });
+
+  const event = JSON.parse(lines[0]);
+  assert.equal(event.providerResponseKind, "gateway_message_json");
+  assert.equal(event.upstreamStatus, 404);
+  assert.equal(lines[0].includes("SECRET_GATEWAY_MESSAGE"), false);
+  assert.equal(lines[0].includes("rawPayload"), false);
+});
