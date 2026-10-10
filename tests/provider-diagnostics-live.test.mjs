@@ -42,6 +42,7 @@ async function probeHttp({ provider, url, init }) {
       provider,
       outcome: classify(provider, response, payload),
       upstreamStatus: response.status,
+      responseShape: safePayloadShape(payload, response.headers.get("content-type")),
       durationMs: Math.round(performance.now() - startedAt),
     };
   } catch {
@@ -51,6 +52,26 @@ async function probeHttp({ provider, url, init }) {
       durationMs: Math.round(performance.now() - startedAt),
     };
   }
+}
+
+
+function safePayloadShape(payload, rawContentType) {
+  const payloadType = payload === null
+    ? "null"
+    : Array.isArray(payload)
+      ? "array"
+      : typeof payload;
+  const safeKeys = (value) => value && typeof value === "object" && !Array.isArray(value)
+    ? Object.keys(value).filter((key) => /^[A-Za-z0-9_.-]{1,40}$/.test(key)).sort().slice(0, 30)
+    : [];
+  const contentType = (rawContentType ?? "unknown").split(";")[0].trim().slice(0, 80);
+  const nestedKeys = {};
+  for (const name of ["data", "result", "confirmationFields", "status"]) {
+    if (payload && typeof payload === "object" && payload[name] && typeof payload[name] === "object") {
+      nestedKeys[name] = safeKeys(payload[name]);
+    }
+  }
+  return { contentType, payloadType, topLevelKeys: safeKeys(payload), nestedKeys };
 }
 
 function standardHeaders(origin, referer, contentType) {
