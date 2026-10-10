@@ -16,11 +16,11 @@ export async function GET() {
   ]);
   if (error) return NextResponse.json({ error: "Could not load webhook endpoints." }, { status: 500 });
   const workspaceIds = (memberships || []).filter(item => ["owner", "admin"].includes(item.role)).map(item => item.workspace_id);
-  let shared: Array<Record<string, unknown>> = [];
+  let shared: Array<{ id: string; name: string; url: string; events: string[]; enabled: boolean; created_at: string; updated_at: string; workspace_id: string | null }> = [];
   if (workspaceIds.length) {
     const result = await admin.from("developer_webhook_endpoints").select("id,name,url,events,enabled,created_at,updated_at,workspace_id").in("workspace_id", workspaceIds).order("created_at", { ascending: false });
     if (result.error) return NextResponse.json({ error: "Could not load workspace webhook endpoints." }, { status: 500 });
-    shared = (result.data || []) as Array<Record<string, unknown>>;
+    shared = (result.data || []) as Array<{ id: string; name: string; url: string; events: string[]; enabled: boolean; created_at: string; updated_at: string; workspace_id: string | null }>;
   }
   const endpoints = [...(personal || []), ...shared].sort((a, b) => Date.parse(String(b.created_at)) - Date.parse(String(a.created_at)));
   const ids = endpoints.map(endpoint => endpoint.id);
