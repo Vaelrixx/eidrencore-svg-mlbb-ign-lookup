@@ -17,10 +17,9 @@ export async function GET(request: Request) {
   } catch {
     return NextResponse.redirect(new URL("/login?error=telegram_redirect_misconfigured", requestUrl));
   }
-  const url = new URL(requestUrl);
-  url.origin = origin;
+  const url = requestUrl;
   const response = (path: string) => {
-    const result = NextResponse.redirect(new URL(path, url.origin));
+    const result = NextResponse.redirect(new URL(path, origin));
     for (const name of ["eidren_tg_state", "eidren_tg_nonce", "eidren_tg_verifier"]) result.cookies.set(name, "", { path: "/", maxAge: 0 });
     return result;
   };
@@ -48,7 +47,7 @@ export async function GET(request: Request) {
         "Content-Type": "application/x-www-form-urlencoded",
         Accept: "application/json",
       },
-      body: new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: `${url.origin}/api/auth/telegram/callback`, client_id: clientId, code_verifier: verifier }),
+      body: new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: `${origin}/api/auth/telegram/callback`, client_id: clientId, code_verifier: verifier }),
       cache: "no-store",
     });
     const tokenBody = await tokenResponse.json().catch(() => null);
@@ -71,7 +70,7 @@ export async function GET(request: Request) {
     // A duplicate account is expected on subsequent Telegram sign-ins. Generate a short-lived
     // magic link only after Telegram's signed ID token and one-time state have been verified.
     if (createError && !/already|exists|registered|duplicate/i.test(createError.message)) return response("/login?error=telegram_account_failed");
-    const { data, error } = await admin.auth.admin.generateLink({ type: "magiclink", email, options: { redirectTo: `${url.origin}/auth/telegram/complete` } });
+    const { data, error } = await admin.auth.admin.generateLink({ type: "magiclink", email, options: { redirectTo: `${origin}/auth/telegram/complete` } });
     const tokenHash = data?.properties?.hashed_token;
     if (error || !tokenHash) return response("/login?error=telegram_session_failed");
     return response(`/auth/telegram/complete?token_hash=${encodeURIComponent(tokenHash)}&type=magiclink`);
