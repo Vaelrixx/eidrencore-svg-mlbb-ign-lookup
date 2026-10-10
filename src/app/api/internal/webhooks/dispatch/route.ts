@@ -15,6 +15,7 @@ type Job = {
   payload: Record<string, unknown>;
   attempt: number;
   max_attempts: number;
+  replay_count: number;
 };
 
 function authorized(request: Request) {
@@ -104,13 +105,14 @@ export async function POST(request: Request) {
     const { error: deliveryError } = await admin.from("developer_webhook_deliveries").upsert({
       endpoint_id: job.endpoint_id,
       event_id: job.event_id,
+      delivery_run: job.replay_count,
       event_type: job.event_type,
       response_status: responseStatus,
       response_ms: Date.now() - started,
       attempt: attemptNumber,
       delivered: success,
       error_code: errorCode,
-    }, { onConflict: "endpoint_id,event_id,attempt", ignoreDuplicates: true });
+    }, { onConflict: "endpoint_id,event_id,delivery_run,attempt", ignoreDuplicates: true });
     if (deliveryError) {
       console.error("[webhook-worker] delivery log failed", deliveryError.message);
       // Keep the lease so the row can be reclaimed after timeout rather than losing delivery history.
