@@ -51,7 +51,7 @@ export async function observeProvider({ requestId, provider, lookup, logger = un
   return OUTCOMES.has(result?.kind) ? result : { kind: "unavailable" };
 }
 
-export function logLookupSummary({ requestId, durationMs, primary, fallbacks, confirmed, logger = undefined }) {
+export function logLookupSummary({ requestId, durationMs, primary, fallbacks, confirmed, pendingFallbacks = 0, logger = undefined }) {
   const event = {
     event: "lookup.summary",
     requestId,
@@ -65,7 +65,8 @@ export function logLookupSummary({ requestId, durationMs, primary, fallbacks, co
           : "unavailable")),
     primaryOutcome: OUTCOMES.has(primary?.kind) ? primary.kind : "unavailable",
     fallbackOutcomes: fallbacks.map((item) => OUTCOMES.has(item?.kind) ? item.kind : "unavailable"),
-    providerCount: fallbacks.length + 1,
+    providerCount: fallbacks.length + pendingFallbacks + 1,
+    ...(pendingFallbacks > 0 ? { pendingFallbackCount: pendingFallbacks } : {}),
     ...(confirmed?.kind === "success" && typeof confirmed.source === "string" ? { selectedSource: confirmed.source } : {}),
   };
 
