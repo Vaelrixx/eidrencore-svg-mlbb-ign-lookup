@@ -184,7 +184,7 @@ Webhook events are written to developer_webhook_outbox before delivery. The auth
 
 ### Schedule the worker with Supabase Cron
 
-Set a strong random WEBHOOK_WORKER_SECRET in the Railway production service. Store the exact same secret and the worker URL in Supabase Vault, then schedule a cron job. For example, after the migration has enabled pg_cron and pg_net:
+Before applying the migration, set a strong random WEBHOOK_WORKER_SECRET in the Railway production service and store the exact same secret plus the worker URL in Supabase Vault. The migration enables pg_cron and pg_net and registers the dispatch job to call the worker every minute, plus retention jobs.
 
     select vault.create_secret(
       'https://YOUR-RAILWAY-DOMAIN/api/internal/webhooks/dispatch',
@@ -196,23 +196,7 @@ Set a strong random WEBHOOK_WORKER_SECRET in the Railway production service. Sto
       'eidren_webhook_worker_secret'
     );
 
-    select cron.schedule(
-      'eidren-webhook-dispatch',
-      '* * * * *',
-      $job$
-        select net.http_post(
-          url := (select decrypted_secret from vault.decrypted_secrets where name = 'eidren_webhook_worker_url'),
-          headers := jsonb_build_object(
-            'Content-Type', 'application/json',
-            'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'eidren_webhook_worker_secret')
-          ),
-          body := '{"batchSize":10}'::jsonb,
-          timeout_milliseconds := 60000
-        );
-      $job$
-    );
-
-Do not commit the worker secret to Git or expose it to browser code. Use the Supabase Cron run history and net._http_response to diagnose scheduler failures. The outbox does not automatically run unless the scheduled worker is configured.
+Do not commit the worker secret to Git or expose it to browser code. Check the Supabase Cron run history and net._http_response for scheduler failures. The outbox will accumulate jobs until the worker URL and matching bearer secret are configured.
 
 ### Workspace keys and shared plan
 
