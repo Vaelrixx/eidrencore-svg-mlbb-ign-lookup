@@ -20,9 +20,9 @@ export async function lookupIsan(playerId, zoneId) {
       signal: AbortSignal.timeout(5000),
     });
 
-    if (upstream.status === 429) return { kind: "rate_limited" };
-    if (upstream.status === 404 || upstream.status === 400) return { kind: "unavailable" };
-    if (!upstream.ok) return { kind: "unavailable" };
+    if (upstream.status === 429) return { kind: "rate_limited", diagnostic: { reason: "http_error", statusCode: 429 } };
+    if (upstream.status === 404 || upstream.status === 400) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
+    if (!upstream.ok) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
 
     const payload = await upstream.json().catch(() => null);
     const data = record(payload);
@@ -46,8 +46,8 @@ export async function lookupIsan(playerId, zoneId) {
     if (/not found|does not exist|invalid (player|user|game)?\s*id|cannot find|can't find|no such account/i.test(message)) {
       return { kind: "not_found" };
     }
-    return { kind: "unavailable" };
+    return { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
   } catch {
-    return { kind: "unavailable" };
+    return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
   }
 }
