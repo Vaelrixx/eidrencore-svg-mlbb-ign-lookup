@@ -80,43 +80,42 @@ export async function isSafeWebhookUrl(raw: string): Promise<boolean> {
 }
 
 export async function emitDeveloperEvent(input: { userId: string; workspaceId?: string | null; type: string; data: Record<string, unknown> }) {
-  const admin = createAdminClient();
-  const { data: endpoints, error } = await admin.from("developer_webhook_endpoints")
-    .select("id,url,secret_ciphertext,events")
-    .eq("user_id", input.userId).eq("enabled", true);
-  if (error || !endpoints?.length) return;
-  const eventId = randomUUID();
-  const payload = JSON.stringify({ id: eventId, type: input.type, created_at: new Date().toISOString(), data: input.data });
-  await Promise.all(endpoints.filter(endpoint => Array.isArray(endpoint.events) && endpoint.events.includes(input.type)).map(async endpoint => {
-    const started = Date.now();
-    let responseStatus: number | null = null;
-    let errorCode: string | null = null;
-    let delivered = false;
-    try {
-      if (!(await isSafeWebhookUrl(endpoint.url))) throw new Error("unsafe_url");
-      const secret = decryptWebhookSecret(endpoint.secret_ciphertext);
-      const timestamp = Math.floor(Date.now() / 1000).toString();
-      const signature = createHmac("sha256", secret).update(timestamp + "." + payload).digest("hex");
-      const response = await fetch(endpoint.url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "User-Agent": "Eidren-Webhooks/1.0", "Eidren-Event-Id": eventId, "Eidren-Event": input.type, "Eidren-Signature": "t=" + timestamp + ",v1=" + signature },
-        body: payload,
-        cache: "no-store",
-        redirect: "error",
-        signal: AbortSignal.timeout(2500),
-      });
-      responseStatus = response.status;
-      delivered = response.ok;
-      if (!response.ok) errorCode = "http_" + response.status;
-    } catch (error) {
-      errorCode = error instanceof Error && error.name === "TimeoutError" ? "timeout" : error instanceof Error ? error.message.slice(0, 80) : "delivery_failed";
+  try {
+    const admin = createAdminClient();
+    let query = admin.from("developer_webhook_endpoints")
+      .select("id,user_id,workspace_id,events")
+      .eq("enabled", true);
+    if (input.workspaceId) query = query.or("user_id.eq." + input.userId + ",workspace_id.eq." + input.workspaceId);
+    else query = query.eq("user_id", input.userId).is("workspace_id", null);
+    const { data: endpoints, error } = await query;
+    if (error || !endpoints?.length) {
+      if (error) console.error("[developer-webhook-outbox] endpoint lookup failed", error.message);
+      return;
     }
-    await admin.from("developer_webhook_deliveries").insert({
-      endpoint_id: endpoint.id, event_id: eventId, event_type: input.type,
-      response_status: responseStatus, response_ms: Date.now() - started,
-      attempt: 1, delivered, error_code: errorCode,
-    });
-  }));
+    const matching = endpoints.filter(endpoint =>
+      Array.isArray(endpoint.events) &&
+      endpoint.events.includes(input.type) &&
+      (input.workspaceId
+        ? endpoint.workspace_id === input.workspaceId || (!endpoint.workspace_id && endpoint.user_id === input.userId)
+        : !endpoint.workspace_id && endpoint.user_id === input.userId)
+    );
+    if (!matching.length) return;
+    const eventId = randomUUID();
+    const payload = { id: eventId, type: input.type, created_at: new Date().toISOString(), data: input.data };
+    const { error: insertError } = await admin.from("developer_webhook_outbox").insert(
+      matching.map(endpoint => ({
+        endpoint_id: endpoint.id,
+        event_id: eventId,
+        event_type: input.type,
+        payload,
+        max_attempts: 8,
+        available_at: new Date().toISOString(),
+      }))
+    );
+    if (insertError) console.error("[developer-webhook-outbox] enqueue failed", insertError.message);
+  } catch (error) {
+    console.error("[developer-webhook-outbox] enqueue failed", error instanceof Error ? error.message : "unknown");
+  }
 }
 
 export async function recordDeveloperRequest(input: { userId: string; apiKeyId: string; requestId: string; status: number; responseMs: number }) {
