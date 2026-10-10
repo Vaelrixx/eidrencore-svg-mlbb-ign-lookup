@@ -61,10 +61,10 @@ begin
   if p_key_id is null or p_monthly_limit is null or p_monthly_limit < 1 or p_monthly_limit > 10000000 then
     raise exception 'invalid quota arguments' using errcode = '22023';
   end if;
-  insert into public.developer_api_usage as usage (api_key_id, month_start, request_count, updated_at)
+  insert into public.developer_api_usage as current_usage (api_key_id, month_start, request_count, updated_at)
   values (p_key_id, v_month, 1, pg_catalog.now())
   on conflict (api_key_id, month_start) do update
-  set request_count = least(usage.request_count + 1, p_monthly_limit + 1), updated_at = pg_catalog.now()
+  set request_count = least(current_usage.request_count + 1, p_monthly_limit + 1), updated_at = pg_catalog.now()
   returning request_count into v_count;
   return query select v_count <= p_monthly_limit, greatest(0, p_monthly_limit-v_count);
 end;
