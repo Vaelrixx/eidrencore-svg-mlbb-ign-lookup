@@ -101,6 +101,14 @@ export default function DashboardPage() {
 
   return <main className="platform-shell dashboard-shell">
     <nav className="platform-nav"><Link className="brand" href="/"><span className="brand-mark"><Swords size={19}/></span><span>EIDREN<span className="brand-dot">.</span></span></Link><div className="dashboard-nav-right"><span className="account-email">{userEmail}</span><button className="quiet-button" onClick={signOut}><LogOut size={15}/> Sign out</button></div></nav>
+    <nav className="console-overview-links" aria-label="Developer console sections">
+      <Link href="/dashboard" className="active"><Activity size={14}/> Overview</Link>
+      <Link href="/dashboard/keys"><KeyRound size={14}/> API keys</Link>
+      <Link href="/dashboard/usage"><Zap size={14}/> Usage & analytics</Link>
+      <Link href="/dashboard/docs"><CircleHelp size={14}/> API reference</Link>
+      <Link href="/dashboard/billing"><CreditCard size={14}/> Billing</Link>
+      <Link href="/dashboard/account"><ShieldCheck size={14}/> Account & sessions</Link>
+    </nav>
     <div className="dashboard-heading"><div><span className="platform-eyebrow">DEVELOPER CONSOLE / OVERVIEW</span><h1>Your API.<br/><span>Your rules.</span></h1><p>Manage access, monitor quota, and configure your developer plan.</p></div><button className="quiet-button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={15} className={loading ? "spin" : ""}/> Refresh</button></div>
     {error && <div className="platform-alert error" role="alert">{error}</div>}{notice && <div className="platform-alert success"><Check size={16}/>{notice}</div>}
     {loading ? <div className="loading-panel"><LoaderCircle className="spin" size={24}/> Loading developer account…</div> : <>

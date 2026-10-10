@@ -90,7 +90,7 @@ The developer console lives at `/login` and `/dashboard`. It supports email/pass
 
 ### Required Railway environment variables
 
-- `NEXT_PUBLIC_SUPABASE_URL` or `SUPABASE_URL`: the Supabase project URL.
+- `APP_URL` (recommended): canonical public HTTPS origin used for auth, OAuth, and recovery redirects. Defaults to the Railway production URL; set it when using a custom domain. Localhost HTTP is allowed for local development.\n- `NEXT_PUBLIC_SUPABASE_URL` or `SUPABASE_URL`: the Supabase project URL.
 - `SUPABASE_PUBLISHABLE_KEY` (already used by the existing service): public/publishable key used by cookie-based auth. `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are optional because sign-in and dashboard auth are routed through server handlers.
 - `SUPABASE_SECRET_KEY` (preferred) or `SUPABASE_SERVICE_ROLE_KEY`: server-only key for API-key management and billing. Never prefix this key with `NEXT_PUBLIC_`.
 - `TELEGRAM_CLIENT_ID` (or `TELEGRAM_BOT_ID`) and `TELEGRAM_CLIENT_SECRET`: Telegram Login credentials from @BotFather. The secret stays server-side.
@@ -123,3 +123,22 @@ where slug = 'business';
 These example prices are illustrative only; choose your actual pricing before enabling paid checkout. Razorpay verifies the checkout signature and fetches the payment to confirm it is captured before activating the plan. The webhook signature is independently verified. API keys are generated from cryptographic randomness, stored as SHA-256 hashes, shown once, and can be revoked. Paid keys receive monthly quotas from the active plan; public lookup requests without an Eidren API key remain available under the existing IP rate limit.
 
 Telegram sign-in creates an internal Supabase user with a non-routable synthetic email because Telegram does not provide an email by default. Users should not rely on email password recovery for Telegram-only accounts; account linking and account deletion UI are not included in this first platform pass.
+
+
+## Developer console expansion
+
+The console is split into dedicated areas under /dashboard:
+
+- **Overview** — account, plan, quota, and quick actions.
+- **API keys** — create, label, copy once, and revoke keys.
+- **Usage & analytics** — current-month quota, per-key activity, and a 14-day request chart.
+- **API reference** — cURL and Node.js examples, request fields, and error codes.
+- **Billing & plans** — current plan and Razorpay checkout.
+- **Account & sessions** — account metadata, current session expiry, password updates, and provider-wide session revocation.
+- **Password recovery** — /forgot-password and /reset-password for email/password accounts.
+
+### Daily analytics migration
+
+Apply supabase/migrations/20261011090000_daily_api_analytics.sql to the linked Supabase project before expecting the 14-day usage chart to populate. It creates developer_api_usage_daily and replaces the quota RPC with a transactionally updated daily counter. Only accepted API-key requests are added to the daily chart; quota-rejected requests are not counted as successful usage. The table has RLS enabled and is accessible only to the server-side service_role.
+
+The account page intentionally shows the current session rather than claiming to list every device. “Revoke all sessions” delegates to Supabase Auth's global sign-out scope. Password reset links must be allowed by the project's Supabase Auth URL configuration and email delivery must be configured.
