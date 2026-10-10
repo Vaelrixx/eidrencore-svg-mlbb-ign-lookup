@@ -1,4 +1,7 @@
 -- Durable webhook outbox and workspace-owned subscriptions.
+alter table public.developer_subscriptions add column if not exists pending_order_id text unique;
+alter table public.developer_subscriptions add column if not exists pending_plan_slug text references public.developer_plans(slug);
+alter table public.developer_subscriptions add column if not exists pending_started_at timestamptz;
 create table if not exists public.developer_webhook_outbox (
   id uuid primary key default gen_random_uuid(),
   endpoint_id uuid not null references public.developer_webhook_endpoints(id) on delete cascade,
