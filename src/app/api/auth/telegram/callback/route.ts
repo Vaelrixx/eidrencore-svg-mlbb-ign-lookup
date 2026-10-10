@@ -12,10 +12,14 @@ export async function GET(request: Request) {
     for (const name of ["eidren_tg_state", "eidren_tg_nonce", "eidren_tg_verifier"]) result.cookies.set(name, "", { path: "/", maxAge: 0 });
     return result;
   };
-  const cookies = new Map((request.headers.get("cookie") || "").split(";").map(part => {
+  const cookies = new Map<string, string>();
+  for (const part of (request.headers.get("cookie") || "").split(";")) {
     const index = part.indexOf("=");
-    return index < 0 ? [part.trim(), ""] : [part.slice(0, index).trim(), decodeURIComponent(part.slice(index + 1).trim())];
-  }));
+    if (index >= 0) {
+      const name = part.slice(0, index).trim();
+      try { cookies.set(name, decodeURIComponent(part.slice(index + 1).trim())); } catch { cookies.set(name, ""); }
+    }
+  }
   const state = url.searchParams.get("state");
   const code = url.searchParams.get("code");
   const expectedState = cookies.get("eidren_tg_state");
