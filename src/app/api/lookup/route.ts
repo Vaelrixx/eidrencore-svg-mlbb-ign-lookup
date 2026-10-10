@@ -302,9 +302,14 @@ export async function GET(request: NextRequest) {
     playerId: url.searchParams.get("playerId") ?? "",
     zoneId: url.searchParams.get("zoneId") ?? "",
   });
+  const forwardedHeaders = new Headers({ "Content-Type": "application/json" });
+  for (const name of ["x-real-ip", "x-forwarded-for"]) {
+    const value = request.headers.get(name);
+    if (value) forwardedHeaders.set(name, value);
+  }
   const postRequest = new NextRequest(request.url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: forwardedHeaders,
     body,
   });
   return POST(postRequest);
