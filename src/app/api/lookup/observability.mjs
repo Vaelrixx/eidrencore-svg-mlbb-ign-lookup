@@ -1,7 +1,7 @@
 import { performance } from "node:perf_hooks";
 
 const OUTCOMES = new Set(["success", "not_found", "rate_limited", "unavailable"]);
-const DIAGNOSTIC_REASONS = new Set(["missing_config", "http_error", "network_or_timeout", "unrecognized_response"]);
+const DIAGNOSTIC_REASONS = new Set(["missing_config", "http_error", "network_or_timeout", "unrecognized_response", "provider_error"]);
 
 /**
  * Emit low-cardinality provider telemetry. Never log IDs, nicknames, payloads,
