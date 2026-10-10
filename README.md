@@ -4,7 +4,7 @@ Standalone Next.js + TypeScript API for resolving Mobile Legends: Bang Bang nick
 
 The service owns input validation, provider orchestration, response normalization, and deployment. It uses a primary community lookup and best-effort fallback providers, including RapidAPI's ID Game Checker when `RAPIDAPI_KEY` (or the legacy `RAPIDAPI_APP_TOKEN`) is configured.
 
-These integrations are unofficial third-party endpoints, not an official Moonton API. Their contracts and availability can change. Provider failures and timeouts are **not** treated as proof that an account is invalid.
+These integrations are unofficial third-party endpoints, not an official Moonton API. Their contracts and availability can change. RapidAPI ID Game Checker uses its documented response body to distinguish an explicit `id_not_found` result from `no_content_0` (provider could not retrieve source data); an HTTP 404 without the documented body remains an upstream-unavailable result. Provider failures and timeouts are **not** treated as proof that an account is invalid.
 
 ## Run locally
 
@@ -66,7 +66,7 @@ Not affiliated with or endorsed by MOONTON Games, Codashop, or any listed third-
 
 Production logs emit structured JSON events for each provider attempt and each completed lookup. Provider events include a request correlation ID, provider label, outcome, latency in milliseconds, and the selected source only on success. Failed attempts may also include a bounded failure reason (`missing_config`, `http_error`, `network_or_timeout`, `unrecognized_response`, or `provider_error`) and an upstream HTTP status code. The summary records total duration and outcome counts. Player IDs, zone IDs, nicknames, upstream payloads, URLs, request headers, and credentials are intentionally excluded. Logging is best-effort and cannot change lookup results. Use Railway deployment logs to compare provider latency and availability over time; these are event logs, not a persistent metrics dashboard.
 
-Run `npm run test:observability` to check telemetry shape, verify identity fields and raw provider data are not logged, and ensure logging failures do not break lookups.
+Run `npm run test:provider-adapters` to cover RapidAPI response classification, including structured 404 handling and `no_content_0`. Run `npm run test:observability` to check telemetry shape, verify identity fields and raw provider data are not logged, and ensure logging failures do not break lookups.
 
 ## Live fallback takeover smoke test
 

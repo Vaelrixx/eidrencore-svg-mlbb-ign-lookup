@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cleanNickname, confirmedNickname, isUsableNickname } from "./nickname-validation.mjs";
 import { resolveLookupWithFallbacks } from "./resolve-lookup.mjs";
 import { lookupIsan } from "./providers/isan.mjs";
+import { lookupRapidApi } from "./providers/rapidapi.mjs";
 import { logLookupSummary, observeProvider } from "./observability.mjs";
 
 export const runtime = "nodejs";
@@ -116,44 +117,6 @@ async function lookupPrimary(playerId: string, zoneId: string): Promise<LookupAt
  * Secondary provider: RapidAPI's ID Game Checker endpoint.
  * The API key is read only on the server and is never returned to callers.
  */
-async function lookupRapidApi(playerId: string, zoneId: string): Promise<LookupAttempt> {
-  const apiKey = process.env.RAPIDAPI_KEY?.trim() || process.env.RAPIDAPI_APP_TOKEN?.trim();
-  if (!apiKey) return { kind: "unavailable", diagnostic: { reason: "missing_config" } };
-
-  const endpoint =
-    "https://id-game-checker.p.rapidapi.com/mlbb/" +
-    encodeURIComponent(playerId) +
-    "/" +
-    encodeURIComponent(zoneId);
-
-  try {
-    const upstream = await fetch(endpoint, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "x-rapidapi-host": "id-game-checker.p.rapidapi.com",
-        "x-rapidapi-key": apiKey,
-      },
-      cache: "no-store",
-      signal: AbortSignal.timeout(7000),
-    });
-
-    if (upstream.status === 429) return { kind: "rate_limited", diagnostic: { reason: "http_error", statusCode: 429 } };
-    if (upstream.status === 404 || upstream.status === 400) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
-    if (!upstream.ok) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
-
-    const payload: unknown = await upstream.json().catch(() => null);
-    const nickname = confirmedNickname(payload);
-    if (nickname) {
-      return { kind: "success", nickname, source: "rapidapi_id_game_checker" };
-    }
-    if (explicitlyNotFound(payload)) return { kind: "not_found" };
-    return { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
-  } catch {
-    return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
-  }
-}
-
 /**
  * EliteDias public role-check endpoint. Unofficial best-effort integration;
  * it never submits an order or payment.
