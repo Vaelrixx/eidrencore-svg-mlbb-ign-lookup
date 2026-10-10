@@ -21,7 +21,7 @@ test("an HTTP 404 without the documented body remains unavailable", () => {
     classifyRapidApiResponse(404, null),
     {
       kind: "unavailable",
-      diagnostic: { reason: "http_error", statusCode: 404 },
+      diagnostic: { reason: "http_error", statusCode: 404, responseKind: "empty_or_non_json" },
     },
   );
 
@@ -33,7 +33,7 @@ test("an HTTP 404 without the documented body remains unavailable", () => {
     }),
     {
       kind: "unavailable",
-      diagnostic: { reason: "http_error", statusCode: 404 },
+      diagnostic: { reason: "http_error", statusCode: 404, responseKind: "empty_or_non_json" },
     },
   );
 });
@@ -48,7 +48,7 @@ test("provider no_content_0 is unavailable, not a missing player", () => {
     }),
     {
       kind: "unavailable",
-      diagnostic: { reason: "provider_error", statusCode: 200 },
+      diagnostic: { reason: "provider_error", statusCode: 200, responseKind: "id_game_checker_schema" },
     },
   );
 
@@ -56,7 +56,7 @@ test("provider no_content_0 is unavailable, not a missing player", () => {
     classifyRapidApiResponse(204, null),
     {
       kind: "unavailable",
-      diagnostic: { reason: "provider_error", statusCode: 204 },
+      diagnostic: { reason: "provider_error", statusCode: 204, responseKind: "empty_or_non_json" },
     },
   );
 });
@@ -82,7 +82,7 @@ test("HTTP 429 remains rate limited", () => {
     classifyRapidApiResponse(429, { error: true, msg: "rate limit" }),
     {
       kind: "rate_limited",
-      diagnostic: { reason: "http_error", statusCode: 429 },
+      diagnostic: { reason: "http_error", statusCode: 429, responseKind: "other_json_object" },
     },
   );
 });
