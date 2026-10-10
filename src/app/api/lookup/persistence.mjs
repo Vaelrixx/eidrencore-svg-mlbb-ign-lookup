@@ -46,7 +46,7 @@ async function requestSupabase(path, payload, { fetchImpl = fetch, env = process
   try {
     const response = await fetchImpl(`${config.url}/rest/v1/${path}`, {
       method: "POST",
-      headers: { ...authHeaders(config.key), Prefer: "return=minimal" },
+      headers: { ...authHeaders(config.key), ...(!path.startsWith("rpc/") ? { Prefer: "return=minimal" } : {}) },
       body: JSON.stringify(payload),
       cache: "no-store",
       signal: AbortSignal.timeout(timeoutMs),
