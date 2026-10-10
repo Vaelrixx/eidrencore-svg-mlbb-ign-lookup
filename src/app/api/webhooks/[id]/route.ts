@@ -3,6 +3,16 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireUser } from "@/lib/platform";
 import { writeAuditLog } from "@/lib/developer-events";
 
+async function endpointAccess(admin: ReturnType<typeof createAdminClient>, endpointId: string, userId: string) {
+  const { data: endpoint } = await admin.from("developer_webhook_endpoints").select("id,name,user_id,workspace_id").eq("id", endpointId).maybeSingle();
+  if (!endpoint) return { endpoint: null, allowed: false };
+  if (!endpoint.workspace_id) return { endpoint, allowed: endpoint.user_id === userId };
+  const { data: workspace } = await admin.from("developer_workspaces").select("owner_user_id").eq("id", endpoint.workspace_id).maybeSingle();
+  if (workspace?.owner_user_id === userId) return { endpoint, allowed: true };
+  const { data: membership } = await admin.from("developer_workspace_members").select("role").eq("workspace_id", endpoint.workspace_id).eq("user_id", userId).maybeSingle();
+  return { endpoint, allowed: ["owner", "admin"].includes(membership?.role || "") };
+}
+
 export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
   const { user } = await requireUser();
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
