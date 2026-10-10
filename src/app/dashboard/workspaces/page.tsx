@@ -2,12 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Check, Copy, LoaderCircle, Plus, RefreshCw, ShieldCheck, Trash2, UserPlus, Users } from "lucide-react";
+import { Building2, Check, Copy, CreditCard, KeyRound, LoaderCircle, Plus, RefreshCw, ShieldCheck, Trash2, UserPlus, Users } from "lucide-react";
 import { ConsoleFrame } from "@/components/console-frame";
 
 type Workspace = { id: string; name: string; slug: string; owner_user_id: string; role: string; created_at: string };
 type Member = { user_id: string; role: string; joined_at: string };
 type Invite = { id: string; email: string; role: string; expires_at: string; created_at: string };
+type WorkspaceKey = { id: string; name: string; key_prefix: string; plan_slug: string; created_at: string; last_used_at: string | null; revoked_at: string | null; user_id: string };
+type WorkspacePlan = { slug: string; name: string; price_paise: number; monthly_limit: number; enabled: boolean; description: string };
+type WorkspaceBilling = { subscription: { plan: string; status: string; currentPeriodStart: string | null; currentPeriodEnd: string | null; checkoutPending: boolean; pendingPlan: string | null }; effectivePlan: string; plans: WorkspacePlan[]; currentRole: string };
+declare global { interface Window { Razorpay?: new (options: Record<string, unknown>) => { open: () => void }; } }
 
 export default function WorkspacesPage() {
   const router = useRouter();
@@ -19,6 +23,13 @@ export default function WorkspacesPage() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("member");
   const [inviteUrl, setInviteUrl] = useState("");
+  const [workspaceKeys, setWorkspaceKeys] = useState<WorkspaceKey[]>([]);
+  const [workspaceKeyName, setWorkspaceKeyName] = useState("Team integration");
+  const [newWorkspaceKey, setNewWorkspaceKey] = useState("");
+  const [workspaceBilling, setWorkspaceBilling] = useState<WorkspaceBilling | null>(null);
+  const [assetsLoading, setAssetsLoading] = useState(false);
+  const [keyBusy, setKeyBusy] = useState(false);
+  const [billingBusy, setBillingBusy] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
@@ -48,8 +59,24 @@ export default function WorkspacesPage() {
     } catch (e) { setError(e instanceof Error ? e.message : "Could not load members."); }
   }, [selectedId]);
 
+  const refreshWorkspaceAssets = useCallback(async () => {
+    if (!selectedId) { setWorkspaceKeys([]); setWorkspaceBilling(null); return; }
+    setAssetsLoading(true);
+    try {
+      const [keyResponse, billingResponse] = await Promise.all([
+        fetch("/api/workspaces/" + selectedId + "/keys", { cache: "no-store" }),
+        fetch("/api/workspaces/" + selectedId + "/billing", { cache: "no-store" }),
+      ]);
+      const keyBody = await keyResponse.json();
+      const billingBody = await billingResponse.json();
+      if (keyResponse.ok) setWorkspaceKeys(keyBody.keys || []); else setWorkspaceKeys([]);
+      if (billingResponse.ok) setWorkspaceBilling(billingBody as WorkspaceBilling); else setWorkspaceBilling(null);
+    } catch { setError("Could not load workspace keys and billing."); }
+    finally { setAssetsLoading(false); }
+  }, [selectedId]);
   useEffect(() => { const timer = window.setTimeout(() => { void refresh(); }, 0); return () => window.clearTimeout(timer); }, [refresh]);
   useEffect(() => { const timer = window.setTimeout(() => { void refreshMembers(); }, 0); return () => window.clearTimeout(timer); }, [refreshMembers]);
+  useEffect(() => { const timer = window.setTimeout(() => { void refreshWorkspaceAssets(); }, 0); return () => window.clearTimeout(timer); }, [refreshWorkspaceAssets]);
 
   async function createWorkspace(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy("create"); setError(""); setNotice("");
@@ -86,6 +113,57 @@ export default function WorkspacesPage() {
   async function copy(value: string) {
     try { await navigator.clipboard.writeText(value); setNotice("Copied to clipboard."); }
     catch { setError("Clipboard unavailable. Copy the link manually: " + value); }
+  }
+
+  async function createWorkspaceKey(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (!selectedId) return;
+    setKeyBusy(true); setError(""); setNotice(""); setNewWorkspaceKey("");
+    try {
+      const response = await fetch("/api/workspaces/" + selectedId + "/keys", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: workspaceKeyName }) });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Could not create workspace key.");
+      setNewWorkspaceKey(body.key); setWorkspaceKeyName(""); setNotice("Workspace API key created. Copy it now; the full secret will not be shown again.");
+      await refreshWorkspaceAssets();
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not create workspace key."); }
+    finally { setKeyBusy(false); }
+  }
+
+  async function revokeWorkspaceKey(key: WorkspaceKey) {
+    if (!selectedId || !window.confirm("Revoke workspace API key " + key.name + "? Existing integrations using it will stop working.")) return;
+    const response = await fetch("/api/workspaces/" + selectedId + "/keys/" + key.id, { method: "DELETE" });
+    const body = await response.json();
+    if (!response.ok) { setError(body.error || "Could not revoke workspace key."); return; }
+    setNotice("Workspace API key revoked."); await refreshWorkspaceAssets();
+  }
+
+  async function upgradeWorkspace(plan: WorkspacePlan) {
+    if (!selectedId) return;
+    setBillingBusy(plan.slug); setError(""); setNotice("");
+    try {
+      const response = await fetch("/api/workspaces/" + selectedId + "/billing/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan: plan.slug }) });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Could not start workspace checkout.");
+      if (!window.Razorpay) {
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement("script"); script.src = "https://checkout.razorpay.com/v1/checkout.js"; script.onload = () => resolve(); script.onerror = () => reject(new Error("Could not load Razorpay Checkout.")); document.body.appendChild(script);
+        });
+      }
+      const Razorpay = window.Razorpay;
+      if (!Razorpay) throw new Error("Razorpay Checkout is unavailable.");
+      const checkout = new Razorpay({
+        key: body.keyId, amount: body.amount, currency: body.currency, name: body.name, description: body.description, order_id: body.orderId, prefill: body.prefill,
+        theme: { color: "#c9f36b" },
+        handler: async (payment: Record<string, string>) => {
+          const verify = await fetch("/api/workspaces/" + selectedId + "/billing/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payment) });
+          const result = await verify.json();
+          if (!verify.ok) { setError(result.error || "Workspace payment verification failed."); return; }
+          setNotice("Workspace plan activated. Team API keys now use the shared plan quota."); await refreshWorkspaceAssets();
+        },
+        modal: { ondismiss: () => setNotice("Checkout closed. The workspace plan has not changed.") },
+      });
+      checkout.open();
+    } catch (e) { setError(e instanceof Error ? e.message : "Workspace checkout failed."); }
+    finally { setBillingBusy(""); }
   }
 
   const selected = workspaces.find(item => item.id === selectedId);
