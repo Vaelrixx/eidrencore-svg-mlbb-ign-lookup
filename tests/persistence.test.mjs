@@ -28,6 +28,7 @@ test("rate limiter sends only an HMAC and handles an allowed atomic slot", async
   assert.equal(captured.body.p_client_hash.length, 64);
   assert.equal(captured.body.p_client_hash.includes("203.0.113.9"), false);
   assert.equal(captured.body.p_max_requests, 30);
+  assert.equal("Prefer" in captured.init.headers, false);
   assert.equal(captured.init.headers.Authorization, "Bearer server-only-test-key");
 });
 
@@ -89,6 +90,7 @@ test("lookup log persists only bounded status, latency and source", async () => 
   assert.equal(result.persisted, true);
   assert.equal(captured.url, "https://example.supabase.co/rest/v1/lookup_logs");
   assert.deepEqual(captured.body, { status: "success", response_ms: 13, source: "isan_nickname_api" });
+  assert.equal(captured.init.headers.Prefer, "return=minimal");
   assert.equal(JSON.stringify(captured.body).includes("SECRET"), false);
 });
 
