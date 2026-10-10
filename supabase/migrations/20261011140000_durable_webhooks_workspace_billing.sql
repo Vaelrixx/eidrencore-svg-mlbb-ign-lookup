@@ -11,6 +11,7 @@ create table if not exists public.developer_webhook_outbox (
   event_type text not null check (char_length(event_type) between 1 and 100),
   payload jsonb not null check (pg_column_size(payload) <= 65536),
   attempt integer not null default 0 check (attempt between 0 and 8),
+  replay_count integer not null default 0 check (replay_count between 0 and 100),
   max_attempts integer not null default 8 check (max_attempts between 1 and 8),
   available_at timestamptz not null default now(),
   locked_at timestamptz,
@@ -28,8 +29,10 @@ create index if not exists developer_webhook_outbox_due_idx
   where delivered_at is null and dead_lettered_at is null;
 create index if not exists developer_webhook_outbox_endpoint_idx
   on public.developer_webhook_outbox(endpoint_id, created_at desc);
+alter table public.developer_webhook_deliveries add column if not exists delivery_run integer not null default 0;
+drop index if exists public.developer_webhook_deliveries_event_attempt_idx;
 create unique index if not exists developer_webhook_deliveries_event_attempt_idx
-  on public.developer_webhook_deliveries(endpoint_id, event_id, attempt);
+  on public.developer_webhook_deliveries(endpoint_id, event_id, delivery_run, attempt);
 
 create table if not exists public.developer_workspace_subscriptions (
   workspace_id uuid primary key references public.developer_workspaces(id) on delete cascade,
@@ -61,7 +64,8 @@ returns table (
   event_type text,
   payload jsonb,
   attempt integer,
-  max_attempts integer
+  max_attempts integer,
+  replay_count integer
 )
 language plpgsql
 security definer
@@ -84,7 +88,7 @@ begin
   set locked_at = now(), lock_token = p_lock_token
   from due
   where q.id = due.id
-  returning q.id, q.endpoint_id, q.event_id, q.event_type, q.payload, q.attempt, q.max_attempts;
+  returning q.id, q.endpoint_id, q.event_id, q.event_type, q.payload, q.attempt, q.max_attempts, q.replay_count;
 end;
 $$;
 revoke all on function public.claim_developer_webhook_jobs(integer, uuid) from public, anon, authenticated;
