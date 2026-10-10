@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cleanNickname, confirmedNickname, isUsableNickname } from "./nickname-validation.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,67 +22,30 @@ function jsonError(message: string, status: number, code: string) {
   );
 }
 
-function cleanNickname(value: string) {
-  const normalized = value.replaceAll("+", "%20");
-  try {
-    return decodeURIComponent(normalized).trim();
-  } catch {
-    return value.trim();
-  }
+function jsonSuccess(
+  confirmed: Extract<LookupAttempt, { kind: "success" }>,
+  playerId: string,
+  zoneId: string,
+) {
+  return NextResponse.json(
+    {
+      success: true,
+      data: {
+        nickname: confirmed.nickname,
+        playerId,
+        zoneId,
+        ...(confirmed.country ? { country: confirmed.country } : {}),
+        source: confirmed.source,
+      },
+    },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }
-
-const GENERIC_NICKNAMES = new Set([
-  "null", "undefined", "not found", "invalid id", "invalid user",
-  "invalid player", "unknown", "unknown user", "error", "success",
-  "ok", "true", "false", "n/a", "none",
-]);
 
 function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
     : null;
-}
-
-function stringField(source: Record<string, unknown> | null, keys: string[]): string {
-  if (!source) return "";
-  for (const key of keys) {
-    const value = source[key];
-    if (typeof value === "string" && value.trim()) return value.trim();
-  }
-  return "";
-}
-
-function confirmedNickname(payload: unknown): string {
-  const root = record(payload);
-  if (!root) return "";
-
-  // Error-shaped responses must never be mistaken for a player's nickname.
-  const data = record(root.data);
-  if (
-    root.success === false ||
-    root.error === true ||
-    root.status === false ||
-    root.valid === false ||
-    data?.valid === false
-  ) return "";
-  const result = record(root.result);
-  const nested = record(data?.data);
-  const candidates = [root, data, result, nested];
-
-  for (const candidate of candidates) {
-    const value = stringField(candidate, [
-      "username", "nickname", "name", "ign", "gameName", "playerName", "roleName",
-    ]);
-    if (!value) continue;
-    const cleaned = cleanNickname(value);
-    if (
-      cleaned.length > 0 &&
-      cleaned.length <= 64 &&
-      !GENERIC_NICKNAMES.has(cleaned.toLowerCase()) &&
-      !/^(error|failed|invalid|not found)\b/i.test(cleaned)
-    ) return cleaned;
-  }
-  return "";
 }
 
 function explicitlyNotFound(payload: unknown): boolean {
@@ -176,23 +140,14 @@ async function lookupRapidApi(playerId: string, zoneId: string): Promise<LookupA
     }
     if (explicitlyNotFound(payload)) return { kind: "not_found" };
     return { kind: "unavailable" };
-
   } catch {
     return { kind: "unavailable" };
   }
 }
 
-/**
- * Public community nickname endpoint. Kept as a separate host/path fallback in
- * case the primary community deployment is unavailable.
- */
+/** Public community nickname endpoint, as an independent fallback host/path. */
 async function lookupIsan(playerId: string, zoneId: string): Promise<LookupAttempt> {
-  const query = new URLSearchParams({
-    id: playerId,
-    server: zoneId,
-    decode: "false",
-  });
-
+  const query = new URLSearchParams({ id: playerId, server: zoneId, decode: "false" });
   try {
     const upstream = await fetch(`https://api.isan.eu.org/nickname/ml?${query.toString()}`, {
       method: "GET",
@@ -213,15 +168,14 @@ async function lookupIsan(playerId: string, zoneId: string): Promise<LookupAttem
     }
     if (explicitlyNotFound(payload)) return { kind: "not_found" };
     return { kind: "unavailable" };
-
   } catch {
     return { kind: "unavailable" };
   }
 }
 
 /**
- * EliteDias public role-check endpoint. This is an unofficial integration and
- * is treated as best-effort; it never submits an order or payment.
+ * EliteDias public role-check endpoint. Unofficial best-effort integration;
+ * it never submits an order or payment.
  */
 async function lookupEliteDias(playerId: string, zoneId: string): Promise<LookupAttempt> {
   try {
@@ -253,10 +207,7 @@ async function lookupEliteDias(playerId: string, zoneId: string): Promise<Lookup
   }
 }
 
-/**
- * Smile.One's public MLBB role-check endpoint. Best-effort only; no top-up is
- * submitted. It may change its request contract without notice.
- */
+/** Smile.One public MLBB role-check endpoint. Best-effort only; no top-up. */
 async function lookupSmileOne(playerId: string, zoneId: string): Promise<LookupAttempt> {
   const form = new URLSearchParams({
     user_id: playerId,
@@ -297,10 +248,7 @@ async function lookupSmileOne(playerId: string, zoneId: string): Promise<LookupA
   }
 }
 
-/**
- * Dunia Games inquiry endpoint. It is used only to ask for identity/role
- * confirmation, not to purchase anything.
- */
+/** Dunia Games inquiry endpoint; only asks for identity/role confirmation. */
 async function lookupDuniaGames(playerId: string, zoneId: string): Promise<LookupAttempt> {
   const form = new URLSearchParams({
     productId: "1",
@@ -343,9 +291,8 @@ async function lookupDuniaGames(playerId: string, zoneId: string): Promise<Looku
 }
 
 /**
- * Fallback provider: Codashop's public initPayment identity-validation flow.
- * Parameters follow a published, reverse-engineered implementation. No payment
- * is submitted; this calls only the validation/init endpoint, not checkout.
+ * Codashop's public identity-validation/init flow. This does not submit a
+ * payment. Its response parser uses the same strict placeholder guard.
  */
 async function lookupCodashopFallback(playerId: string, zoneId: string): Promise<LookupAttempt> {
   const form = new URLSearchParams({
@@ -387,15 +334,17 @@ async function lookupCodashopFallback(playerId: string, zoneId: string): Promise
     if (String(data.RESULT_CODE ?? "") === "10001") return { kind: "rate_limited" };
     if (String(data.errorCode ?? "") === "-200") return { kind: "unavailable" };
 
+    // Provider error payloads are not proof that the player ID is absent.
     if (data.success !== true || Boolean(data.errorMsg)) {
-      return { kind: "not_found" };
+      return explicitlyNotFound(payload) ? { kind: "not_found" } : { kind: "unavailable" };
     }
 
     const fields = record(data.confirmationFields);
     const rawName = fields && typeof fields.username === "string" ? fields.username : "";
+    if (!isUsableNickname(rawName)) {
+      return explicitlyNotFound(payload) ? { kind: "not_found" } : { kind: "unavailable" };
+    }
     const nickname = cleanNickname(rawName);
-    if (!nickname || GENERIC_NICKNAMES.has(nickname.toLowerCase())) return { kind: "not_found" };
-
     return { kind: "success", nickname, source: "codashop_fallback" };
   } catch {
     return { kind: "unavailable" };
@@ -403,8 +352,8 @@ async function lookupCodashopFallback(playerId: string, zoneId: string): Promise
 }
 
 /**
- * Resolve an MLBB nickname without collecting a password or requiring a game login.
- * Providers are unofficial third-party integrations and may change or fail independently.
+ * Resolve an MLBB nickname without a password or game login. Provider
+ * integrations are unofficial and may change or fail independently.
  */
 export async function POST(request: NextRequest) {
   let body: unknown;
@@ -426,11 +375,13 @@ export async function POST(request: NextRequest) {
     return jsonError("Enter a numeric Player ID (4–20 digits) and Zone ID (1–10 digits).", 400, "INVALID_ID");
   }
 
-  // Query independent providers concurrently. A success must include a plausible
-  // nickname from a recognized response field; an HTTP error alone never proves
-  // that an account does not exist.
-  const attempts = await Promise.all([
-    lookupPrimary(playerId, zoneId),
+  // Fast path: if the primary provider confirms the identity, return immediately.
+  // Avoid calling six extra upstreams on every successful request. If primary
+  // fails, query fallback providers concurrently and retain their stable priority.
+  const primary = await lookupPrimary(playerId, zoneId);
+  if (primary.kind === "success") return jsonSuccess(primary, playerId, zoneId);
+
+  const fallbacks = await Promise.all([
     lookupRapidApi(playerId, zoneId),
     lookupIsan(playerId, zoneId),
     lookupEliteDias(playerId, zoneId),
@@ -438,23 +389,11 @@ export async function POST(request: NextRequest) {
     lookupDuniaGames(playerId, zoneId),
     lookupCodashopFallback(playerId, zoneId),
   ]);
+  const attempts: LookupAttempt[] = [primary, ...fallbacks];
 
-  // Stable provider priority keeps results predictable when providers disagree.
-  const confirmed = attempts.find((attempt) => attempt.kind === "success");
+  const confirmed = fallbacks.find((attempt) => attempt.kind === "success");
   if (confirmed && confirmed.kind === "success") {
-    return NextResponse.json(
-      {
-        success: true,
-        data: {
-          nickname: confirmed.nickname,
-          playerId,
-          zoneId,
-          ...(confirmed.country ? { country: confirmed.country } : {}),
-          source: confirmed.source,
-        },
-      },
-      { headers: { "Cache-Control": "no-store" } },
-    );
+    return jsonSuccess(confirmed, playerId, zoneId);
   }
 
   if (attempts.every((attempt) => attempt.kind === "not_found")) {
@@ -479,7 +418,6 @@ export async function POST(request: NextRequest) {
     "UPSTREAM_UNAVAILABLE",
   );
 }
-
 
 /**
  * Browser-friendly GET interface:
