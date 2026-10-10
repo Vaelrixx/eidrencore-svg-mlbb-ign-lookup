@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     .eq("pending_order_id", orderId).maybeSingle();
   if (payment?.status && payment.status !== "captured") return NextResponse.json({ received: true });
   if (sub && sub.pending_plan_slug) {
-    if (sub.razorpay_payment_id && sub.razorpay_payment_id !== paymentId) return NextResponse.json({ error: "Order already has a different payment." }, { status: 409 });
+    if (sub.razorpay_order_id === orderId && sub.razorpay_payment_id && sub.razorpay_payment_id !== paymentId) return NextResponse.json({ error: "Order already has a different payment." }, { status: 409 });
     const now = Date.now();
     const previousEnd = sub.current_period_end ? Date.parse(sub.current_period_end) : 0;
     const periodEnd = new Date(Math.max(now, Number.isFinite(previousEnd) ? previousEnd : 0) + 30 * 86400000).toISOString();
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     .select("workspace_id,plan_slug,status,current_period_end,pending_order_id,pending_plan_slug,razorpay_order_id,razorpay_payment_id")
     .eq("pending_order_id", orderId).maybeSingle();
   if (workspaceSub && workspaceSub.pending_plan_slug) {
-    if (workspaceSub.razorpay_payment_id && workspaceSub.razorpay_payment_id !== paymentId) return NextResponse.json({ error: "Order already has a different payment." }, { status: 409 });
+    if (workspaceSub.razorpay_order_id === orderId && workspaceSub.razorpay_payment_id && workspaceSub.razorpay_payment_id !== paymentId) return NextResponse.json({ error: "Order already has a different payment." }, { status: 409 });
     const now = Date.now();
     const previousEnd = workspaceSub.current_period_end ? Date.parse(workspaceSub.current_period_end) : 0;
     const periodStart = Math.max(now, Number.isFinite(previousEnd) ? previousEnd : 0);
