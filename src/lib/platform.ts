@@ -43,7 +43,7 @@ export async function getUserFromRequest(request: Request) {
       const result = Array.isArray(quota) ? quota[0] : quota;
       if (!result?.allowed) return { error: "Monthly API key quota exceeded.", status: 429 as const, remaining: 0 };
       await admin.from("api_keys").update({ last_used_at: new Date().toISOString() }).eq("id", key.id);
-      return { userId: key.user_id, keyId: key.id, remaining: result.remaining as number };
+      return { userId: key.user_id, keyId: key.id, workspaceId: key.workspace_id as string | null, remaining: result.remaining as number };
     }
   }
   return null;
