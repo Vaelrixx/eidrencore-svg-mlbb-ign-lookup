@@ -50,9 +50,11 @@ export async function POST(request: Request) {
   if (url.length > 2048 || !(await isSafeWebhookUrl(url))) return NextResponse.json({ error: "Webhook URL must be a public HTTPS URL. Local/private network targets are not allowed." }, { status: 400 });
   if (!events.length) return NextResponse.json({ error: "Select at least one supported event." }, { status: 400 });
   const admin = createAdminClient();
+  let workspaceOwnerId: string | null = null;
   if (workspaceId) {
     const { data: workspace } = await admin.from("developer_workspaces").select("id,owner_user_id").eq("id", workspaceId).maybeSingle();
     if (!workspace) return NextResponse.json({ error: "Workspace not found." }, { status: 404 });
+    workspaceOwnerId = workspace.owner_user_id;
     let role = workspace.owner_user_id === user.id ? "owner" : null;
     if (!role) {
       const { data: member } = await admin.from("developer_workspace_members").select("role").eq("workspace_id", workspaceId).eq("user_id", user.id).maybeSingle();
@@ -66,7 +68,7 @@ export async function POST(request: Request) {
   if ((count || 0) >= 10) return NextResponse.json({ error: "You can configure up to 10 webhook endpoints in this scope." }, { status: 409 });
   const secret = "whsec_" + randomBytes(32).toString("base64url");
   const { data, error } = await admin.from("developer_webhook_endpoints").insert({
-    user_id: user.id, workspace_id: workspaceId || null, name, url, events, secret_hash: createHash("sha256").update(secret).digest("hex"),
+    user_id: workspaceOwnerId || user.id, workspace_id: workspaceId || null, name, url, events, secret_hash: createHash("sha256").update(secret).digest("hex"),
     secret_ciphertext: encryptWebhookSecret(secret), enabled: true,
   }).select("id,name,url,events,enabled,created_at,workspace_id").single();
   if (error || !data) return NextResponse.json({ error: "Could not create webhook endpoint." }, { status: 500 });
