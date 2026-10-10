@@ -40,16 +40,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   });
   const order = await orderResponse.json().catch(() => null);
   if (!orderResponse.ok || !order?.id) return NextResponse.json({ error: "Razorpay could not create a workspace order." }, { status: 502 });
-  const row = {
-    workspace_id: id,
-    plan_slug: current?.plan_slug || "free",
-    status: current?.status === "active" ? "active" : "pending",
-    pending_order_id: order.id,
-    pending_plan_slug: slug,
-    pending_started_at: now,
-    updated_at: now,
-  };
-  const { error } = await admin.from("developer_workspace_subscriptions").upsert(row, { onConflict: "workspace_id" });
+  const pending = { status: current?.status === "active" && !!current.current_period_end && Date.parse(current.current_period_end) > Date.now() ? "active" : "pending", pending_order_id: order.id, pending_plan_slug: slug, pending_started_at: now, updated_at: now };
+  const { error } = current
+    ? await admin.from("developer_workspace_subscriptions").update(pending).eq("workspace_id", id)
+    : await admin.from("developer_workspace_subscriptions").insert({ workspace_id: id, plan_slug: "free", ...pending });
   if (error) return NextResponse.json({ error: "Could not save workspace checkout state." }, { status: 500 });
   return NextResponse.json({ keyId, orderId: order.id, amount: price, currency: "INR", name: "Eidren Developer Platform", description: (plan?.name || fallback?.name || slug) + " workspace plan", prefill: { email: user.email || "" } }, { headers: { "Cache-Control": "no-store" } });
 }
