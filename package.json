@@ -11,6 +11,7 @@
     "test:provider-adapters": "node --test tests/rapidapi-provider.test.mjs tests/provider-reliability.test.mjs tests/provider-outcome-normalization.test.mjs",
     "test:lookup:live": "node --test tests/live-fallback-takeover.test.mjs",
     "test:observability": "node --test tests/observability.test.mjs",
+    "test:persistence": "node --test tests/persistence.test.mjs",
     "test:provider-sweep:live": "node --test tests/provider-diagnostics-live.test.mjs tests/rapidapi-live-contract.test.mjs"
   },
   "dependencies": {

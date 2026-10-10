@@ -47,37 +47,38 @@ Successful response:
 }
 ```
 
-Error responses preserve a stable `{ success: false, error, code }` shape. Common codes include `INVALID_JSON`, `INVALID_INPUT`, `INVALID_ID`, `PLAYER_NOT_FOUND`, `UPSTREAM_RATE_LIMIT`, and `UPSTREAM_UNAVAILABLE`. Every POST response includes an `X-Lookup-Request-Id` header for correlating a caller's result with sanitized server-side provider diagnostics without logging player identifiers.
+Error responses preserve a stable `{ success: false, error, code }` shape. Common codes include `INVALID_JSON`, `INVALID_INPUT`, `INVALID_ID`, `PLAYER_NOT_FOUND`, `UPSTREAM_RATE_LIMIT`, `RATE_LIMITED`, and `UPSTREAM_UNAVAILABLE`. Every POST response includes an `X-Lookup-Request-Id` header for correlating a caller's result with sanitized server-side provider diagnostics without logging player identifiers.
 
-A success is returned only when a provider returns a plausible nickname in a recognized response field. Generic error text is rejected. The primary provider is attempted first. If it cannot confirm a nickname, only the currently validated Isan and RapidAPI adapters run concurrently; the first confirmed nickname is returned without waiting for slower attempts. If no fallback confirms a nickname, the route waits for all results before deciding whether the account is not found or the providers are unavailable. Unreliable 403/500 sources and the Codashop checkout-initialization endpoint are not called by the production lookup path. A separate live smoke test can simulate primary unavailability while querying the real Isan secondary provider.
+A success is returned only when a provider returns a plausible nickname in a recognized response field. Generic error text is rejected. The primary provider is attempted first. If it cannot confirm a nickname, only the currently validated Isan and RapidAPI adapters run concurrently; the first confirmed nickname is returned without waiting for slower attempts. If no fallback confirms a nickname, the route waits for all results before deciding whether the account is not found or the providers are unavailable. Unreliable 403/500 sources and the Codashop checkout-initialization endpoint are not called by the production lookup path.
 
-## Production checklist
+## Production configuration
 
-- Keep `RAPIDAPI_KEY` in Railway's server-side environment variables only. Never expose it in client-side code.
-- Confirm provider terms, endpoint contracts, and request limits before relying on unofficial endpoints.
-- Add distributed rate limiting (for example, Redis-backed) before broad public launch; in-process limits do not protect across replicas.
-- Monitor upstream failures and test known-valid and known-invalid IDs at low volume.
-- Do not treat a timeout or provider outage as an invalid player ID.
+The following server-only environment variables enable persistent logging and distributed rate limiting:
 
-Not affiliated with or endorsed by MOONTON Games, Codashop, or any listed third-party provider.
+- `SUPABASE_URL`: the Supabase project URL.
+- `SUPABASE_SECRET_KEY` (preferred) or `SUPABASE_SERVICE_ROLE_KEY`: a server-only Supabase secret/service-role key. Never prefix it with `NEXT_PUBLIC_` or expose it to browser code.
+- `LOOKUP_RATE_LIMIT_SECRET`: a long, random secret used to HMAC client addresses before storing rate-limit keys. Keep it separate from the Supabase key.
 
+Without `SUPABASE_URL` and a server-only Supabase key, database logging and shared rate limiting are disabled and the API continues to operate as before. Without `LOOKUP_RATE_LIMIT_SECRET` or a trusted ingress client address, only the limiter is disabled; persistent logging can still operate. If the database is temporarily unavailable, the limiter fails open and emits only a bounded degradation event; database logging is best-effort and cannot change lookup results. The deployment owner must configure these values and apply the checked-in migration before enabling the features.
+
+The limiter uses an atomic Postgres RPC against `usage_limits`, with a default limit of 30 requests per client per 60-second window. The function clamps counts and window sizes, is callable only by `service_role`, and uses the existing table's RLS/grants without adding public policies. The API hashes the trusted ingress client address with HMAC-SHA-256; it does not store the raw address or HMAC secret. Ensure Railway's ingress controls `X-Real-IP` / `X-Forwarded-For` as documented for the deployed proxy chain.
+
+Persistent `lookup_logs` rows contain only a bounded status (`success`, `invalid_input`, `not_found`, `upstream_error`, or `rate_limited`), response duration, and allowlisted source label. Player IDs, zone IDs, nicknames, request IDs, client hashes, upstream payloads, URLs, headers, and credentials are not written to the table. Existing provider diagnostics remain structured and privacy-safe in Railway logs.
 
 ## Provider observability
 
-Production logs emit structured JSON events for each provider attempt and each completed lookup. Provider events include a request correlation ID, provider label, outcome, latency in milliseconds, and the selected source only on success. Failed attempts may also include a bounded failure reason (`missing_config`, `http_error`, `network_or_timeout`, `unrecognized_response`, or `provider_error`) and an upstream HTTP status code. RapidAPI diagnostics may also include a low-cardinality response-shape label (such as a documented provider schema, gateway error object, or empty/non-JSON body); raw content is never logged. The summary records total duration and outcome counts. Player IDs, zone IDs, nicknames, upstream payloads, URLs, request headers, and credentials are intentionally excluded. Logging is best-effort and cannot change lookup results. Use Railway deployment logs to compare provider latency and availability over time; these are event logs, not a persistent metrics dashboard.
+Production logs emit structured JSON events for each provider attempt and each completed lookup. Provider events include a request correlation ID, provider label, outcome, latency in milliseconds, and the selected source only on success. Failed attempts may also include a bounded failure reason (`missing_config`, `http_error`, `network_or_timeout`, `unrecognized_response`, or `provider_error`) and an upstream HTTP status code. RapidAPI diagnostics may also include a low-cardinality response-shape label; raw content is never logged. The summary records total duration and outcome counts. Player IDs, zone IDs, nicknames, upstream payloads, URLs, request headers, and credentials are intentionally excluded. Logging is best-effort and cannot change lookup results. Use Railway deployment logs to compare provider latency and availability over time; these are event logs, not a persistent metrics dashboard.
 
-Run `npm run test:provider-adapters` to cover RapidAPI response classification, including structured 404 handling and `no_content_0`. Run `npm run test:observability` to check telemetry shape, verify identity fields and raw provider data are not logged, and ensure logging failures do not break lookups.
+Run `npm run test:provider-adapters` to cover RapidAPI response classification, including structured 404 handling and `no_content_0`. Run `npm run test:observability` to check telemetry privacy and failure isolation. Run `npm run test:persistence` to cover the shared limiter and sanitized Supabase logging payloads.
 
 ## Live fallback takeover smoke test
 
 Run `npm run test:lookup:live` to simulate an unavailable primary and call the real Isan secondary adapter through the same resolver used by the API route. It reports the selected source, returned nickname, and elapsed time. This test requires network access and a working response from the third-party Isan service; it is separate from deterministic unit tests and does not modify production.
-
 
 ## Manual live provider sweep
 
 Run `npm run test:provider-sweep:live` or trigger the **Live provider diagnostic sweep** workflow in GitHub Actions. It probes the known-valid test fixture against the Isan secondary adapter, EliteDias, Smile.One, and the current form-encoded, current JSON, and an older public-reference JSON inquiry parameter set for Dunia Games (diagnostic only). ID Game Checker is probed only when `RAPIDAPI_KEY` or `RAPIDAPI_APP_TOKEN` is configured in the workflow environment; production's Railway secret is not copied into GitHub Actions.
 
 The sweep logs provider labels, sanitized outcome categories, HTTP status codes, durations, allowlisted response-shape/key names, and bounded provider-code/error-category fields. It never prints IDs, nicknames, response values, message text, URLs, request headers, or credentials. It intentionally skips Codashop's `initPayment` endpoint because that can create a checkout session.
-
 
 The older Dunia Games reference variant is taken from a public unofficial implementation at [namtxs/DuniaGames](https://github.com/namtxs/DuniaGames/blob/main/src/duniaGames.php). It is only probed by the diagnostic workflow; production keeps its existing parameters unless a known-valid test proves the alternate set works.

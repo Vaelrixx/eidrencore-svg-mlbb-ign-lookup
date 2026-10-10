@@ -5,6 +5,7 @@ import { resolveLookupWithFallbacks } from "./resolve-lookup.mjs";
 import { lookupIsan } from "./providers/isan.mjs";
 import { lookupRapidApi } from "./providers/rapidapi.mjs";
 import { logLookupSummary, observeProvider } from "./observability.mjs";
+import { enforceLookupRateLimit, persistLookupLog } from "./persistence.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +25,13 @@ type LookupAttempt =
   | { kind: "rate_limited"; diagnostic?: LookupDiagnostic }
   | { kind: "unavailable"; diagnostic?: LookupDiagnostic };
 
-function jsonError(message: string, status: number, code: string, requestId?: string) {
+function jsonError(
+  message: string,
+  status: number,
+  code: string,
+  requestId?: string,
+  extraHeaders: Record<string, string> = {},
+) {
   return NextResponse.json(
     { success: false, error: message, code },
     {
@@ -32,9 +39,27 @@ function jsonError(message: string, status: number, code: string, requestId?: st
       headers: {
         "Cache-Control": "no-store",
         ...(requestId ? { "X-Lookup-Request-Id": requestId } : {}),
+        ...extraHeaders,
       },
     },
   );
+}
+
+async function loggedError(
+  message: string,
+  status: number,
+  code: string,
+  requestId: string,
+  startedAt: number,
+  logStatus: "invalid_input" | "not_found" | "upstream_error" | "rate_limited",
+  extraHeaders: Record<string, string> = {},
+) {
+  await persistLookupLog({
+    status: logStatus,
+    responseMs: Date.now() - startedAt,
+    source: "mlbb_lookup_api",
+  }, { timeoutMs: 300 });
+  return jsonError(message, status, code, requestId, extraHeaders);
 }
 
 function jsonSuccess(
@@ -130,15 +155,33 @@ async function lookupPrimary(playerId: string, zoneId: string): Promise<LookupAt
  */
 export async function POST(request: NextRequest) {
   const requestId = randomUUID();
+  const requestStartedAt = Date.now();
+
+  // Shared fixed-window rate limiting is enabled only when its server-side
+  // Supabase and HMAC secrets are configured. A database outage fails open.
+  const rateLimit = await enforceLookupRateLimit(request);
+  if (!rateLimit.allowed) {
+    const retryAfter = Math.max(1, rateLimit.retryAfterSeconds);
+    return loggedError(
+      "Too many lookup requests. Please wait before trying again.",
+      429,
+      "RATE_LIMITED",
+      requestId,
+      requestStartedAt,
+      "rate_limited",
+      { "Retry-After": String(retryAfter) },
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return jsonError("Request body must be valid JSON.", 400, "INVALID_JSON", requestId);
+    return loggedError("Request body must be valid JSON.", 400, "INVALID_JSON", requestId, requestStartedAt, "invalid_input");
   }
 
   if (!body || typeof body !== "object") {
-    return jsonError("Send playerId and zoneId as strings.", 400, "INVALID_INPUT", requestId);
+    return loggedError("Send playerId and zoneId as strings.", 400, "INVALID_INPUT", requestId, requestStartedAt, "invalid_input");
   }
 
   const input = body as Record<string, unknown>;
@@ -146,7 +189,14 @@ export async function POST(request: NextRequest) {
   const zoneId = typeof input.zoneId === "string" ? input.zoneId.trim() : "";
 
   if (!PLAYER_ID_PATTERN.test(playerId) || !ZONE_ID_PATTERN.test(zoneId)) {
-    return jsonError("Enter a numeric Player ID (4–20 digits) and Zone ID (1–10 digits).", 400, "INVALID_ID", requestId);
+    return loggedError(
+      "Enter a numeric Player ID (4–20 digits) and Zone ID (1–10 digits).",
+      400,
+      "INVALID_ID",
+      requestId,
+      requestStartedAt,
+      "invalid_input",
+    );
   }
 
   // Structured telemetry deliberately excludes player IDs, zone IDs, nicknames,
@@ -154,7 +204,6 @@ export async function POST(request: NextRequest) {
   const lookupStartedAt = Date.now();
 
   // Primary-first lookup with deterministic, concurrent fallback takeover.
-  // This orchestration is separately unit-tested with a simulated primary outage.
   const resolution = await resolveLookupWithFallbacks(
     () => observeProvider({
       requestId,
@@ -176,32 +225,47 @@ export async function POST(request: NextRequest) {
     confirmed,
     pendingFallbacks,
   });
-  if (confirmed?.kind === "success") return jsonSuccess(confirmed, playerId, zoneId, requestId);
+
+  if (confirmed?.kind === "success") {
+    await persistLookupLog({
+      status: "success",
+      responseMs: Date.now() - requestStartedAt,
+      source: confirmed.source,
+    }, { timeoutMs: 300 });
+    return jsonSuccess(confirmed, playerId, zoneId, requestId);
+  }
+
   const attempts: LookupAttempt[] = [primary, ...fallbacks];
 
   if (attempts.every((attempt) => attempt.kind === "not_found")) {
-    return jsonError(
+    return loggedError(
       "No provider found an MLBB account for that Player ID and Zone ID.",
       404,
       "PLAYER_NOT_FOUND",
       requestId,
+      requestStartedAt,
+      "not_found",
     );
   }
 
   if (attempts.every((attempt) => attempt.kind === "rate_limited")) {
-    return jsonError(
+    return loggedError(
       "All lookup providers are rate-limiting requests. Try again shortly.",
       429,
       "UPSTREAM_RATE_LIMIT",
       requestId,
+      requestStartedAt,
+      "rate_limited",
     );
   }
 
-  return jsonError(
+  return loggedError(
     "We couldn't verify this ID right now because lookup providers are unavailable. Please retry shortly.",
     502,
     "UPSTREAM_UNAVAILABLE",
     requestId,
+    requestStartedAt,
+    "upstream_error",
   );
 }
 
@@ -238,9 +302,14 @@ export async function GET(request: NextRequest) {
     playerId: url.searchParams.get("playerId") ?? "",
     zoneId: url.searchParams.get("zoneId") ?? "",
   });
+  const forwardedHeaders = new Headers({ "Content-Type": "application/json" });
+  for (const name of ["x-real-ip", "x-forwarded-for"]) {
+    const value = request.headers.get(name);
+    if (value) forwardedHeaders.set(name, value);
+  }
   const postRequest = new NextRequest(request.url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: forwardedHeaders,
     body,
   });
   return POST(postRequest);

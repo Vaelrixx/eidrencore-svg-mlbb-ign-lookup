@@ -23,6 +23,8 @@ jobs:
         run: npm run test:provider-adapters
       - name: Run observability privacy tests
         run: npm run test:observability
+      - name: Run persistence and rate-limit tests
+        run: npm run test:persistence
       - name: Lint application
         run: npm run lint
       - name: Build Next.js app
