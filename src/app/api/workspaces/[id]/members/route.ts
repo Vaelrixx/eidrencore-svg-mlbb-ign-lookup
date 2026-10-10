@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireUser } from "@/lib/platform";
-import { writeAuditLog } from "@/lib/developer-events";
+import { emitDeveloperEvent, writeAuditLog } from "@/lib/developer-events";
 
 export const runtime = "nodejs";
 async function membership(admin: ReturnType<typeof createAdminClient>, workspaceId: string, userId: string) {
@@ -43,6 +43,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const { data: invite, error } = await admin.from("developer_workspace_invites").insert({ workspace_id: id, email, role, token_hash: createHash("sha256").update(token).digest("hex"), invited_by: user.id }).select("id,email,role,expires_at,created_at").single();
   if (error || !invite) return NextResponse.json({ error: "Could not create workspace invitation." }, { status: 500 });
   await writeAuditLog({ userId: user.id, workspaceId: id, action: "workspace.member.invited", resourceType: "workspace_invite", resourceId: invite.id, metadata: { email, role } });
+  await emitDeveloperEvent({ userId: user.id, workspaceId: id, type: "workspace.member.invited", data: { email, role, invite_id: invite.id } });
   const origin = new URL(request.url).origin;
   return NextResponse.json({ invite, inviteUrl: origin + "/dashboard/workspaces/accept?token=" + encodeURIComponent(token) }, { status: 201, headers: { "Cache-Control": "no-store" } });
 }
@@ -61,5 +62,6 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
   const { error } = await admin.from("developer_workspace_members").delete().eq("workspace_id", id).eq("user_id", targetUserId);
   if (error) return NextResponse.json({ error: "Could not remove workspace member." }, { status: 500 });
   await writeAuditLog({ userId: user.id, workspaceId: id, action: "workspace.member.removed", resourceType: "workspace_member", resourceId: targetUserId });
+  await emitDeveloperEvent({ userId: user.id, workspaceId: id, type: "workspace.member.removed", data: { user_id: targetUserId } });
   return NextResponse.json({ success: true });
 }
