@@ -13,38 +13,6 @@ const items = [
   { href: "/dashboard/account", label: "Account & sessions", icon: Settings2 },
 ];
 
-export function ConsoleNav() {
-  const pathname = usePathname();
-  const router = useRouter();
-
-  async function signOut() {
-    await fetch("/api/auth/signout", { method: "POST" });
-    router.replace("/login");
-    router.refresh();
-  }
-
-  return (
-    <>
-      <nav className="platform-nav console-topbar">
-        <Link className="brand" href="/"><span className="brand-mark"><Swords size={19}/></span><span>EIDREN<span className="brand-dot">.</span></span></Link>
-        <div className="console-top-actions"><span className="console-secure"><span className="live-dot" /> SECURE CONSOLE</span><button className="quiet-button" onClick={signOut}><LogOut size={15}/> Sign out</button></div>
-      </nav>
-      <div className="console-layout">
-        <aside className="console-sidebar" aria-label="Developer console sections">
-          <div className="console-side-label">WORKSPACE</div>
-          {items.map(item => {
-            const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
-            const Icon = item.icon;
-            return <Link key={item.href} href={item.href} className={`console-nav-link${active ? " active" : ""}`} aria-current={active ? "page" : undefined}><Icon size={16}/><span>{item.label}</span>{active && <span className="console-nav-indicator" />}</Link>;
-          })}
-          <div className="console-sidebar-bottom"><span className="console-sidebar-mark"><Swords size={14}/></span><div><strong>Eidren Platform</strong><small>MLBB Identity API</small></div></div>
-        </aside>
-        <div className="console-main"><div className="console-mobile-links">{items.map(item => { const active = item.exact ? pathname === item.href : pathname.startsWith(item.href); const Icon = item.icon; return <Link key={item.href} href={item.href} className={active ? "active" : ""}><Icon size={14}/>{item.label}</Link>; })}</div><div className="console-content" /></div>
-      </div>
-    </>
-  );
-}
-
 export function ConsoleFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
