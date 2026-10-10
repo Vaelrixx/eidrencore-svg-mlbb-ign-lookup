@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { Swords, LoaderCircle } from "lucide-react";
 
 export default function TelegramCompletePage() {
@@ -15,8 +14,8 @@ export default function TelegramCompletePage() {
       const query = new URLSearchParams(window.location.search);
       const tokenHash = query.get("token_hash");
       if (!tokenHash || query.get("type") !== "magiclink") { setMessage("This sign-in link is missing or expired."); return; }
-      const { error } = await createClient().auth.verifyOtp({ token_hash: tokenHash, type: "magiclink" });
-      if (error) { if (active) setMessage("Telegram sign-in could not be completed. Please try again."); return; }
+      const response = await fetch("/api/auth/telegram/complete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token_hash: tokenHash, type: "magiclink" }) });
+      if (!response.ok) { if (active) setMessage("Telegram sign-in could not be completed. Please try again."); return; }
       if (active) { router.replace("/dashboard"); router.refresh(); }
     }
     void complete();
