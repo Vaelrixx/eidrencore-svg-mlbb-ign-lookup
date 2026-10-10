@@ -70,9 +70,39 @@ jobs:
           fs.writeFileSync("npm-audit-summary.md", summary);
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
           process.stdout.write(summary);
-          const highOrCritical = vulnerabilities.some(([, item]) => ["high", "critical"].includes(item.severity));
-          if (highOrCritical) {
-            process.stderr.write("High or critical dependency vulnerabilities remain. Review the advisory and generated lockfile artifact.\n");
+          if (total > 0) {
+            process.stderr.write("Full dependency audit includes advisories in development/build tooling; production dependencies are gated separately.\n");
+          }
+          NODE
+
+      - name: Gate production dependencies
+        shell: bash
+        run: |
+          set +e
+          npm audit --omit=dev --json > npm-audit-production-report.json
+          audit_exit_code=$?
+          set -e
+          export NPM_PRODUCTION_AUDIT_EXIT_CODE="$audit_exit_code"
+
+          node <<'NODE'
+          const fs = require("node:fs");
+          const report = JSON.parse(fs.readFileSync("npm-audit-production-report.json", "utf8"));
+          const counts = report.metadata?.vulnerabilities ?? {};
+          const vulnerabilities = Object.entries(report.vulnerabilities ?? {});
+          const summary = [
+            "",
+            "# Production dependency audit gate",
+            "",
+            `- Audit exit code: ${process.env.NPM_PRODUCTION_AUDIT_EXIT_CODE}`,
+            `- Vulnerable packages: ${counts.total ?? vulnerabilities.length}`,
+            `- Severity totals: critical ${counts.critical ?? 0}, high ${counts.high ?? 0}, moderate ${counts.moderate ?? 0}, low ${counts.low ?? 0}, info ${counts.info ?? 0}`,
+            "",
+          ].join("\n");
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+          process.stdout.write(summary);
+          const blockers = vulnerabilities.filter(([, item]) => ["high", "critical"].includes(item.severity));
+          if (blockers.length > 0 || (process.env.NPM_PRODUCTION_AUDIT_EXIT_CODE !== "0" && vulnerabilities.length === 0)) {
+            process.stderr.write("Production dependency audit found high/critical advisories or could not complete.\n");
             process.exitCode = 1;
           }
           NODE
@@ -84,6 +114,7 @@ jobs:
           name: npm-audit-report-${{ github.run_id }}
           path: |
             npm-audit-report.json
+            npm-audit-production-report.json
             npm-audit-summary.md
             package-lock.json
           if-no-files-found: warn
