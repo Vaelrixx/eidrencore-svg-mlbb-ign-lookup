@@ -19,7 +19,12 @@ export async function GET() {
     const result = await admin.from("developer_webhook_deliveries").select("id,endpoint_id,event_id,event_type,response_status,response_ms,attempt,delivered,error_code,created_at").in("endpoint_id", ids).order("created_at", { ascending: false }).limit(50);
     deliveries = (result.data || []) as Array<Record<string, unknown>>;
   }
-  return NextResponse.json({ endpoints, deliveries, supportedEvents: ALLOWED_EVENTS }, { headers: { "Cache-Control": "no-store" } });
+  let queue: Array<Record<string, unknown>> = [];
+  if (ids.length) {
+    const result = await admin.from("developer_webhook_outbox").select("id,endpoint_id,event_id,event_type,attempt,max_attempts,available_at,delivered_at,dead_lettered_at,last_error,created_at").in("endpoint_id", ids).order("created_at", { ascending: false }).limit(100);
+    queue = (result.data || []) as Array<Record<string, unknown>>;
+  }
+  return NextResponse.json({ endpoints, deliveries, queue, supportedEvents: ALLOWED_EVENTS }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(request: Request) {
