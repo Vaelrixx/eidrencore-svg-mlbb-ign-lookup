@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     let responseStatus: number | null = null;
     let errorCode: string | null = null;
     let success = false;
-    let retryable = true;
+    let retryable: boolean;
 
     const { data: endpoint, error: endpointError } = await admin.from("developer_webhook_endpoints")
       .select("id,url,secret_ciphertext,enabled")
