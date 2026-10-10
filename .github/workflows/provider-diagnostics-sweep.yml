@@ -4,10 +4,14 @@ on:
   pull_request:
     paths:
       - "tests/provider-diagnostics-live.test.mjs"
+      - "tests/rapidapi-live-contract.test.mjs"
+      - "tests/provider-reliability.test.mjs"
       - ".github/workflows/provider-diagnostics-sweep.yml"
       - "package.json"
       - "src/app/api/lookup/providers/isan.mjs"
       - "src/app/api/lookup/nickname-validation.mjs"
+      - "src/app/api/lookup/providers/rapidapi.mjs"
+      - "src/app/api/lookup/resolve-lookup.mjs"
   workflow_dispatch:
 
 permissions:
@@ -29,3 +33,5 @@ jobs:
           RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
           RAPIDAPI_APP_TOKEN: ${{ secrets.RAPIDAPI_APP_TOKEN }}
         run: npm run test:provider-sweep:live
+      - name: Run provider reliability tests
+        run: npm run test:provider-adapters
