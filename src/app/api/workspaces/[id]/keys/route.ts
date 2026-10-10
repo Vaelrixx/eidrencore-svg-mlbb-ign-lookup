@@ -8,10 +8,10 @@ export const runtime = "nodejs";
 async function workspaceAccess(workspaceId: string, userId: string) {
   const admin = createAdminClient();
   const { data: workspace } = await admin.from("developer_workspaces").select("id,owner_user_id").eq("id", workspaceId).maybeSingle();
-  if (!workspace) return { admin, role: null as string | null };
-  if (workspace.owner_user_id === userId) return { admin, role: "owner" };
+  if (!workspace) return { admin, role: null as string | null, ownerUserId: null as string | null };
+  if (workspace.owner_user_id === userId) return { admin, role: "owner", ownerUserId: workspace.owner_user_id };
   const { data: membership } = await admin.from("developer_workspace_members").select("role").eq("workspace_id", workspaceId).eq("user_id", userId).maybeSingle();
-  return { admin, role: membership?.role || null };
+  return { admin, role: membership?.role || null, ownerUserId: workspace.owner_user_id };
 }
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
@@ -42,7 +42,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const planSlug = paidIsCurrent ? subscription.plan_slug : "free";
   const { data: plan } = await admin.from("developer_plans").select("monthly_limit").eq("slug", planSlug).maybeSingle();
   const generated = newApiKey();
-  const { data, error } = await admin.from("api_keys").insert({ user_id: user.id, workspace_id: id, name, key_hash: hashApiKey(generated.value), key_prefix: generated.prefix, plan_slug: planSlug }).select("id,name,key_prefix,plan_slug,created_at,user_id").single();
+  const { data, error } = await admin.from("api_keys").insert({ user_id: access.ownerUserId || user.id, workspace_id: id, name, key_hash: hashApiKey(generated.value), key_prefix: generated.prefix, plan_slug: planSlug }).select("id,name,key_prefix,plan_slug,created_at,user_id").single();
   if (error || !data) return NextResponse.json({ error: "Could not create workspace API key." }, { status: 500 });
   await writeAuditLog({ userId: user.id, workspaceId: id, action: "api.key.created", resourceType: "api_key", resourceId: data.id, metadata: { name, prefix: data.key_prefix, plan: data.plan_slug } });
   await emitDeveloperEvent({ userId: user.id, workspaceId: id, type: "api.key.created", data: { key_id: data.id, name: data.name, key_prefix: data.key_prefix, plan: data.plan_slug, workspace_id: id } });
