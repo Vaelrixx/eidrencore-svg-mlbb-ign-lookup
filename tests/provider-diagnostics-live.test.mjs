@@ -222,6 +222,33 @@ test("live provider sweep reports sanitized status for a known-valid test accoun
     },
   }));
 
+  // Diagnostic-only candidate from a public, older unofficial DuniaGames
+  // implementation. Do not promote these product identifiers to production
+  // unless this probe returns a clean success for the known-valid fixture.
+  const referenceDuniaFields = {
+    productId: 1,
+    itemId: 66,
+    catalogId: 121,
+    paymentId: 805,
+    gameId: playerId,
+    zoneId,
+    product_ref: "CMS",
+    product_ref_denom: "AE",
+  };
+  results.push(await probeHttp({
+    provider: "duniagames_role_check_reference",
+    url: "https://api.duniagames.co.id/api/transaction/v1/top-up/inquiry/store",
+    init: {
+      method: "POST",
+      headers: standardHeaders(
+        "https://www.duniagames.co.id",
+        "https://www.duniagames.co.id/",
+        "application/json",
+      ),
+      body: JSON.stringify(referenceDuniaFields),
+    },
+  }));
+
   // Codashop's initPayment endpoint can create a checkout session, so this sweep
   // intentionally does not call it. No purchase or payment endpoint is exercised.
 
