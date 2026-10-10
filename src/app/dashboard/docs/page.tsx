@@ -1,13 +1,23 @@
-"use client";
-
-import { useState } from "react";
-import Link from "next/link";
-import { Check, Code2, Copy, ExternalLink, FileJson, ShieldCheck, Terminal } from "lucide-react";
-import { ConsoleFrame } from "@/components/console-frame";
-
-const baseUrl = typeof window === "undefined" ? "https://nexus-mlbb-ign-lookup-production.up.railway.app" : window.location.origin;
-const curlExample = `curl -X POST "${baseUrl}/api/lookup" \\\n  -H "Content-Type: application/json" \\\n  -H "Authorization: Bearer eid_YOUR_API_KEY" \\\n  -d '{"playerId":"123456789","zoneId":"1234"}'`;
-const jsExample = `const response = await fetch("${baseUrl}/api/lookup", {\n  method: "POST",\n  headers: {\n    "Content-Type": "application/json",\n    "Authorization": \`Bearer ${process.env.EIDREN_API_KEY}\`,\n  },\n  body: JSON.stringify({ playerId: "123456789", zoneId: "1234" }),\n});\n\nconst result = await response.json();\nif (result.success) console.log(result.data.nickname);\nelse console.error(result.code, result.error);`;
+const baseUrl = "https://nexus-mlbb-ign-lookup-production.up.railway.app";
+const curlExample = [
+  \`curl -X POST "\${baseUrl}/api/lookup" \\\`,
+  \`  -H "Content-Type: application/json" \\\`,
+  \`  -H "Authorization: Bearer eid_YOUR_API_KEY" \\\`,
+  \`  -d '{"playerId":"123456789","zoneId":"1234"}'\`,
+].join("\\n");
+const jsExample = [
+  \`const response = await fetch("\${baseUrl}/api/lookup", {\`,
+  \`  method: "POST",\`,
+  \`  headers: {\`,
+  \`    "Content-Type": "application/json",\`,
+  \`    "Authorization": "Bearer " + process.env.EIDREN_API_KEY,\`,
+  \`  },\`,
+  \`  body: JSON.stringify({ playerId: "123456789", zoneId: "1234" }),\`,
+  \`});\`,
+  \`const result = await response.json();\`,
+  \`if (result.success) console.log(result.data.nickname);\`,
+  \`else console.error(result.code, result.error);\`,
+].join("\\n");
 
 export default function DocsPage() {
   const [copied, setCopied] = useState("");
