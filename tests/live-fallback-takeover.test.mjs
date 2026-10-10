@@ -37,13 +37,11 @@ test("real Isan secondary takes over after a simulated primary outage", async ()
   assert.equal(resolution.confirmed?.source, "isan_nickname_api");
   assert.ok(isUsableNickname(resolution.confirmed?.nickname), "secondary returned an unusable/placeholder nickname");
 
+  // Keep live-test telemetry useful without logging player identifiers or nicknames.
   console.log(JSON.stringify({
     test: "real-secondary-takeover",
     simulatedPrimary: resolution.primary.kind,
     selectedSource: resolution.confirmed.source,
-    nickname: resolution.confirmed.nickname,
-    playerId,
-    zoneId,
     elapsedMs: Math.round(performance.now() - startedAt),
     passed: true,
   }));
