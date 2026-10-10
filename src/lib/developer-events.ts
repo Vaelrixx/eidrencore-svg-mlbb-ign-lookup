@@ -118,11 +118,11 @@ export async function emitDeveloperEvent(input: { userId: string; workspaceId?: 
   }
 }
 
-export async function recordDeveloperRequest(input: { userId: string; apiKeyId: string; requestId: string; status: number; responseMs: number }) {
+export async function recordDeveloperRequest(input: { userId: string; apiKeyId: string; workspaceId?: string | null; requestId: string; status: number; responseMs: number }) {
   try {
     const admin = createAdminClient();
     await admin.from("developer_api_request_logs").insert({
-      user_id: input.userId, api_key_id: input.apiKeyId, request_id: input.requestId,
+      user_id: input.userId, api_key_id: input.apiKeyId, workspace_id: input.workspaceId || null, request_id: input.requestId,
       endpoint: "/api/lookup", http_status: input.status, response_ms: Math.max(0, input.responseMs),
     });
   } catch (error) {
