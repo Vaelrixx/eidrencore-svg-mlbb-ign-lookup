@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Swords, Chrome, Github, MessageCircle, Send, LoaderCircle, ArrowLeft } from "lucide-react";
 
 export default function LoginPage() {
@@ -14,24 +13,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"signin"|"signup">("signin");
   useEffect(() => { const timer = window.setTimeout(() => { const code = new URLSearchParams(window.location.search).get("error"); const messages: Record<string,string> = { telegram_not_configured: "Telegram login needs its BotFather credentials configured.", telegram_auth_failed: "Telegram sign-in failed. Please try again.", telegram_token_failed: "Telegram could not verify the sign-in token.", telegram_claims_failed: "Telegram identity validation failed.", telegram_account_failed: "Could not prepare your Telegram account.", telegram_session_failed: "Could not start your secure session.", oauth_callback_failed: "Social sign-in failed. Check the provider configuration." }; if (code && messages[code]) setError(messages[code]); }, 0); return () => window.clearTimeout(timer); }, []);
-  async function social(provider: "google"|"github"|"discord") {
+  function social(provider: "google"|"github"|"discord") {
     setBusy(provider); setError("");
-    try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: `${window.location.origin}/auth/callback?next=/dashboard` } });
-      if (error) throw error;
-    } catch (e) { setError(e instanceof Error ? e.message : "Could not start sign-in."); setBusy(""); }
+    window.location.href = `/api/auth/oauth/${provider}`;
   }
   async function emailAuth(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy("email"); setError("");
     try {
-      const supabase = createClient();
-      const result = mode === "signin"
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard` } });
-      if (result.error) throw result.error;
-      if (mode === "signup" && !result.data.session) { setError("Check your email to confirm your account, then sign in."); setBusy(""); return; }
-      const nextPath = new URLSearchParams(window.location.search).get("next"); router.push(nextPath?.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/dashboard"); router.refresh();
+      const response = await fetch("/api/auth/password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: mode, email, password }) });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Authentication failed.");
+      if (body.needsConfirmation) { setError("Check your email to confirm your account, then sign in."); setBusy(""); return; }
+      const nextPath = new URLSearchParams(window.location.search).get("next");
+      router.push(nextPath?.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/dashboard"); router.refresh();
     } catch (e) { setError(e instanceof Error ? e.message : "Authentication failed."); }
     finally { setBusy(""); }
   }
