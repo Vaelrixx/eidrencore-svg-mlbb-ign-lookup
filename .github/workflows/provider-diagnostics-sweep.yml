@@ -1,0 +1,28 @@
+name: Live provider diagnostic sweep
+
+on:
+  pull_request:
+    paths:
+      - "tests/provider-diagnostics-live.test.mjs"
+      - ".github/workflows/provider-diagnostics-sweep.yml"
+      - "package.json"
+      - "src/app/api/lookup/providers/isan.mjs"
+      - "src/app/api/lookup/nickname-validation.mjs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  provider-sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Probe independent identity providers
+        run: npm run test:provider-sweep:live
