@@ -55,6 +55,13 @@ function isPublicIpv4(address: string) {
   return true;
 }
 
+function isPublicIpv6(address: string) {
+  const normalized = address.toLowerCase();
+  if (!/^[23][0-9a-f]{0,3}:/.test(normalized)) return false; // Only global-unicast 2000::/3 is accepted.
+  if (normalized.startsWith("2001:db8:") || normalized.startsWith("2001:10:") || normalized.startsWith("2001:20:") || normalized.startsWith("2001:2:")) return false;
+  return true;
+}
+
 export async function isSafeWebhookUrl(raw: string): Promise<boolean> {
   try {
     const url = new URL(raw);
@@ -65,7 +72,10 @@ export async function isSafeWebhookUrl(raw: string): Promise<boolean> {
     if (kind === 6) return false; // Reject IPv6 literals to avoid ambiguous mapped/private address forms.
     if (kind === 4) return isPublicIpv4(host);
     const records = await lookup(host, { all: true, verbatim: true });
-    return records.length > 0 && records.every(record => isIP(record.address) === 4 && isPublicIpv4(record.address));
+    return records.length > 0 && records.every(record => {
+      const family = isIP(record.address);
+      return family === 4 ? isPublicIpv4(record.address) : family === 6 ? isPublicIpv6(record.address) : false;
+    });
   } catch { return false; }
 }
 
