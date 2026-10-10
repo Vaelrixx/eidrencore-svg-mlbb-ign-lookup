@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
     if (!keyAuth) return jsonError("Invalid API key.", 401, "INVALID_API_KEY", requestId);
     if ("error" in keyAuth) {
       const code = keyAuth.status === 429 ? "API_QUOTA_EXCEEDED" : keyAuth.status === 503 ? "QUOTA_UNAVAILABLE" : "INVALID_API_KEY";
-      return jsonError(keyAuth.error, keyAuth.status, code, requestId);
+      return jsonError(typeof keyAuth.error === "string" ? keyAuth.error : "API key rejected.", keyAuth.status, code, requestId);
     }
   }
 
