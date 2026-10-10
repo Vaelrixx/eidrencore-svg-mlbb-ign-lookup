@@ -14,7 +14,7 @@ const PLAYER_ID_PATTERN = /^\d{4,20}$/;
 const ZONE_ID_PATTERN = /^\d{1,10}$/;
 
 type LookupDiagnostic = {
-  reason: "missing_config" | "http_error" | "network_or_timeout" | "unrecognized_response";
+  reason: "missing_config" | "http_error" | "network_or_timeout" | "unrecognized_response" | "provider_error";
   statusCode?: number;
 };
 
@@ -312,8 +312,8 @@ async function lookupCodashopFallback(playerId: string, zoneId: string): Promise
     if (!payload || typeof payload !== "object") return { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
 
     const data = payload as Record<string, unknown>;
-    if (String(data.RESULT_CODE ?? "") === "10001") return { kind: "rate_limited", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
-    if (String(data.errorCode ?? "") === "-200") return { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
+    if (String(data.RESULT_CODE ?? "") === "10001") return { kind: "rate_limited", diagnostic: { reason: "provider_error", statusCode: upstream.status } };
+    if (String(data.errorCode ?? "") === "-200") return { kind: "unavailable", diagnostic: { reason: "provider_error", statusCode: upstream.status } };
 
     // Provider error payloads are not proof that the player ID is absent.
     if (data.success !== true || Boolean(data.errorMsg)) {
