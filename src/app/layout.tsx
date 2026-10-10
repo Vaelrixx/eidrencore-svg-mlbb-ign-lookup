@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "EIDREN · MLBB Player Lookup",
-  description: "Resolve a Mobile Legends: Bang Bang in-game nickname from Player ID and Zone ID.",
+  title: "EIDREN · Developer Platform & MLBB Lookup",
+  description: "Resolve MLBB player nicknames and manage secure API keys, developer plans, and billing.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

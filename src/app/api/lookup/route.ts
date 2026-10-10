@@ -6,6 +6,7 @@ import { lookupIsan } from "./providers/isan.mjs";
 import { lookupRapidApi } from "./providers/rapidapi.mjs";
 import { logLookupSummary, observeProvider } from "./observability.mjs";
 import { enforceLookupRateLimit, persistLookupLog } from "./persistence.mjs";
+import { getUserFromRequest } from "@/lib/platform";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -199,6 +200,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // API keys are optional for the public lookup, but any Eidren key supplied
+  // in the Authorization header must validate and pass its monthly quota.
+  if ((request.headers.get("authorization") || "").startsWith("Bearer eid_")) {
+    const keyAuth = await getUserFromRequest(request);
+    if (!keyAuth) return jsonError("Invalid API key.", 401, "INVALID_API_KEY", requestId);
+    if ("error" in keyAuth) {
+      const status = typeof keyAuth.status === "number" ? keyAuth.status : 401;
+      const code = status === 429 ? "API_QUOTA_EXCEEDED" : status === 503 ? "QUOTA_UNAVAILABLE" : "INVALID_API_KEY";
+      return jsonError(typeof keyAuth.error === "string" ? keyAuth.error : "API key rejected.", status, code, requestId);
+    }
+  }
+
   // Structured telemetry deliberately excludes player IDs, zone IDs, nicknames,
   // upstream payloads, headers, and credentials.
   const lookupStartedAt = Date.now();
@@ -303,7 +316,7 @@ export async function GET(request: NextRequest) {
     zoneId: url.searchParams.get("zoneId") ?? "",
   });
   const forwardedHeaders = new Headers({ "Content-Type": "application/json" });
-  for (const name of ["x-real-ip", "x-forwarded-for"]) {
+  for (const name of ["x-real-ip", "x-forwarded-for", "authorization"]) {
     const value = request.headers.get(name);
     if (value) forwardedHeaders.set(name, value);
   }
