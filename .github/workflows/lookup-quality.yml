@@ -14,7 +14,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Run nickname regression tests
@@ -23,5 +23,7 @@ jobs:
         run: npm run test:provider-adapters
       - name: Run observability privacy tests
         run: npm run test:observability
+      - name: Lint application
+        run: npm run lint
       - name: Build Next.js app
         run: npm run build
