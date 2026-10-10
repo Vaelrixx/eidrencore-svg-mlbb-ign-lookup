@@ -61,3 +61,47 @@ test("request summary logs aggregate outcomes without identity fields", () => {
   assert.equal(lines[0].includes("SECRET_PLAYER_NICKNAME"), false);
   assert.equal(lines[0].includes("SECRET_PLAYER_NICKNAME"), false);
 });
+
+
+test("provider failure telemetry exposes bounded diagnostics without raw payloads", async () => {
+  const lines = [];
+  const result = await observeProvider({
+    requestId: "req-test-4",
+    provider: "rapidapi_id_game_checker",
+    lookup: async () => ({
+      kind: "unavailable",
+      diagnostic: {
+        reason: "http_error",
+        statusCode: 403,
+        rawPayload: "SECRET_UPSTREAM_BODY",
+        url: "https://private.example/?token=SECRET",
+      },
+    }),
+    logger: (line) => lines.push(line),
+  });
+
+  assert.equal(result.kind, "unavailable");
+  const event = JSON.parse(lines[0]);
+  assert.equal(event.failureReason, "http_error");
+  assert.equal(event.upstreamStatus, 403);
+  assert.equal(lines[0].includes("SECRET_UPSTREAM_BODY"), false);
+  assert.equal(lines[0].includes("private.example"), false);
+  assert.equal(lines[0].includes("SECRET"), false);
+});
+
+test("unrecognized responses are logged as a bounded failure category", async () => {
+  const lines = [];
+  await observeProvider({
+    requestId: "req-test-5",
+    provider: "isan_nickname_api",
+    lookup: async () => ({
+      kind: "unavailable",
+      diagnostic: { reason: "unrecognized_response", statusCode: 200 },
+    }),
+    logger: (line) => lines.push(line),
+  });
+
+  const event = JSON.parse(lines[0]);
+  assert.equal(event.failureReason, "unrecognized_response");
+  assert.equal(event.upstreamStatus, 200);
+});
