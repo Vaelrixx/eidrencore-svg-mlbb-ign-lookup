@@ -220,4 +220,4 @@ Workspace owners/admins can create and revoke workspace-scoped API keys. These k
 
 ### Operational maintenance
 
-Monitor outbox growth and webhook delivery error rates. A future retention policy should archive or remove old delivered events and delivery attempts according to your audit requirements. The worker is designed for bounded batches and retry recovery, but delivery remains at-least-once rather than exactly-once; webhook consumers must deduplicate by event ID.
+Monitor outbox growth and webhook delivery error rates. The migration schedules cleanup of delivered outbox rows after 30 days and dead-lettered rows and delivery attempts after 90 days. The worker is designed for bounded batches and retry recovery, but delivery remains at-least-once rather than exactly-once; webhook consumers must deduplicate by event ID.
