@@ -32,15 +32,10 @@ export async function POST(request: Request) {
   const order = await response.json().catch(() => null);
   if (!response.ok || !order?.id) return NextResponse.json({ error: "Razorpay could not create an order." }, { status: 502 });
   const active = current?.status === "active" && !!current.current_period_end && Date.parse(current.current_period_end) > Date.now();
-  const { error } = await admin.from("developer_subscriptions").upsert({
-    user_id: user.id,
-    plan_slug: current?.plan_slug || "free",
-    status: active ? "active" : "pending",
-    pending_order_id: order.id,
-    pending_plan_slug: slug,
-    pending_started_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  });
+  const pending = { status: active ? "active" : "pending", pending_order_id: order.id, pending_plan_slug: slug, pending_started_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+  const { error } = current
+    ? await admin.from("developer_subscriptions").update(pending).eq("user_id", user.id)
+    : await admin.from("developer_subscriptions").insert({ user_id: user.id, plan_slug: "free", ...pending });
   if (error) return NextResponse.json({ error: "Could not save checkout state." }, { status: 500 });
   return NextResponse.json({ keyId, orderId: order.id, amount: price, currency: "INR", name: "Eidren Developer Platform", description: `${plan?.name || fallback?.name || slug} monthly plan`, prefill: { email: user.email || "" } }, { headers: { "Cache-Control": "no-store" } });
 }
