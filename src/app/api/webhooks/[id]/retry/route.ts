@@ -21,15 +21,17 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     }
   }
   if (!allowed) return NextResponse.json({ error: "You do not have permission to replay this endpoint." }, { status: 403 });
-  const { data: failed, error: readError } = await admin.from("developer_webhook_outbox").select("id").eq("endpoint_id", id).is("delivered_at", null).not("dead_lettered_at", "is", null).limit(50);
+  const { data: failed, error: readError } = await admin.from("developer_webhook_outbox").select("id,replay_count").eq("endpoint_id", id).is("delivered_at", null).not("dead_lettered_at", "is", null).lt("replay_count", 100).limit(50);
   if (readError) return NextResponse.json({ error: "Could not load dead-lettered deliveries." }, { status: 500 });
-  const ids = (failed || []).map(job => job.id);
-  if (!ids.length) return NextResponse.json({ success: true, requeued: 0 });
-  const { data, error } = await admin.from("developer_webhook_outbox").update({
-    attempt: 0, available_at: new Date().toISOString(), locked_at: null, lock_token: null,
-    dead_lettered_at: null, last_error: null, response_status: null, response_ms: null,
-  }).in("id", ids).eq("endpoint_id", id).is("delivered_at", null).not("dead_lettered_at", "is", null).select("id");
-  if (error) return NextResponse.json({ error: "Could not requeue dead-lettered deliveries." }, { status: 500 });
-  await writeAuditLog({ userId: user.id, workspaceId: endpoint.workspace_id, action: "webhook.deliveries.replayed", resourceType: "webhook_endpoint", resourceId: id, metadata: { count: data?.length || 0 } });
-  return NextResponse.json({ success: true, requeued: data?.length || 0 });
+  let requeued = 0;
+  for (const job of failed || []) {
+    const { data: updated, error } = await admin.from("developer_webhook_outbox").update({
+      attempt: 0, replay_count: job.replay_count + 1, available_at: new Date().toISOString(), locked_at: null, lock_token: null,
+      dead_lettered_at: null, last_error: null, response_status: null, response_ms: null,
+    }).eq("id", job.id).eq("endpoint_id", id).is("delivered_at", null).not("dead_lettered_at", "is", null).select("id").maybeSingle();
+    if (error) return NextResponse.json({ error: "Could not requeue dead-lettered deliveries." }, { status: 500 });
+    if (updated) requeued++;
+  }
+  await writeAuditLog({ userId: user.id, workspaceId: endpoint.workspace_id, action: "webhook.deliveries.replayed", resourceType: "webhook_endpoint", resourceId: id, metadata: { count: requeued } });
+  return NextResponse.json({ success: true, requeued });
 }
