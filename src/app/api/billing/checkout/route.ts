@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   const price = Number(plan?.price_paise ?? fallback?.price_paise ?? 0);
   const enabled = plan?.enabled ?? fallback?.enabled ?? false;
   if (!enabled || price < 100) return NextResponse.json({ error: "This paid plan is not enabled yet. Set its price and enable it in the developer_plans table." }, { status: 409 });
-  const { data: current } = await admin.from("developer_subscriptions").select("plan_slug,status,current_period_end,pending_order_id,pending_started_at").eq("user_id", user.id).maybeSingle();
+  const { data: current } = await admin.from("developer_subscriptions").select("plan_slug,status,current_period_end,pending_order_id,pending_plan_slug,pending_started_at").eq("user_id", user.id).maybeSingle();
   if (current?.pending_order_id) {
     if (current.pending_plan_slug !== slug) return NextResponse.json({ error: "A different plan checkout is pending. Resume or finish that checkout first." }, { status: 409 });
     const existingResponse = await fetch("https://api.razorpay.com/v1/orders/" + encodeURIComponent(current.pending_order_id), {
