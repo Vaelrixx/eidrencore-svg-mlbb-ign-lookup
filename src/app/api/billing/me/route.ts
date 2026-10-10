@@ -10,7 +10,7 @@ export async function GET() {
   const paidIsCurrent = subscription?.status === "active" && !!subscription.current_period_end && Date.parse(subscription.current_period_end) > Date.now();
   const plan = paidIsCurrent ? subscription.plan_slug : "free";
   const { data: planRow } = await admin.from("developer_plans").select("monthly_limit").eq("slug", plan).maybeSingle();
-  const { data: keys } = await admin.from("api_keys").select("id").eq("user_id", user.id).is("revoked_at", null);
+  const { data: keys } = await admin.from("api_keys").select("id").eq("user_id", user.id).is("workspace_id", null).is("revoked_at", null);
   const keyIds = (keys || []).map(key => key.id);
   const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString().slice(0,10);
   let monthlyUsage = 0;

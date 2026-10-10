@@ -23,22 +23,27 @@ export async function getUserFromRequest(request: Request) {
     if (token.startsWith("eid_")) {
       const admin = createAdminClient();
       const { data: key, error } = await admin.from("api_keys")
-        .select("id,user_id,plan_slug,revoked_at")
+        .select("id,user_id,workspace_id,plan_slug,revoked_at")
         .eq("key_hash", hashApiKey(token)).maybeSingle();
       if (error || !key || key.revoked_at) return { error: "Invalid or revoked API key.", status: 401 as const };
-      const { data: subscription } = await admin.from("developer_subscriptions").select("plan_slug,status,current_period_end").eq("user_id", key.user_id).maybeSingle();
-      const paidIsCurrent = subscription?.status === "active" && subscription.plan_slug === key.plan_slug && !!subscription.current_period_end && Date.parse(subscription.current_period_end) > Date.now();
-      const planSlug = key.plan_slug === "free" ? "free" : paidIsCurrent ? key.plan_slug : "free";
+      const subscriptionResult = key.workspace_id
+        ? await admin.from("developer_workspace_subscriptions").select("plan_slug,status,current_period_end").eq("workspace_id", key.workspace_id).maybeSingle()
+        : await admin.from("developer_subscriptions").select("plan_slug,status,current_period_end").eq("user_id", key.user_id).maybeSingle();
+      const subscription = subscriptionResult.data;
+      const paidIsCurrent = subscription?.status === "active" && !!subscription.current_period_end && Date.parse(subscription.current_period_end) > Date.now();
+      const planSlug = paidIsCurrent ? subscription.plan_slug : "free";
       if (planSlug !== key.plan_slug) await admin.from("api_keys").update({ plan_slug: planSlug }).eq("id", key.id);
       const { data: plan } = await admin.from("developer_plans").select("monthly_limit").eq("slug", planSlug).maybeSingle();
       const fallback = PLAN_FALLBACKS.find((p) => p.slug === planSlug);
       const limit = Number(plan?.monthly_limit ?? fallback?.monthly_limit ?? 100);
-      const { data: quota, error: quotaError } = await admin.rpc("consume_developer_api_quota", { p_key_id: key.id, p_monthly_limit: limit });
+      const { data: quota, error: quotaError } = key.workspace_id
+        ? await admin.rpc("consume_workspace_api_quota", { p_workspace_id: key.workspace_id, p_key_id: key.id, p_monthly_limit: limit })
+        : await admin.rpc("consume_developer_api_quota", { p_key_id: key.id, p_monthly_limit: limit });
       if (quotaError) return { error: "API quota service is temporarily unavailable.", status: 503 as const };
       const result = Array.isArray(quota) ? quota[0] : quota;
       if (!result?.allowed) return { error: "Monthly API key quota exceeded.", status: 429 as const, remaining: 0 };
       await admin.from("api_keys").update({ last_used_at: new Date().toISOString() }).eq("id", key.id);
-      return { userId: key.user_id, keyId: key.id, remaining: result.remaining as number };
+      return { userId: key.user_id, keyId: key.id, workspaceId: key.workspace_id as string | null, remaining: result.remaining as number };
     }
   }
   return null;
