@@ -26,8 +26,12 @@ export async function getUserFromRequest(request: Request) {
         .select("id,user_id,plan_slug,revoked_at")
         .eq("key_hash", hashApiKey(token)).maybeSingle();
       if (error || !key || key.revoked_at) return { error: "Invalid or revoked API key.", status: 401 as const };
-      const { data: plan } = await admin.from("developer_plans").select("monthly_limit").eq("slug", key.plan_slug).maybeSingle();
-      const fallback = PLAN_FALLBACKS.find((p) => p.slug === key.plan_slug);
+      const { data: subscription } = await admin.from("developer_subscriptions").select("plan_slug,status,current_period_end").eq("user_id", key.user_id).maybeSingle();
+      const paidIsCurrent = subscription?.status === "active" && subscription.plan_slug === key.plan_slug && !!subscription.current_period_end && Date.parse(subscription.current_period_end) > Date.now();
+      const planSlug = key.plan_slug === "free" ? "free" : paidIsCurrent ? key.plan_slug : "free";
+      if (planSlug !== key.plan_slug) await admin.from("api_keys").update({ plan_slug: planSlug }).eq("id", key.id);
+      const { data: plan } = await admin.from("developer_plans").select("monthly_limit").eq("slug", planSlug).maybeSingle();
+      const fallback = PLAN_FALLBACKS.find((p) => p.slug === planSlug);
       const limit = Number(plan?.monthly_limit ?? fallback?.monthly_limit ?? 100);
       const { data: quota, error: quotaError } = await admin.rpc("consume_developer_api_quota", { p_key_id: key.id, p_monthly_limit: limit });
       if (quotaError) return { error: "API quota service is temporarily unavailable.", status: 503 as const };
