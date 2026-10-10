@@ -2,6 +2,7 @@ import { performance } from "node:perf_hooks";
 
 const OUTCOMES = new Set(["success", "not_found", "rate_limited", "unavailable"]);
 const DIAGNOSTIC_REASONS = new Set(["missing_config", "http_error", "network_or_timeout", "unrecognized_response", "provider_error"]);
+const RESPONSE_KINDS = new Set(["id_game_checker_schema", "nested_status_error", "gateway_message_json", "other_json_object", "json_array", "empty_or_non_json"]);
 
 /**
  * Emit low-cardinality provider telemetry. Never log IDs, nicknames, payloads,
@@ -28,6 +29,9 @@ export async function observeProvider({ requestId, provider, lookup, logger = co
     ...(DIAGNOSTIC_REASONS.has(result?.diagnostic?.reason) ? { failureReason: result.diagnostic.reason } : {}),
     ...(Number.isInteger(result?.diagnostic?.statusCode) && result.diagnostic.statusCode >= 100 && result.diagnostic.statusCode <= 599
       ? { upstreamStatus: result.diagnostic.statusCode }
+      : {}),
+    ...(RESPONSE_KINDS.has(result?.diagnostic?.responseKind)
+      ? { providerResponseKind: result.diagnostic.responseKind }
       : {}),
   };
 
