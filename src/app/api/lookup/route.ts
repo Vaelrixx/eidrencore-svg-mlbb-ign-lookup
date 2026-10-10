@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cleanNickname, confirmedNickname, isUsableNickname } from "./nickname-validation.mjs";
+import { resolveLookupWithFallbacks } from "./resolve-lookup.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -375,26 +376,22 @@ export async function POST(request: NextRequest) {
     return jsonError("Enter a numeric Player ID (4–20 digits) and Zone ID (1–10 digits).", 400, "INVALID_ID");
   }
 
-  // Fast path: if the primary provider confirms the identity, return immediately.
-  // Avoid calling six extra upstreams on every successful request. If primary
-  // fails, query fallback providers concurrently and retain their stable priority.
-  const primary = await lookupPrimary(playerId, zoneId);
-  if (primary.kind === "success") return jsonSuccess(primary, playerId, zoneId);
-
-  const fallbacks = await Promise.all([
-    lookupRapidApi(playerId, zoneId),
-    lookupIsan(playerId, zoneId),
-    lookupEliteDias(playerId, zoneId),
-    lookupSmileOne(playerId, zoneId),
-    lookupDuniaGames(playerId, zoneId),
-    lookupCodashopFallback(playerId, zoneId),
-  ]);
+  // Primary-first lookup with deterministic, concurrent fallback takeover.
+  // This orchestration is separately unit-tested with a simulated primary outage.
+  const resolution = await resolveLookupWithFallbacks(
+    () => lookupPrimary(playerId, zoneId),
+    [
+      () => lookupRapidApi(playerId, zoneId),
+      () => lookupIsan(playerId, zoneId),
+      () => lookupEliteDias(playerId, zoneId),
+      () => lookupSmileOne(playerId, zoneId),
+      () => lookupDuniaGames(playerId, zoneId),
+      () => lookupCodashopFallback(playerId, zoneId),
+    ],
+  );
+  const { primary, fallbacks, confirmed } = resolution;
+  if (confirmed?.kind === "success") return jsonSuccess(confirmed, playerId, zoneId);
   const attempts: LookupAttempt[] = [primary, ...fallbacks];
-
-  const confirmed = fallbacks.find((attempt) => attempt.kind === "success");
-  if (confirmed && confirmed.kind === "success") {
-    return jsonSuccess(confirmed, playerId, zoneId);
-  }
 
   if (attempts.every((attempt) => attempt.kind === "not_found")) {
     return jsonError(
