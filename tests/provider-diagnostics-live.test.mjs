@@ -43,6 +43,7 @@ async function probeHttp({ provider, url, init }) {
       outcome: classify(provider, response, payload),
       upstreamStatus: response.status,
       responseShape: safePayloadShape(payload, response.headers.get("content-type")),
+      ...(!confirmedNickname(payload) ? safeProviderErrorMetadata(payload) : {}),
       durationMs: Math.round(performance.now() - startedAt),
     };
   } catch {
@@ -72,6 +73,34 @@ function safePayloadShape(payload, rawContentType) {
     }
   }
   return { contentType, payloadType, topLevelKeys: safeKeys(payload), nestedKeys };
+}
+
+
+function safeProviderErrorMetadata(payload) {
+  const status = payload && typeof payload === "object" && !Array.isArray(payload)
+    ? payload.status
+    : null;
+  const detail = status && typeof status === "object" && !Array.isArray(status)
+    ? status
+    : null;
+  const rawCode = detail?.code;
+  const providerCode = typeof rawCode === "number" && Number.isFinite(rawCode)
+    ? String(rawCode).slice(0, 16)
+    : typeof rawCode === "string" && /^[A-Za-z0-9_-]{1,24}$/.test(rawCode)
+      ? rawCode
+      : null;
+  const message = typeof detail?.message === "string" ? detail.message.toLowerCase() : "";
+  let errorCategory = null;
+  if (/not found|invalid id|does not exist|no such account/.test(message)) errorCategory = "not_found";
+  else if (/parameter|required|missing field|invalid request|invalid body|malformed|validation/.test(message)) errorCategory = "request_validation";
+  else if (/rate limit|too many requests|throttl/.test(message)) errorCategory = "rate_limited";
+  else if (/temporar|unavailable|maintenance|try again/.test(message)) errorCategory = "provider_unavailable";
+  else if (/internal|unexpected|server error/.test(message)) errorCategory = "provider_internal_error";
+  else if (message) errorCategory = "other";
+  return {
+    ...(providerCode ? { providerCode } : {}),
+    ...(errorCategory ? { providerErrorCategory: errorCategory } : {}),
+  };
 }
 
 function standardHeaders(origin, referer, contentType) {
