@@ -82,3 +82,44 @@ Run `npm run test:provider-sweep:live` or trigger the **Live provider diagnostic
 The sweep logs provider labels, sanitized outcome categories, HTTP status codes, durations, allowlisted response-shape/key names, and bounded provider-code/error-category fields. It never prints IDs, nicknames, response values, message text, URLs, request headers, or credentials. It intentionally skips Codashop's `initPayment` endpoint because that can create a checkout session.
 
 The older Dunia Games reference variant is taken from a public unofficial implementation at [namtxs/DuniaGames](https://github.com/namtxs/DuniaGames/blob/main/src/duniaGames.php). It is only probed by the diagnostic workflow; production keeps its existing parameters unless a known-valid test proves the alternate set works.
+
+
+## Developer platform (new)
+
+The developer console lives at `/login` and `/dashboard`. It supports email/password and OAuth sign-in with Google, GitHub, Discord, and Telegram OpenID Connect. Social login is only active after the provider credentials and callback URLs below are configured.
+
+### Required Railway environment variables
+
+- `NEXT_PUBLIC_SUPABASE_URL` or `SUPABASE_URL`: the Supabase project URL.
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (preferred) or `NEXT_PUBLIC_SUPABASE_ANON_KEY`: public/publishable key for browser and cookie-based auth.
+- `SUPABASE_SECRET_KEY` (preferred) or `SUPABASE_SERVICE_ROLE_KEY`: server-only key for API-key management and billing. Never prefix this key with `NEXT_PUBLIC_`.
+- `TELEGRAM_CLIENT_ID` (or `TELEGRAM_BOT_ID`) and `TELEGRAM_CLIENT_SECRET`: Telegram Login credentials from @BotFather. The secret stays server-side.
+- `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET`: Razorpay Checkout and webhook credentials.
+- Optional plan defaults: `RAZORPAY_PRO_PRICE_PAISE`, `RAZORPAY_BUSINESS_PRICE_PAISE`, `PLAN_PRO_MONTHLY_LIMIT`, `PLAN_BUSINESS_MONTHLY_LIMIT`. The database plan catalog is authoritative after migration.
+
+### Provider dashboard configuration
+
+- In Supabase Auth > URL Configuration, set the Site URL to the Railway production URL and add `https://nexus-mlbb-ign-lookup-production.up.railway.app/auth/callback` to allowed redirect URLs. Also allow the Telegram completion URL `https://nexus-mlbb-ign-lookup-production.up.railway.app/auth/telegram/complete`.
+- In Supabase Auth > Providers, enable Google, GitHub, and Discord, and enter each provider's client ID/secret. Register the Supabase callback URL shown in that provider's settings (usually `https://<project-ref>.supabase.co/auth/v1/callback`) with each OAuth provider. The app callback is `/auth/callback`.
+- For Telegram, use @BotFather > Login Widget to register the production domain and the redirect URI `https://nexus-mlbb-ign-lookup-production.up.railway.app/api/auth/telegram/callback`. Use the provided Client ID and Client Secret as `TELEGRAM_CLIENT_ID` and `TELEGRAM_CLIENT_SECRET`. The Telegram OIDC flow uses state, nonce, PKCE, and server-side ID-token signature validation.
+- In Razorpay, configure the webhook URL `https://nexus-mlbb-ign-lookup-production.up.railway.app/api/billing/webhook` and subscribe to `payment.captured` and `order.paid`. Copy its webhook secret to Railway. Use test-mode credentials before going live.
+
+### Database and plans
+
+Apply `supabase/migrations/20261010210000_developer_platform.sql` after reviewing it. It creates the plan catalog, hashed API-key records, subscription state, monthly quota counters, and a quota-consumption RPC. All platform tables have RLS enabled and direct client grants revoked; server routes use the server-only Supabase secret and verify the signed-in user before acting on their records.
+
+The Free plan starts at 100 API calls/month. Paid plans are disabled by default and have zero prices until you configure them. In Supabase SQL Editor, set the price in paise and enable the chosen plan, for example:
+
+```sql
+update public.developer_plans
+set price_paise = 49900, enabled = true, monthly_limit = 10000, updated_at = now()
+where slug = 'pro';
+
+update public.developer_plans
+set price_paise = 149900, enabled = true, monthly_limit = 100000, updated_at = now()
+where slug = 'business';
+```
+
+These example prices are illustrative only; choose your actual pricing before enabling paid checkout. Razorpay verifies the checkout signature and fetches the payment to confirm it is captured before activating the plan. The webhook signature is independently verified. API keys are generated from cryptographic randomness, stored as SHA-256 hashes, shown once, and can be revoked. Paid keys receive monthly quotas from the active plan; public lookup requests without an Eidren API key remain available under the existing IP rate limit.
+
+Telegram sign-in creates an internal Supabase user with a non-routable synthetic email because Telegram does not provide an email by default. Users should not rely on email password recovery for Telegram-only accounts; account linking and account deletion UI are not included in this first platform pass.
