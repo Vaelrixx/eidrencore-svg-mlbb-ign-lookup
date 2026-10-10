@@ -112,7 +112,7 @@ test("lookupRapidApi parses a structured 404 body rather than discarding it", as
   try {
     const result = await lookupRapidApi("1114917746", "13486");
     assert.deepEqual(result, { kind: "not_found" });
-    assert.match(requestedUrl, /\/mlbb\/1114917746\/13486$/);
+    assert.match(requestedUrl, /\/mobile-legends\/1114917746\/13486$/);
     assert.equal(requestedKey, "unit-test-key");
   } finally {
     globalThis.fetch = previousFetch;

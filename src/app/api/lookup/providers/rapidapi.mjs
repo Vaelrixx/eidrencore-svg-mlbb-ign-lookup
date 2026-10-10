@@ -113,7 +113,7 @@ export async function lookupRapidApi(playerId, zoneId) {
   }
 
   const endpoint =
-    "https://id-game-checker.p.rapidapi.com/mlbb/" +
+    "https://id-game-checker.p.rapidapi.com/mobile-legends/" +
     encodeURIComponent(playerId) +
     "/" +
     encodeURIComponent(zoneId);
