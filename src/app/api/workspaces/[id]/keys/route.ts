@@ -32,7 +32,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const body = await request.json().catch(() => null);
   const name = typeof body?.name === "string" ? body.name.trim().replace(/\s+/g, " ").slice(0, 80) : "";
   if (name.length < 2) return NextResponse.json({ error: "API key name must be at least 2 characters." }, { status: 400 });
-  const { admin, role } = await workspaceAccess(id, user.id);
+  const { admin, role, ownerUserId } = await workspaceAccess(id, user.id);
   if (!role) return NextResponse.json({ error: "Workspace not found or access denied." }, { status: 404 });
   if (!["owner", "admin"].includes(role)) return NextResponse.json({ error: "Only workspace owners and admins can create keys." }, { status: 403 });
   const { count } = await admin.from("api_keys").select("id", { count: "exact", head: true }).eq("workspace_id", id).is("revoked_at", null);
