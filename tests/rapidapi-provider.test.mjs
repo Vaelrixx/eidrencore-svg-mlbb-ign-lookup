@@ -33,7 +33,7 @@ test("an HTTP 404 without the documented body remains unavailable", () => {
     }),
     {
       kind: "unavailable",
-      diagnostic: { reason: "http_error", statusCode: 404, responseKind: "empty_or_non_json" },
+      diagnostic: { reason: "http_error", statusCode: 404, responseKind: "id_game_checker_schema" },
     },
   );
 });
