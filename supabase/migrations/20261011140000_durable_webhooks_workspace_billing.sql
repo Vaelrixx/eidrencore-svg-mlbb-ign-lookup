@@ -1,4 +1,6 @@
 -- Durable webhook outbox and workspace-owned subscriptions.
+create extension if not exists pg_cron;
+create extension if not exists pg_net with schema extensions;
 alter table public.developer_subscriptions add column if not exists pending_order_id text unique;
 alter table public.developer_subscriptions add column if not exists pending_plan_slug text references public.developer_plans(slug);
 alter table public.developer_subscriptions add column if not exists pending_started_at timestamptz;
@@ -26,6 +28,8 @@ create index if not exists developer_webhook_outbox_due_idx
   where delivered_at is null and dead_lettered_at is null;
 create index if not exists developer_webhook_outbox_endpoint_idx
   on public.developer_webhook_outbox(endpoint_id, created_at desc);
+create unique index if not exists developer_webhook_deliveries_event_attempt_idx
+  on public.developer_webhook_deliveries(endpoint_id, event_id, attempt);
 
 create table if not exists public.developer_workspace_subscriptions (
   workspace_id uuid primary key references public.developer_workspaces(id) on delete cascade,
