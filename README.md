@@ -71,3 +71,10 @@ Run `npm run test:observability` to check telemetry shape, verify identity field
 ## Live fallback takeover smoke test
 
 Run `npm run test:lookup:live` to simulate an unavailable primary and call the real Isan secondary adapter through the same resolver used by the API route. It reports the selected source, returned nickname, and elapsed time. This test requires network access and a working response from the third-party Isan service; it is separate from deterministic unit tests and does not modify production.
+
+
+## Manual live provider sweep
+
+Run `npm run test:provider-sweep:live` or trigger the **Live provider diagnostic sweep** workflow in GitHub Actions. It probes the known-valid test fixture against the Isan secondary adapter, EliteDias, Smile.One, and both the current form-encoded and JSON inquiry formats for Dunia Games. ID Game Checker is probed only when `RAPIDAPI_KEY` or `RAPIDAPI_APP_TOKEN` is configured in the workflow environment; production's Railway secret is not copied into GitHub Actions.
+
+The sweep logs only provider labels, sanitized outcome categories, HTTP status codes, and durations. It never prints IDs, nicknames, response bodies, URLs, request headers, or credentials. It intentionally skips Codashop's `initPayment` endpoint because that can create a checkout session.
