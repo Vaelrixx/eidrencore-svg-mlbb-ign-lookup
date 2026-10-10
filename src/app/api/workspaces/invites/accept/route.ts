@@ -16,10 +16,14 @@ export async function POST(request: Request) {
   const tokenHash = createHash("sha256").update(token).digest("hex");
   const { data: invite } = await admin.from("developer_workspace_invites").select("id,workspace_id,email,role,expires_at,accepted_at").eq("token_hash", tokenHash).maybeSingle();
   if (!invite || invite.accepted_at || Date.parse(invite.expires_at) <= Date.now() || invite.email.toLowerCase() !== user.email.toLowerCase()) return NextResponse.json({ error: "Invitation is expired, already used, or addressed to another email." }, { status: 403 });
-  const { error: memberError } = await admin.from("developer_workspace_members").upsert({ workspace_id: invite.workspace_id, user_id: user.id, role: invite.role, joined_at: new Date().toISOString() }, { onConflict: "workspace_id,user_id" });
-  if (memberError) return NextResponse.json({ error: "Could not join workspace." }, { status: 500 });
-  const { error: inviteError } = await admin.from("developer_workspace_invites").update({ accepted_at: new Date().toISOString() }).eq("id", invite.id).is("accepted_at", null);
-  if (inviteError) return NextResponse.json({ error: "Joined workspace but could not finalize invitation." }, { status: 500 });
+  const acceptedAt = new Date().toISOString();
+  const { data: claimedInvite, error: claimError } = await admin.from("developer_workspace_invites").update({ accepted_at: acceptedAt }).eq("id", invite.id).is("accepted_at", null).gt("expires_at", acceptedAt).select("id").maybeSingle();
+  if (claimError || !claimedInvite) return NextResponse.json({ error: "Invitation was already used or expired. Request a new invitation." }, { status: 409 });
+  const { error: memberError } = await admin.from("developer_workspace_members").upsert({ workspace_id: invite.workspace_id, user_id: user.id, role: invite.role, joined_at: acceptedAt }, { onConflict: "workspace_id,user_id" });
+  if (memberError) {
+    await admin.from("developer_workspace_invites").update({ accepted_at: null }).eq("id", invite.id).eq("accepted_at", acceptedAt);
+    return NextResponse.json({ error: "Could not join workspace." }, { status: 500 });
+  }
   await writeAuditLog({ userId: user.id, workspaceId: invite.workspace_id, action: "workspace.invitation.accepted", resourceType: "workspace_invite", resourceId: invite.id });
   return NextResponse.json({ success: true, workspaceId: invite.workspace_id });
 }
