@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Swords, Chrome, Github, MessageCircle, Send, LoaderCircle, ArrowLeft } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const search = useSearchParams();
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [email, setEmail] = useState("");
@@ -31,7 +30,7 @@ export default function LoginPage() {
         : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard` } });
       if (result.error) throw result.error;
       if (mode === "signup" && !result.data.session) { setError("Check your email to confirm your account, then sign in."); setBusy(""); return; }
-      router.push(search.get("next") || "/dashboard"); router.refresh();
+      const nextPath = new URLSearchParams(window.location.search).get("next"); router.push(nextPath?.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/dashboard"); router.refresh();
     } catch (e) { setError(e instanceof Error ? e.message : "Authentication failed."); }
     finally { setBusy(""); }
   }
