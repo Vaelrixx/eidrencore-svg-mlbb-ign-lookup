@@ -108,7 +108,7 @@ The developer console lives at `/login` and `/dashboard`. It supports email/pass
 
 Apply `supabase/migrations/20261010210000_developer_platform.sql` after reviewing it. It creates the plan catalog, hashed API-key records, subscription state, monthly quota counters, and a quota-consumption RPC. All platform tables have RLS enabled and direct client grants revoked; server routes use the server-only Supabase secret and verify the signed-in user before acting on their records.
 
-The Free plan starts at 100 API calls/month. Paid plans are disabled by default and have zero prices until you configure them. In Supabase SQL Editor, set the price in paise and enable the chosen plan, for example:
+The Free plan starts at 100 API calls/month. Paid plans are disabled by default and have zero prices until you configure them. The current Razorpay MVP grants a verified 30-day access period after a one-time payment; it does not automatically renew or charge a saved payment method. In Supabase SQL Editor, set the price in paise and enable the chosen plan, for example:
 
 ```sql
 update public.developer_plans
