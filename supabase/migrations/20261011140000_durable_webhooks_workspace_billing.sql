@@ -155,6 +155,23 @@ $function$;
 revoke all on function public.consume_workspace_api_quota(uuid, uuid, integer) from public, anon, authenticated;
 grant execute on function public.consume_workspace_api_quota(uuid, uuid, integer) to service_role;
 
+-- Dispatch due webhook jobs every minute using secrets stored in Supabase Vault.
+select cron.schedule(
+  'eidren-webhook-dispatch',
+  '* * * * *',
+  $dispatch$
+    select net.http_post(
+      url := (select decrypted_secret from vault.decrypted_secrets where name = 'eidren_webhook_worker_url'),
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'eidren_webhook_worker_secret')
+      ),
+      body := '{"batchSize":10}'::jsonb,
+      timeout_milliseconds := 60000
+    );
+  $dispatch$
+);
+
 -- Bound storage growth while retaining enough history for investigations.
 select cron.schedule(
   'eidren-webhook-outbox-retention',
