@@ -3,6 +3,14 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
+
+type RazorpayWebhookEvent = {
+  event?: string;
+  payload?: {
+    payment?: { entity?: { id?: string; order_id?: string; status?: string } };
+    order?: { entity?: { id?: string } };
+  };
+};
 export async function POST(request: Request) {
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
   const signature = request.headers.get("x-razorpay-signature") || "";
@@ -12,8 +20,8 @@ export async function POST(request: Request) {
   let actual: Buffer;
   try { actual = Buffer.from(signature, "hex"); } catch { return NextResponse.json({ error: "Invalid signature." }, { status: 400 }); }
   if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return NextResponse.json({ error: "Invalid signature." }, { status: 400 });
-  let event: any;
-  try { event = JSON.parse(raw); } catch { return NextResponse.json({ error: "Invalid JSON." }, { status: 400 }); }
+  let event: RazorpayWebhookEvent;
+  try { event = JSON.parse(raw) as RazorpayWebhookEvent; } catch { return NextResponse.json({ error: "Invalid JSON." }, { status: 400 }); }
   if (!["payment.captured", "order.paid"].includes(event?.event)) return NextResponse.json({ received: true });
   const payment = event?.payload?.payment?.entity;
   const order = event?.payload?.order?.entity;
