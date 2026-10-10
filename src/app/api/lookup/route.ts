@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cleanNickname, confirmedNickname, isUsableNickname } from "./nickname-validation.mjs";
 import { resolveLookupWithFallbacks } from "./resolve-lookup.mjs";
+import { lookupIsan } from "./providers/isan.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -138,34 +139,6 @@ async function lookupRapidApi(playerId: string, zoneId: string): Promise<LookupA
     const nickname = confirmedNickname(payload);
     if (nickname) {
       return { kind: "success", nickname, source: "rapidapi_id_game_checker" };
-    }
-    if (explicitlyNotFound(payload)) return { kind: "not_found" };
-    return { kind: "unavailable" };
-  } catch {
-    return { kind: "unavailable" };
-  }
-}
-
-/** Public community nickname endpoint, as an independent fallback host/path. */
-async function lookupIsan(playerId: string, zoneId: string): Promise<LookupAttempt> {
-  const query = new URLSearchParams({ id: playerId, server: zoneId, decode: "false" });
-  try {
-    const upstream = await fetch(`https://api.isan.eu.org/nickname/ml?${query.toString()}`, {
-      method: "GET",
-      headers: { Accept: "application/json", "User-Agent": "EidrenMLBBLookup/1.0" },
-      cache: "no-store",
-      signal: AbortSignal.timeout(5000),
-    });
-
-    if (upstream.status === 429) return { kind: "rate_limited" };
-    if (upstream.status === 404 || upstream.status === 400) return { kind: "unavailable" };
-    if (!upstream.ok) return { kind: "unavailable" };
-
-    const payload: unknown = await upstream.json().catch(() => null);
-    const data = record(payload);
-    const nickname = confirmedNickname(payload);
-    if (data?.success === true && nickname) {
-      return { kind: "success", nickname, source: "isan_nickname_api" };
     }
     if (explicitlyNotFound(payload)) return { kind: "not_found" };
     return { kind: "unavailable" };
