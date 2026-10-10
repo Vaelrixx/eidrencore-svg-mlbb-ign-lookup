@@ -22,27 +22,27 @@ begin
     raise exception 'invalid rate limit arguments' using errcode = '22023';
   end if;
 
-  insert into public.usage_limits (client_hash, window_start, request_count, updated_at)
+  insert into public.usage_limits as current_limit (client_hash, window_start, request_count, updated_at)
   values (p_client_hash, v_now, 1, v_now)
   on conflict (client_hash) do update
   set
     window_start = case
-      when public.usage_limits.window_start <= v_now - pg_catalog.make_interval(secs => p_window_seconds)
+      when current_limit.window_start <= v_now - pg_catalog.make_interval(secs => p_window_seconds)
         then v_now
-      else public.usage_limits.window_start
+      else current_limit.window_start
     end,
     request_count = case
-      when public.usage_limits.window_start <= v_now - pg_catalog.make_interval(secs => p_window_seconds)
+      when current_limit.window_start <= v_now - pg_catalog.make_interval(secs => p_window_seconds)
         then 1
-      else pg_catalog.least(public.usage_limits.request_count + 1, p_max_requests + 1)
+      else LEAST(current_limit.request_count + 1, p_max_requests + 1)
     end,
     updated_at = v_now
-  returning public.usage_limits.window_start, public.usage_limits.request_count
+  returning current_limit.window_start, current_limit.request_count
   into v_window_start, v_request_count;
 
   return query select
     v_request_count <= p_max_requests,
-    pg_catalog.greatest(0, p_max_requests - v_request_count),
+    GREATEST(0, p_max_requests - v_request_count),
     v_window_start + pg_catalog.make_interval(secs => p_window_seconds);
 end;
 $function$;
