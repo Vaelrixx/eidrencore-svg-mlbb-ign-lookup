@@ -42,6 +42,7 @@ export default function LoginPage() {
         <div className="auth-or"><span/> OR CONTINUE WITH EMAIL <span/></div>
         <form className="auth-form" onSubmit={emailAuth}><label htmlFor="auth-email">EMAIL ADDRESS</label><input id="auth-email" type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" required/><label htmlFor="auth-password">PASSWORD</label><input id="auth-password" type="password" autoComplete={mode === "signin" ? "current-password" : "new-password"} minLength={8} value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 8 characters" required/><button className="submit" disabled={!!busy} type="submit">{busy === "email" ? <><LoaderCircle className="spin" size={16}/> Please wait…</> : mode === "signin" ? "Sign in" : "Create account"}</button></form>
         {error && <p className="platform-error" role="alert">{error}</p>}
+        {mode === "signin" && <div className="auth-recovery-link"><Link href="/forgot-password">Forgot your password?</Link></div>}
         <p className="auth-switch">{mode === "signin" ? "New to Eidren?" : "Already have an account?"} <button onClick={()=>{setMode(mode==="signin"?"signup":"signin");setError("");}}>{mode==="signin"?"Create an account":"Sign in"}</button></p>
         <p className="auth-legal">By continuing, you agree to use the unofficial MLBB community API responsibly. Never share your API key.</p>
       </div>
