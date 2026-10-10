@@ -21,16 +21,18 @@ export async function GET() {
   const fallback = PLAN_FALLBACKS.find(plan => plan.slug === planSlug);
   const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString().slice(0, 10);
   const keyIds = (keyRows || []).map(key => key.id);
+  const activeKeyIds = (keyRows || []).filter(key => !key.revoked_at).map(key => key.id);
   let monthlyUsage = 0;
   let dailyRows: { usage_day: string; request_count: number; api_key_id: string }[] = [];
-  if (keyIds.length) {
-    const [{ data: monthlyRows }, dailyResult] = await Promise.all([
-      admin.from("developer_api_usage").select("request_count").in("api_key_id", keyIds).eq("month_start", monthStart),
-      admin.from("developer_api_usage_daily").select("api_key_id,usage_day,request_count").in("api_key_id", keyIds).gte("usage_day", new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10)).order("usage_day", { ascending: true }),
-    ]);
-    monthlyUsage = (monthlyRows || []).reduce((sum, row) => sum + Number(row.request_count || 0), 0);
-    dailyRows = (dailyResult.data || []) as typeof dailyRows;
-  }
+  const monthlyQuery = activeKeyIds.length
+    ? admin.from("developer_api_usage").select("request_count").in("api_key_id", activeKeyIds).eq("month_start", monthStart)
+    : Promise.resolve({ data: [], error: null });
+  const dailyQuery = keyIds.length
+    ? admin.from("developer_api_usage_daily").select("api_key_id,usage_day,request_count").in("api_key_id", keyIds).gte("usage_day", new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10)).order("usage_day", { ascending: true })
+    : Promise.resolve({ data: [], error: null });
+  const [{ data: monthlyRows }, dailyResult] = await Promise.all([monthlyQuery, dailyQuery]);
+  monthlyUsage = (monthlyRows || []).reduce((sum, row) => sum + Number(row.request_count || 0), 0);
+  dailyRows = (dailyResult.data || []) as typeof dailyRows;
   const daily = Array.from({ length: 14 }, (_, index) => {
     const day = new Date(Date.now() - (13 - index) * 86400000);
     const label = day.toISOString().slice(0, 10);
