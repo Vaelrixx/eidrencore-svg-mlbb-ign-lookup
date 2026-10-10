@@ -7,7 +7,8 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   const admin = createAdminClient();
   const { data: subscription } = await admin.from("developer_subscriptions").select("plan_slug,status,current_period_end").eq("user_id", user.id).maybeSingle();
-  const plan = subscription?.status === "active" ? subscription.plan_slug : "free";
+  const paidIsCurrent = subscription?.status === "active" && !!subscription.current_period_end && Date.parse(subscription.current_period_end) > Date.now();
+  const plan = paidIsCurrent ? subscription.plan_slug : "free";
   const { data: planRow } = await admin.from("developer_plans").select("monthly_limit").eq("slug", plan).maybeSingle();
   const { data: keys } = await admin.from("api_keys").select("id").eq("user_id", user.id).is("revoked_at", null);
   const keyIds = (keys || []).map(key => key.id);
@@ -18,5 +19,5 @@ export async function GET() {
     monthlyUsage = (usage || []).reduce((sum, row) => sum + Number(row.request_count || 0), 0);
   }
   const fallback = PLAN_FALLBACKS.find(item => item.slug === plan);
-  return NextResponse.json({ user: { id: user.id, email: user.email }, plan, status: subscription?.status || "free", currentPeriodEnd: subscription?.current_period_end || null, monthlyUsage, monthlyLimit: Number(planRow?.monthly_limit ?? fallback?.monthly_limit ?? 100) }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ user: { id: user.id, email: user.email }, plan, status: paidIsCurrent ? "active" : subscription?.status === "active" ? "expired" : subscription?.status || "free", currentPeriodEnd: subscription?.current_period_end || null, monthlyUsage, monthlyLimit: Number(planRow?.monthly_limit ?? fallback?.monthly_limit ?? 100) }, { headers: { "Cache-Control": "no-store" } });
 }
