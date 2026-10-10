@@ -167,13 +167,14 @@ export async function POST(request: NextRequest) {
       () => observeProvider({ requestId, provider: "isan_nickname_api", lookup: () => lookupIsan(playerId, zoneId) }),
     ],
   );
-  const { primary, fallbacks, confirmed } = resolution;
+  const { primary, fallbacks, confirmed, pendingFallbacks } = resolution;
   logLookupSummary({
     requestId,
     durationMs: Date.now() - lookupStartedAt,
     primary,
     fallbacks,
     confirmed,
+    pendingFallbacks,
   });
   if (confirmed?.kind === "success") return jsonSuccess(confirmed, playerId, zoneId, requestId);
   const attempts: LookupAttempt[] = [primary, ...fallbacks];
