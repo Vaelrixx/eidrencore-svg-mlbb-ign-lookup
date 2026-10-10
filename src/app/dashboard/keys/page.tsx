@@ -30,7 +30,7 @@ export default function ApiKeysPage() {
     finally { setLoading(false); }
   }, [router]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { const timer = window.setTimeout(() => { void refresh(); }, 0); return () => window.clearTimeout(timer); }, [refresh]);
 
   async function createKey(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setCreating(true); setError(""); setNotice(""); setNewKey("");
