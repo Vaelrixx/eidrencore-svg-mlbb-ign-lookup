@@ -1,6 +1,7 @@
 import { performance } from "node:perf_hooks";
 
 const OUTCOMES = new Set(["success", "not_found", "rate_limited", "unavailable"]);
+const DIAGNOSTIC_REASONS = new Set(["missing_config", "http_error", "network_or_timeout"]);
 
 /**
  * Emit low-cardinality provider telemetry. Never log IDs, nicknames, payloads,
@@ -24,6 +25,10 @@ export async function observeProvider({ requestId, provider, lookup, logger = co
     outcome,
     durationMs,
     ...(outcome === "success" && typeof result.source === "string" ? { source: result.source } : {}),
+    ...(DIAGNOSTIC_REASONS.has(result?.diagnostic?.reason) ? { failureReason: result.diagnostic.reason } : {}),
+    ...(Number.isInteger(result?.diagnostic?.statusCode) && result.diagnostic.statusCode >= 100 && result.diagnostic.statusCode <= 599
+      ? { upstreamStatus: result.diagnostic.statusCode }
+      : {}),
   };
 
   try {
