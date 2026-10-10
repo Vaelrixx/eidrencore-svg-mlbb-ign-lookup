@@ -25,10 +25,16 @@ type LookupAttempt =
   | { kind: "rate_limited"; diagnostic?: LookupDiagnostic }
   | { kind: "unavailable"; diagnostic?: LookupDiagnostic };
 
-function jsonError(message: string, status: number, code: string) {
+function jsonError(message: string, status: number, code: string, requestId?: string) {
   return NextResponse.json(
     { success: false, error: message, code },
-    { status, headers: { "Cache-Control": "no-store" } },
+    {
+      status,
+      headers: {
+        "Cache-Control": "no-store",
+        ...(requestId ? { "X-Lookup-Request-Id": requestId } : {}),
+      },
+    },
   );
 }
 
@@ -36,6 +42,7 @@ function jsonSuccess(
   confirmed: Extract<LookupAttempt, { kind: "success" }>,
   playerId: string,
   zoneId: string,
+  requestId: string,
 ) {
   return NextResponse.json(
     {
@@ -48,7 +55,12 @@ function jsonSuccess(
         source: confirmed.source,
       },
     },
-    { headers: { "Cache-Control": "no-store" } },
+    {
+      headers: {
+        "Cache-Control": "no-store",
+        "X-Lookup-Request-Id": requestId,
+      },
+    },
   );
 }
 
@@ -300,15 +312,16 @@ async function lookupCodashopFallback(playerId: string, zoneId: string): Promise
  * integrations are unofficial and may change or fail independently.
  */
 export async function POST(request: NextRequest) {
+  const requestId = randomUUID();
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return jsonError("Request body must be valid JSON.", 400, "INVALID_JSON");
+    return jsonError("Request body must be valid JSON.", 400, "INVALID_JSON", requestId);
   }
 
   if (!body || typeof body !== "object") {
-    return jsonError("Send playerId and zoneId as strings.", 400, "INVALID_INPUT");
+    return jsonError("Send playerId and zoneId as strings.", 400, "INVALID_INPUT", requestId);
   }
 
   const input = body as Record<string, unknown>;
@@ -316,12 +329,11 @@ export async function POST(request: NextRequest) {
   const zoneId = typeof input.zoneId === "string" ? input.zoneId.trim() : "";
 
   if (!PLAYER_ID_PATTERN.test(playerId) || !ZONE_ID_PATTERN.test(zoneId)) {
-    return jsonError("Enter a numeric Player ID (4–20 digits) and Zone ID (1–10 digits).", 400, "INVALID_ID");
+    return jsonError("Enter a numeric Player ID (4–20 digits) and Zone ID (1–10 digits).", 400, "INVALID_ID", requestId);
   }
 
   // Structured telemetry deliberately excludes player IDs, zone IDs, nicknames,
   // upstream payloads, headers, and credentials.
-  const requestId = randomUUID();
   const lookupStartedAt = Date.now();
 
   // Primary-first lookup with deterministic, concurrent fallback takeover.
@@ -349,7 +361,7 @@ export async function POST(request: NextRequest) {
     fallbacks,
     confirmed,
   });
-  if (confirmed?.kind === "success") return jsonSuccess(confirmed, playerId, zoneId);
+  if (confirmed?.kind === "success") return jsonSuccess(confirmed, playerId, zoneId, requestId);
   const attempts: LookupAttempt[] = [primary, ...fallbacks];
 
   if (attempts.every((attempt) => attempt.kind === "not_found")) {
@@ -357,6 +369,7 @@ export async function POST(request: NextRequest) {
       "No provider found an MLBB account for that Player ID and Zone ID.",
       404,
       "PLAYER_NOT_FOUND",
+      requestId,
     );
   }
 
@@ -365,6 +378,7 @@ export async function POST(request: NextRequest) {
       "All lookup providers are rate-limiting requests. Try again shortly.",
       429,
       "UPSTREAM_RATE_LIMIT",
+      requestId,
     );
   }
 
@@ -372,6 +386,7 @@ export async function POST(request: NextRequest) {
     "We couldn't verify this ID right now because lookup providers are unavailable. Please retry shortly.",
     502,
     "UPSTREAM_UNAVAILABLE",
+    requestId,
   );
 }
 
