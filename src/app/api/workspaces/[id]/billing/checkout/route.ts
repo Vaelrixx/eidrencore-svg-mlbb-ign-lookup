@@ -26,7 +26,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const fallback = PLAN_FALLBACKS.find(item => item.slug === slug);
   const price = Number(plan?.price_paise ?? fallback?.price_paise ?? 0);
   if (!(plan?.enabled ?? fallback?.enabled ?? false) || price < 100) return NextResponse.json({ error: "This paid plan is not enabled." }, { status: 409 });
-  const { data: current } = await admin.from("developer_workspace_subscriptions").select("status,pending_order_id,pending_started_at,plan_slug,current_period_end").eq("workspace_id", id).maybeSingle();
+  const { data: current } = await admin.from("developer_workspace_subscriptions").select("status,pending_order_id,pending_plan_slug,pending_started_at,plan_slug,current_period_end").eq("workspace_id", id).maybeSingle();
   if (current?.pending_order_id) {
     if (current.pending_plan_slug !== slug) return NextResponse.json({ error: "A different workspace plan checkout is pending. Resume or finish it first." }, { status: 409 });
     const existingResponse = await fetch("https://api.razorpay.com/v1/orders/" + encodeURIComponent(current.pending_order_id), {
