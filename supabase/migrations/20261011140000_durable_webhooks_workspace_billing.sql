@@ -89,3 +89,19 @@ end;
 $$;
 revoke all on function public.claim_developer_webhook_jobs(integer, uuid) from public, anon, authenticated;
 grant execute on function public.claim_developer_webhook_jobs(integer, uuid) to service_role;
+
+
+-- Bound storage growth while retaining enough history for investigations.
+select cron.schedule(
+  'eidren-webhook-outbox-retention',
+  '15 3 * * *',
+  $$ delete from public.developer_webhook_outbox
+     where delivered_at < now() - interval '30 days'
+        or dead_lettered_at < now() - interval '90 days' $$
+);
+select cron.schedule(
+  'eidren-webhook-delivery-retention',
+  '25 3 * * *',
+  $$ delete from public.developer_webhook_deliveries
+     where created_at < now() - interval '90 days' $$
+);
