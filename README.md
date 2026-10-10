@@ -168,3 +168,56 @@ Webhook requests contain `Eidren-Event-Id`, `Eidren-Event`, and `Eidren-Signatur
 - Invitation links are generated for manual delivery; SMTP/email sending is not configured.
 - Webhook attempts are sent synchronously with a short timeout and logged. Durable queueing, exponential retry, dead-letter handling, and replay controls are follow-up work.
 - API request logs include request ID, endpoint, status, latency, key reference, and timestamp. They deliberately exclude player/zone IDs, nicknames, bearer keys, and webhook secrets. Logs start after this release is deployed; historic traffic cannot be backfilled.
+
+
+## Durable webhooks and workspace billing
+
+### Durable delivery model
+
+Webhook events are written to developer_webhook_outbox before delivery. The authenticated worker at /api/internal/webhooks/dispatch claims due jobs with FOR UPDATE SKIP LOCKED and a two-minute lease, so multiple workers can run without intentionally claiming the same row. Each attempt is recorded in developer_webhook_deliveries.
+
+- Transient network errors, timeouts, HTTP 408/429, and HTTP 5xx responses retry with exponential backoff.
+- Non-retryable failures and jobs that exhaust eight attempts are dead-lettered.
+- An authorized endpoint owner or workspace admin can replay up to 50 dead-lettered events from the Webhooks page.
+- Event IDs remain stable across retries; receivers should implement idempotency using Eidren-Event-Id.
+- The worker accepts only a bearer token matching WEBHOOK_WORKER_SECRET, processes bounded batches, and never redirects webhook requests.
+
+### Schedule the worker with Supabase Cron
+
+Set a strong random WEBHOOK_WORKER_SECRET in the Railway production service. Store the exact same secret and the worker URL in Supabase Vault, then schedule a cron job. For example, after the migration has enabled pg_cron and pg_net:
+
+    select vault.create_secret(
+      'https://YOUR-RAILWAY-DOMAIN/api/internal/webhooks/dispatch',
+      'eidren_webhook_worker_url'
+    );
+
+    select vault.create_secret(
+      'YOUR_WEBHOOK_WORKER_SECRET',
+      'eidren_webhook_worker_secret'
+    );
+
+    select cron.schedule(
+      'eidren-webhook-dispatch',
+      '* * * * *',
+      $job$
+        select net.http_post(
+          url := (select decrypted_secret from vault.decrypted_secrets where name = 'eidren_webhook_worker_url'),
+          headers := jsonb_build_object(
+            'Content-Type', 'application/json',
+            'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'eidren_webhook_worker_secret')
+          ),
+          body := '{"batchSize":10}'::jsonb,
+          timeout_milliseconds := 60000
+        );
+      $job$
+    );
+
+Do not commit the worker secret to Git or expose it to browser code. Use the Supabase Cron run history and net._http_response to diagnose scheduler failures. The outbox does not automatically run unless the scheduled worker is configured.
+
+### Workspace keys and shared plan
+
+Workspace owners/admins can create and revoke workspace-scoped API keys. These keys use the workspace subscription and its shared monthly quota; personal API keys remain tied to personal billing. Workspace Pro/Business checkout uses Razorpay order verification and a pending-order ledger so a renewal checkout does not remove an existing active plan. Paid plans are 30-day grants, not automatic recurring subscriptions; a successful renewal extends from the current period end when it has not yet expired.
+
+### Operational maintenance
+
+Monitor outbox growth and webhook delivery error rates. A future retention policy should archive or remove old delivered events and delivery attempts according to your audit requirements. The worker is designed for bounded batches and retry recovery, but delivery remains at-least-once rather than exactly-once; webhook consumers must deduplicate by event ID.
