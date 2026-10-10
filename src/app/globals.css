@@ -505,3 +505,69 @@ html::-webkit-scrollbar-thumb:hover, body::-webkit-scrollbar-thumb:hover, *::-we
 @media (min-width: 761px) {
   .auth-layout { align-items: start; }
 }
+
+/* Glass polish layer: depth, light and hover feedback on top of the shared tokens above.
+   Tokens stay in :root; this block only refines surfaces, never routes, copy or behavior. */
+:root {
+  --glass-sheen: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0) 42%);
+  --glass-edge: rgba(201,243,107,.32);
+  --shadow-lift: 0 30px 80px rgba(0,0,0,.34), 0 0 0 1px rgba(201,243,107,.06), inset 0 1px 0 rgba(255,255,255,.09);
+}
+
+/* Restrained aurora: indigo, lime and cyan lights layered into the body background so they sit under all content. */
+body {
+  background:
+    radial-gradient(38vmax 30vmax at 16% 8%, rgba(141,155,255,.17), transparent 70%),
+    radial-gradient(30vmax 26vmax at 88% 16%, rgba(201,243,107,.105), transparent 70%),
+    radial-gradient(36vmax 28vmax at 62% 94%, rgba(124,217,245,.09), transparent 70%),
+    radial-gradient(ellipse at 62% 78%, rgba(77,111,174,.10), transparent 38rem),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+/* One shared sheen on every glass surface, layered over the existing background. */
+.form-panel, .side-panel, .auth-card, .console-sidebar, .console-panel, .stat-card, .console-stat,
+.plan-card, .workspace-detail, .docs-hero-card, .billing-current-card, .account-profile,
+.session-status-card, .loading-panel, .docs-strip, .code-example, .billing-history-note {
+  background-image: var(--glass-sheen), linear-gradient(145deg, rgba(23,31,48,.78), rgba(12,17,30,.72));
+  border-color: rgba(166,184,218,.18);
+}
+
+/* Interactive cards lift slightly and pick up the lime signal on the edge. */
+.stat-card, .console-stat, .plan-card {
+  transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+}
+.stat-card:hover, .console-stat:hover, .plan-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--glass-edge);
+  box-shadow: var(--shadow-lift);
+}
+.stat-card>strong, .console-stat>strong { font-variant-numeric: tabular-nums; }
+
+/* Primary glow is reserved for the main lookup panel and focused controls. */
+.form-panel { box-shadow: var(--shadow-glass), 0 0 60px rgba(201,243,107,.035); }
+.form-panel:focus-within { border-color: rgba(201,243,107,.34); }
+
+/* Console navigation: clearer hover and a signal bar on the active item. */
+.console-nav-link { transition: background .18s ease, color .18s ease, transform .18s ease; }
+.console-nav-link:hover { transform: translateX(2px); }
+.console-nav-link.active { box-shadow: inset 0 0 0 1px rgba(201,243,107,.16), 0 8px 24px rgba(0,0,0,.18); }
+.console-nav-indicator { box-shadow: 0 0 12px rgba(201,243,107,.7); }
+
+/* Tables keep their own scroll area with a thin themed scrollbar. */
+.console-table-wrap { scrollbar-color: #3b465d transparent; scrollbar-width: thin; }
+.console-table-wrap::-webkit-scrollbar { height: 8px; }
+.console-table-wrap::-webkit-scrollbar-thumb { background: #3b465d; border-radius: 8px; }
+
+/* Progressive enhancement: without backdrop-filter, surfaces become more opaque so text stays readable. */
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .form-panel, .side-panel, .auth-card, .console-sidebar, .console-panel, .stat-card, .console-stat,
+  .plan-card, .workspace-detail, .docs-hero-card, .billing-current-card, .account-profile,
+  .session-status-card, .loading-panel, .docs-strip, .code-example, .billing-history-note, .console-topbar {
+    background-image: var(--glass-sheen), linear-gradient(145deg, rgba(23,31,48,.97), rgba(12,17,30,.96));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-card:hover, .console-stat:hover, .plan-card:hover, .console-nav-link:hover { transform: none; }
+}
