@@ -22,7 +22,6 @@ export async function GET() {
   const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString().slice(0, 10);
   const keyIds = (keyRows || []).map(key => key.id);
   const activeKeyIds = (keyRows || []).filter(key => !key.revoked_at).map(key => key.id);
-  let monthlyUsage: number;
   let dailyRows: { usage_day: string; request_count: number; api_key_id: string }[] = [];
   const monthlyQuery = activeKeyIds.length
     ? admin.from("developer_api_usage").select("request_count").in("api_key_id", activeKeyIds).eq("month_start", monthStart)
@@ -31,7 +30,7 @@ export async function GET() {
     ? admin.from("developer_api_usage_daily").select("api_key_id,usage_day,request_count").in("api_key_id", keyIds).gte("usage_day", new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10)).order("usage_day", { ascending: true })
     : Promise.resolve({ data: [], error: null });
   const [{ data: monthlyRows }, dailyResult] = await Promise.all([monthlyQuery, dailyQuery]);
-  monthlyUsage = (monthlyRows || []).reduce((sum, row) => sum + Number(row.request_count || 0), 0);
+  const monthlyUsage = (monthlyRows || []).reduce((sum, row) => sum + Number(row.request_count || 0), 0);
   dailyRows = (dailyResult.data || []) as typeof dailyRows;
   const daily = Array.from({ length: 14 }, (_, index) => {
     const day = new Date(Date.now() - (13 - index) * 86400000);
