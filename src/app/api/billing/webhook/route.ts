@@ -29,14 +29,62 @@ export async function POST(request: Request) {
   const paymentId = payment?.id;
   if (!orderId || !paymentId) return NextResponse.json({ received: true });
   const admin = createAdminClient();
-  const { data: sub } = await admin.from("developer_subscriptions").select("user_id,plan_slug,razorpay_order_id,razorpay_payment_id,status").eq("razorpay_order_id", orderId).maybeSingle();
-  if (!sub) return NextResponse.json({ received: true });
+  const { data: sub } = await admin.from("developer_subscriptions")
+    .select("user_id,plan_slug,status,current_period_end,pending_order_id,pending_plan_slug,razorpay_order_id,razorpay_payment_id")
+    .eq("pending_order_id", orderId).maybeSingle();
   if (payment?.status && payment.status !== "captured") return NextResponse.json({ received: true });
-  if (sub.status === "active" && sub.razorpay_payment_id === paymentId) return NextResponse.json({ received: true, duplicate: true });
-  if (sub.razorpay_payment_id && sub.razorpay_payment_id !== paymentId) return NextResponse.json({ error: "Order already has a different payment." }, { status: 409 });
-  const { data: activated, error } = await admin.from("developer_subscriptions").update({ status: "active", razorpay_payment_id: paymentId, current_period_end: new Date(Date.now() + 30 * 86400000).toISOString(), updated_at: new Date().toISOString() }).eq("user_id", sub.user_id).eq("razorpay_order_id", orderId).eq("status", "pending").select("status,razorpay_payment_id").maybeSingle();
-  if (error) return NextResponse.json({ error: "Could not update subscription." }, { status: 500 });
-  if (!activated || activated.status !== "active" || activated.razorpay_payment_id !== paymentId) return NextResponse.json({ received: true, duplicate: true });
-  await admin.from("api_keys").update({ plan_slug: sub.plan_slug }).eq("user_id", sub.user_id).is("revoked_at", null);
+  if (sub && sub.pending_plan_slug) {
+    if (sub.razorpay_payment_id && sub.razorpay_payment_id !== paymentId) return NextResponse.json({ error: "Order already has a different payment." }, { status: 409 });
+    const now = Date.now();
+    const previousEnd = sub.current_period_end ? Date.parse(sub.current_period_end) : 0;
+    const periodEnd = new Date(Math.max(now, Number.isFinite(previousEnd) ? previousEnd : 0) + 30 * 86400000).toISOString();
+    const { data: activated, error } = await admin.from("developer_subscriptions").update({
+      plan_slug: sub.pending_plan_slug, status: "active", razorpay_order_id: orderId, razorpay_payment_id: paymentId,
+      current_period_end: periodEnd, pending_order_id: null, pending_plan_slug: null, pending_started_at: null, updated_at: new Date().toISOString(),
+    }).eq("user_id", sub.user_id).eq("pending_order_id", orderId).select("user_id,plan_slug").maybeSingle();
+    if (error) return NextResponse.json({ error: "Could not activate subscription." }, { status: 500 });
+    if (!activated) return NextResponse.json({ received: true, duplicate: true });
+    await admin.from("api_keys").update({ plan_slug: activated.plan_slug }).eq("user_id", activated.user_id).is("revoked_at", null);
+    await admin.from("developer_audit_logs").insert({ user_id: activated.user_id, action: "billing.subscription.activated", resource_type: "subscription", resource_id: orderId, metadata: { plan: activated.plan_slug, paymentId, source: "razorpay_webhook" } });
+    await admin.from("developer_webhook_outbox").insert(
+      (await admin.from("developer_webhook_endpoints").select("id,events").eq("user_id", activated.user_id).is("workspace_id", null).eq("enabled", true)).data
+        ?.filter(endpoint => Array.isArray(endpoint.events) && endpoint.events.includes("billing.subscription.activated"))
+        .map(endpoint => {
+          const eventId = randomUUID();
+          return { endpoint_id: endpoint.id, event_id: eventId, event_type: "billing.subscription.activated", payload: { id: eventId, type: "billing.subscription.activated", created_at: new Date().toISOString(), data: { plan: activated.plan_slug, payment_id: paymentId, period_end: periodEnd } }, max_attempts: 8 };
+        }) || []
+    );
+    return NextResponse.json({ received: true });
+  }
+
+  const { data: workspaceSub } = await admin.from("developer_workspace_subscriptions")
+    .select("workspace_id,plan_slug,status,current_period_end,pending_order_id,pending_plan_slug,razorpay_order_id,razorpay_payment_id")
+    .eq("pending_order_id", orderId).maybeSingle();
+  if (workspaceSub && workspaceSub.pending_plan_slug) {
+    if (workspaceSub.razorpay_payment_id && workspaceSub.razorpay_payment_id !== paymentId) return NextResponse.json({ error: "Order already has a different payment." }, { status: 409 });
+    const now = Date.now();
+    const previousEnd = workspaceSub.current_period_end ? Date.parse(workspaceSub.current_period_end) : 0;
+    const periodStart = Math.max(now, Number.isFinite(previousEnd) ? previousEnd : 0);
+    const periodEnd = new Date(periodStart + 30 * 86400000).toISOString();
+    const { data: activated, error } = await admin.from("developer_workspace_subscriptions").update({
+      plan_slug: workspaceSub.pending_plan_slug, status: "active", razorpay_order_id: orderId, razorpay_payment_id: paymentId,
+      current_period_start: new Date(periodStart).toISOString(), current_period_end: periodEnd,
+      pending_order_id: null, pending_plan_slug: null, pending_started_at: null, updated_at: new Date().toISOString(),
+    }).eq("workspace_id", workspaceSub.workspace_id).eq("pending_order_id", orderId).select("workspace_id,plan_slug").maybeSingle();
+    if (error) return NextResponse.json({ error: "Could not activate workspace subscription." }, { status: 500 });
+    if (!activated) return NextResponse.json({ received: true, duplicate: true });
+    await admin.from("api_keys").update({ plan_slug: activated.plan_slug }).eq("workspace_id", activated.workspace_id).is("revoked_at", null);
+    const { data: workspace } = await admin.from("developer_workspaces").select("owner_user_id").eq("id", activated.workspace_id).maybeSingle();
+    if (workspace?.owner_user_id) {
+      await admin.from("developer_audit_logs").insert({ user_id: workspace.owner_user_id, workspace_id: activated.workspace_id, action: "billing.workspace_subscription.activated", resource_type: "workspace_subscription", resource_id: activated.workspace_id, metadata: { plan: activated.plan_slug, paymentId, source: "razorpay_webhook" } });
+    }
+    const { data: endpoints } = await admin.from("developer_webhook_endpoints").select("id,events").eq("workspace_id", activated.workspace_id).eq("enabled", true);
+    const eventId = randomUUID();
+    const payload = { id: eventId, type: "billing.subscription.activated", created_at: new Date().toISOString(), data: { workspace_id: activated.workspace_id, plan: activated.plan_slug, payment_id: paymentId, period_end: periodEnd } };
+    const matching = (endpoints || []).filter(endpoint => Array.isArray(endpoint.events) && endpoint.events.includes("billing.subscription.activated"));
+    if (matching.length) await admin.from("developer_webhook_outbox").insert(matching.map(endpoint => ({ endpoint_id: endpoint.id, event_id: eventId, event_type: "billing.subscription.activated", payload, max_attempts: 8 })));
+    return NextResponse.json({ received: true });
+  }
   return NextResponse.json({ received: true });
+
 }
