@@ -1,29 +1,35 @@
 import { defineConfig, globalIgnores } from "eslint/config";
-import tseslint from "typescript-eslint";
-import react from "eslint-plugin-react";
+import eslintJs from "@eslint/js";
+import eslintReact from "@eslint-react/eslint-plugin";
 import reactHooks from "eslint-plugin-react-hooks";
-import jsxA11y from "eslint-plugin-jsx-a11y";
-
-const jsxFiles = ["**/*.{jsx,tsx}"];
+import globals from "globals";
+import tseslint from "typescript-eslint";
 
 export default defineConfig([
+  eslintJs.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    ...react.configs.flat.recommended,
-    files: jsxFiles,
-    settings: { react: { version: "detect" } },
+    files: ["**/*.{js,mjs,cjs}"],
+    languageOptions: {
+      globals: globals.node,
+    },
   },
   {
-    ...react.configs.flat["jsx-runtime"],
-    files: jsxFiles,
+    files: ["**/*.{jsx,tsx}"],
+    extends: [eslintReact.configs.recommended, reactHooks.configs.flat.recommended],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.nodeBuiltin,
+      },
+    },
+    settings: {
+      react: { version: "detect" },
+    },
   },
   {
-    ...reactHooks.configs.flat.recommended,
-    files: jsxFiles,
-  },
-  {
-    ...jsxA11y.flatConfigs.recommended,
-    files: jsxFiles,
+    files: ["**/*.tsx"],
+    extends: [eslintReact.configs["recommended-typescript"]],
   },
   globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
 ]);
