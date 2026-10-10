@@ -49,7 +49,7 @@ Successful response:
 
 Error responses preserve a stable `{ success: false, error, code }` shape. Common codes include `INVALID_JSON`, `INVALID_INPUT`, `INVALID_ID`, `PLAYER_NOT_FOUND`, `UPSTREAM_RATE_LIMIT`, and `UPSTREAM_UNAVAILABLE`.
 
-A success is returned only when a provider returns a plausible nickname in a recognized response field. Generic error text is rejected. Providers run concurrently after input validation, and the result uses a stable provider priority if multiple sources return different names.
+A success is returned only when a provider returns a plausible nickname in a recognized response field. Generic error text is rejected. The primary provider is attempted first. If it cannot confirm a nickname, fallbacks run concurrently and the result uses the configured provider priority if multiple sources return different names. A separate live smoke test can simulate primary unavailability while querying the real Isan secondary provider.
 
 ## Production checklist
 
@@ -60,3 +60,8 @@ A success is returned only when a provider returns a plausible nickname in a rec
 - Do not treat a timeout or provider outage as an invalid player ID.
 
 Not affiliated with or endorsed by MOONTON Games, Codashop, or any listed third-party provider.
+
+
+## Live fallback takeover smoke test
+
+Run `npm run test:lookup:live` to simulate an unavailable primary and call the real Isan secondary adapter through the same resolver used by the API route. It reports the selected source, returned nickname, and elapsed time. This test requires network access and a working response from the third-party Isan service; it is separate from deterministic unit tests and does not modify production.
