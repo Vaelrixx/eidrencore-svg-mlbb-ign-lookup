@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Check, Clock3, Fingerprint, KeyRound, LoaderCircle, LockKeyhole, LogOut, Mail, RefreshCw, ShieldCheck, UserRound } from "lucide-react";
+import { AlertTriangle, Check, Fingerprint, LoaderCircle, LockKeyhole, LogOut, Mail, ShieldCheck, UserRound } from "lucide-react";
 import { ConsoleFrame } from "@/components/console-frame";
 
 type AccountInfo = { user: { id: string; email: string | null; createdAt: string | null; lastSignInAt: string | null; provider: string; emailConfirmedAt: string | null }; session: { authenticated: boolean; expiresAt: string | null } };
@@ -28,7 +28,7 @@ export default function AccountPage() {
     } catch (e) { setError(e instanceof Error ? e.message : "Could not load account information."); }
     finally { setLoading(false); }
   }, [router]);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { const timer = window.setTimeout(() => { void refresh(); }, 0); return () => window.clearTimeout(timer); }, [refresh]);
 
   async function updatePassword(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(""); setNotice("");
