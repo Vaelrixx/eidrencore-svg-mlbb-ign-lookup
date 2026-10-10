@@ -6,7 +6,19 @@ export const runtime = "nodejs";
 const jwks = createRemoteJWKSet(new URL("https://oauth.telegram.org/.well-known/jwks.json"));
 
 export async function GET(request: Request) {
-  const url = new URL(request.url);
+  const requestUrl = new URL(request.url);
+  // Must exactly match the redirect_uri sent by the authorization route.
+  const configuredOrigin = process.env.APP_URL?.trim() || "https://nexus-mlbb-ign-lookup-production.up.railway.app";
+  let origin: string;
+  try {
+    const parsedOrigin = new URL(configuredOrigin);
+    if (parsedOrigin.protocol !== "https:" || parsedOrigin.username || parsedOrigin.password) throw new Error("APP_URL must be an HTTPS origin");
+    origin = parsedOrigin.origin;
+  } catch {
+    return NextResponse.redirect(new URL("/login?error=telegram_redirect_misconfigured", requestUrl));
+  }
+  const url = new URL(requestUrl);
+  url.origin = origin;
   const response = (path: string) => {
     const result = NextResponse.redirect(new URL(path, url.origin));
     for (const name of ["eidren_tg_state", "eidren_tg_nonce", "eidren_tg_verifier"]) result.cookies.set(name, "", { path: "/", maxAge: 0 });
