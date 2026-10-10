@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { emitDeveloperEvent, writeAuditLog } from "@/lib/developer-events";
 
 export const runtime = "nodejs";
 
@@ -45,15 +46,8 @@ export async function POST(request: Request) {
     if (error) return NextResponse.json({ error: "Could not activate subscription." }, { status: 500 });
     if (!activated) return NextResponse.json({ received: true, duplicate: true });
     await admin.from("api_keys").update({ plan_slug: activated.plan_slug }).eq("user_id", activated.user_id).is("revoked_at", null);
-    await admin.from("developer_audit_logs").insert({ user_id: activated.user_id, action: "billing.subscription.activated", resource_type: "subscription", resource_id: orderId, metadata: { plan: activated.plan_slug, paymentId, source: "razorpay_webhook" } });
-    await admin.from("developer_webhook_outbox").insert(
-      (await admin.from("developer_webhook_endpoints").select("id,events").eq("user_id", activated.user_id).is("workspace_id", null).eq("enabled", true)).data
-        ?.filter(endpoint => Array.isArray(endpoint.events) && endpoint.events.includes("billing.subscription.activated"))
-        .map(endpoint => {
-          const eventId = randomUUID();
-          return { endpoint_id: endpoint.id, event_id: eventId, event_type: "billing.subscription.activated", payload: { id: eventId, type: "billing.subscription.activated", created_at: new Date().toISOString(), data: { plan: activated.plan_slug, payment_id: paymentId, period_end: periodEnd } }, max_attempts: 8 };
-        }) || []
-    );
+    await writeAuditLog({ userId: activated.user_id, action: "billing.subscription.activated", resourceType: "subscription", resourceId: orderId, metadata: { plan: activated.plan_slug, paymentId, source: "razorpay_webhook" } });
+    await emitDeveloperEvent({ userId: activated.user_id, type: "billing.subscription.activated", data: { plan: activated.plan_slug, payment_id: paymentId, period_end: periodEnd } });
     return NextResponse.json({ received: true });
   }
 
@@ -76,13 +70,9 @@ export async function POST(request: Request) {
     await admin.from("api_keys").update({ plan_slug: activated.plan_slug }).eq("workspace_id", activated.workspace_id).is("revoked_at", null);
     const { data: workspace } = await admin.from("developer_workspaces").select("owner_user_id").eq("id", activated.workspace_id).maybeSingle();
     if (workspace?.owner_user_id) {
-      await admin.from("developer_audit_logs").insert({ user_id: workspace.owner_user_id, workspace_id: activated.workspace_id, action: "billing.workspace_subscription.activated", resource_type: "workspace_subscription", resource_id: activated.workspace_id, metadata: { plan: activated.plan_slug, paymentId, source: "razorpay_webhook" } });
+      await writeAuditLog({ userId: workspace.owner_user_id, workspaceId: activated.workspace_id, action: "billing.workspace_subscription.activated", resourceType: "workspace_subscription", resourceId: activated.workspace_id, metadata: { plan: activated.plan_slug, paymentId, source: "razorpay_webhook" } });
+      await emitDeveloperEvent({ userId: workspace.owner_user_id, workspaceId: activated.workspace_id, type: "billing.subscription.activated", data: { workspace_id: activated.workspace_id, plan: activated.plan_slug, payment_id: paymentId, period_end: periodEnd } });
     }
-    const { data: endpoints } = await admin.from("developer_webhook_endpoints").select("id,events").eq("workspace_id", activated.workspace_id).eq("enabled", true);
-    const eventId = randomUUID();
-    const payload = { id: eventId, type: "billing.subscription.activated", created_at: new Date().toISOString(), data: { workspace_id: activated.workspace_id, plan: activated.plan_slug, payment_id: paymentId, period_end: periodEnd } };
-    const matching = (endpoints || []).filter(endpoint => Array.isArray(endpoint.events) && endpoint.events.includes("billing.subscription.activated"));
-    if (matching.length) await admin.from("developer_webhook_outbox").insert(matching.map(endpoint => ({ endpoint_id: endpoint.id, event_id: eventId, event_type: "billing.subscription.activated", payload, max_attempts: 8 })));
     return NextResponse.json({ received: true });
   }
   return NextResponse.json({ received: true });
