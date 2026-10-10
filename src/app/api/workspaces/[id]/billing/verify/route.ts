@@ -42,7 +42,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   if (!paymentResponse.ok || payment?.order_id !== orderId || payment?.status !== "captured") return NextResponse.json({ error: "Payment is not captured yet." }, { status: 409 });
   const now = Date.now();
   const previousEnd = subscription.current_period_end ? Date.parse(subscription.current_period_end) : 0;
-  const periodStart = Math.max(now, Number.isFinite(previousEnd) ? previousEnd : 0);
+  const periodStart = subscription.plan_slug === subscription.pending_plan_slug ? Math.max(now, Number.isFinite(previousEnd) ? previousEnd : 0) : now;
   const periodEnd = new Date(periodStart + 30 * 86400000).toISOString();
   const { data: activated, error } = await admin.from("developer_workspace_subscriptions").update({
     plan_slug: subscription.pending_plan_slug,
