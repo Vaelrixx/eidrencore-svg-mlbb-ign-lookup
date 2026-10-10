@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     if (workspaceSub.razorpay_order_id === orderId && workspaceSub.razorpay_payment_id && workspaceSub.razorpay_payment_id !== paymentId) return NextResponse.json({ error: "Order already has a different payment." }, { status: 409 });
     const now = Date.now();
     const previousEnd = workspaceSub.current_period_end ? Date.parse(workspaceSub.current_period_end) : 0;
-    const periodStart = Math.max(now, Number.isFinite(previousEnd) ? previousEnd : 0);
+    const periodStart = workspaceSub.plan_slug === workspaceSub.pending_plan_slug ? Math.max(now, Number.isFinite(previousEnd) ? previousEnd : 0) : now;
     const periodEnd = new Date(periodStart + 30 * 86400000).toISOString();
     const { data: activated, error } = await admin.from("developer_workspace_subscriptions").update({
       plan_slug: workspaceSub.pending_plan_slug, status: "active", razorpay_order_id: orderId, razorpay_payment_id: paymentId,
