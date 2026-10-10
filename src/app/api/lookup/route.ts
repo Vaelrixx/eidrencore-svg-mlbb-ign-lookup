@@ -13,11 +13,16 @@ const CODASHOP_ENDPOINT = "https://order-sg.codashop.com/initPayment.action";
 const PLAYER_ID_PATTERN = /^\d{4,20}$/;
 const ZONE_ID_PATTERN = /^\d{1,10}$/;
 
+type LookupDiagnostic = {
+  reason: "missing_config" | "http_error" | "network_or_timeout";
+  statusCode?: number;
+};
+
 type LookupAttempt =
   | { kind: "success"; nickname: string; country?: string; source: string }
   | { kind: "not_found" }
-  | { kind: "rate_limited" }
-  | { kind: "unavailable" };
+  | { kind: "rate_limited"; diagnostic?: LookupDiagnostic }
+  | { kind: "unavailable"; diagnostic?: LookupDiagnostic };
 
 function jsonError(message: string, status: number, code: string) {
   return NextResponse.json(
@@ -79,9 +84,9 @@ async function lookupPrimary(playerId: string, zoneId: string): Promise<LookupAt
       signal: AbortSignal.timeout(7000),
     });
 
-    if (upstream.status === 429) return { kind: "rate_limited" };
-    if (upstream.status === 404) return { kind: "unavailable" };
-    if (!upstream.ok) return { kind: "unavailable" };
+    if (upstream.status === 429) return { kind: "rate_limited", diagnostic: { reason: "http_error", statusCode: 429 } };
+    if (upstream.status === 404) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: 404 } };
+    if (!upstream.ok) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
 
     const payload: unknown = await upstream.json().catch(() => null);
     if (!payload || typeof payload !== "object") return { kind: "unavailable" };
@@ -103,7 +108,7 @@ async function lookupPrimary(playerId: string, zoneId: string): Promise<LookupAt
       source: "community_lookup",
     };
   } catch {
-    return { kind: "unavailable" };
+    return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
   }
 }
 
@@ -113,7 +118,7 @@ async function lookupPrimary(playerId: string, zoneId: string): Promise<LookupAt
  */
 async function lookupRapidApi(playerId: string, zoneId: string): Promise<LookupAttempt> {
   const apiKey = process.env.RAPIDAPI_KEY?.trim() || process.env.RAPIDAPI_APP_TOKEN?.trim();
-  if (!apiKey) return { kind: "unavailable" };
+  if (!apiKey) return { kind: "unavailable", diagnostic: { reason: "missing_config" } };
 
   const endpoint =
     "https://id-game-checker.p.rapidapi.com/mlbb/" +
@@ -133,9 +138,9 @@ async function lookupRapidApi(playerId: string, zoneId: string): Promise<LookupA
       signal: AbortSignal.timeout(7000),
     });
 
-    if (upstream.status === 429) return { kind: "rate_limited" };
-    if (upstream.status === 404 || upstream.status === 400) return { kind: "unavailable" };
-    if (!upstream.ok) return { kind: "unavailable" };
+    if (upstream.status === 429) return { kind: "rate_limited", diagnostic: { reason: "http_error", statusCode: 429 } };
+    if (upstream.status === 404 || upstream.status === 400) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
+    if (!upstream.ok) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
 
     const payload: unknown = await upstream.json().catch(() => null);
     const nickname = confirmedNickname(payload);
@@ -145,7 +150,7 @@ async function lookupRapidApi(playerId: string, zoneId: string): Promise<LookupA
     if (explicitlyNotFound(payload)) return { kind: "not_found" };
     return { kind: "unavailable" };
   } catch {
-    return { kind: "unavailable" };
+    return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
   }
 }
 
@@ -169,9 +174,9 @@ async function lookupEliteDias(playerId: string, zoneId: string): Promise<Lookup
       signal: AbortSignal.timeout(5000),
     });
 
-    if (upstream.status === 429) return { kind: "rate_limited" };
-    if (upstream.status === 404 || upstream.status === 400) return { kind: "unavailable" };
-    if (!upstream.ok) return { kind: "unavailable" };
+    if (upstream.status === 429) return { kind: "rate_limited", diagnostic: { reason: "http_error", statusCode: 429 } };
+    if (upstream.status === 404 || upstream.status === 400) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
+    if (!upstream.ok) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
 
     const payload: unknown = await upstream.json().catch(() => null);
     const nickname = confirmedNickname(payload);
@@ -179,7 +184,7 @@ async function lookupEliteDias(playerId: string, zoneId: string): Promise<Lookup
     if (explicitlyNotFound(payload)) return { kind: "not_found" };
     return { kind: "unavailable" };
   } catch {
-    return { kind: "unavailable" };
+    return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
   }
 }
 
@@ -210,9 +215,9 @@ async function lookupSmileOne(playerId: string, zoneId: string): Promise<LookupA
       signal: AbortSignal.timeout(5000),
     });
 
-    if (upstream.status === 429) return { kind: "rate_limited" };
-    if (upstream.status === 404 || upstream.status === 400) return { kind: "unavailable" };
-    if (!upstream.ok) return { kind: "unavailable" };
+    if (upstream.status === 429) return { kind: "rate_limited", diagnostic: { reason: "http_error", statusCode: 429 } };
+    if (upstream.status === 404 || upstream.status === 400) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
+    if (!upstream.ok) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
 
     const payload: unknown = await upstream.json().catch(() => null);
     const nickname = confirmedNickname(payload);
@@ -220,7 +225,7 @@ async function lookupSmileOne(playerId: string, zoneId: string): Promise<LookupA
     if (explicitlyNotFound(payload)) return { kind: "not_found" };
     return { kind: "unavailable" };
   } catch {
-    return { kind: "unavailable" };
+    return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
   }
 }
 
@@ -252,9 +257,9 @@ async function lookupDuniaGames(playerId: string, zoneId: string): Promise<Looku
       signal: AbortSignal.timeout(5000),
     });
 
-    if (upstream.status === 429) return { kind: "rate_limited" };
-    if (upstream.status === 404 || upstream.status === 400) return { kind: "unavailable" };
-    if (!upstream.ok) return { kind: "unavailable" };
+    if (upstream.status === 429) return { kind: "rate_limited", diagnostic: { reason: "http_error", statusCode: 429 } };
+    if (upstream.status === 404 || upstream.status === 400) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
+    if (!upstream.ok) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
 
     const payload: unknown = await upstream.json().catch(() => null);
     const nickname = confirmedNickname(payload);
@@ -262,7 +267,7 @@ async function lookupDuniaGames(playerId: string, zoneId: string): Promise<Looku
     if (explicitlyNotFound(payload)) return { kind: "not_found" };
     return { kind: "unavailable" };
   } catch {
-    return { kind: "unavailable" };
+    return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
   }
 }
 
@@ -300,8 +305,8 @@ async function lookupCodashopFallback(playerId: string, zoneId: string): Promise
       signal: AbortSignal.timeout(9000),
     });
 
-    if (upstream.status === 429) return { kind: "rate_limited" };
-    if (!upstream.ok) return { kind: "unavailable" };
+    if (upstream.status === 429) return { kind: "rate_limited", diagnostic: { reason: "http_error", statusCode: 429 } };
+    if (!upstream.ok) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
 
     const payload: unknown = await upstream.json().catch(() => null);
     if (!payload || typeof payload !== "object") return { kind: "unavailable" };
@@ -323,7 +328,7 @@ async function lookupCodashopFallback(playerId: string, zoneId: string): Promise
     const nickname = cleanNickname(rawName);
     return { kind: "success", nickname, source: "codashop_fallback" };
   } catch {
-    return { kind: "unavailable" };
+    return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
   }
 }
 
