@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { cleanNickname, confirmedNickname, isUsableNickname } from "./nickname-validation.mjs";
+import { confirmedNickname } from "./nickname-validation.mjs";
 import { resolveLookupWithFallbacks } from "./resolve-lookup.mjs";
 import { lookupIsan } from "./providers/isan.mjs";
 import { lookupRapidApi } from "./providers/rapidapi.mjs";
@@ -10,7 +10,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const LOOKUP_ENDPOINT = "https://mlbb-api.isan.eu.org/find";
-const CODASHOP_ENDPOINT = "https://order-sg.codashop.com/initPayment.action";
 const PLAYER_ID_PATTERN = /^\d{4,20}$/;
 const ZONE_ID_PATTERN = /^\d{1,10}$/;
 
@@ -126,188 +125,6 @@ async function lookupPrimary(playerId: string, zoneId: string): Promise<LookupAt
 }
 
 /**
- * Secondary provider: RapidAPI's ID Game Checker endpoint.
- * The API key is read only on the server and is never returned to callers.
- */
-/**
- * EliteDias public role-check endpoint. Unofficial best-effort integration;
- * it never submits an order or payment.
- */
-async function lookupEliteDias(playerId: string, zoneId: string): Promise<LookupAttempt> {
-  try {
-    const upstream = await fetch("https://api.elitedias.com/checkid", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json; charset=UTF-8",
-        Origin: "https://elitedias.com",
-        Referer: "https://elitedias.com/",
-        "User-Agent": "Mozilla/5.0 (compatible; EidrenMLBBLookup/1.0)",
-      },
-      body: JSON.stringify({ userid: playerId, serverid: zoneId, game: "mlbb" }),
-      cache: "no-store",
-      signal: AbortSignal.timeout(5000),
-    });
-
-    if (upstream.status === 429) return { kind: "rate_limited", diagnostic: { reason: "http_error", statusCode: 429 } };
-    if (upstream.status === 404 || upstream.status === 400) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
-    if (!upstream.ok) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
-
-    const payload: unknown = await upstream.json().catch(() => null);
-    const nickname = confirmedNickname(payload);
-    if (nickname) return { kind: "success", nickname, source: "elitedias_role_check" };
-    if (explicitlyNotFound(payload)) return { kind: "not_found" };
-    return { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
-  } catch {
-    return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
-  }
-}
-
-/** Smile.One public MLBB role-check endpoint. Best-effort only; no top-up. */
-async function lookupSmileOne(playerId: string, zoneId: string): Promise<LookupAttempt> {
-  const form = new URLSearchParams({
-    user_id: playerId,
-    zone_id: zoneId,
-    pid: "216",
-    checkrole: "1",
-    pay_methond: "",
-    channel_method: "",
-  });
-
-  try {
-    const upstream = await fetch("https://www.smile.one/ph/merchant/mobilelegends/checkrole/", {
-      method: "POST",
-      headers: {
-        Accept: "application/json, text/javascript, */*; q=0.01",
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        Origin: "https://www.smile.one",
-        Referer: "https://www.smile.one/ph/merchant/mobilelegends?source=other",
-        "User-Agent": "Mozilla/5.0 (compatible; EidrenMLBBLookup/1.0)",
-        "X-Requested-With": "XMLHttpRequest",
-      },
-      body: form.toString(),
-      cache: "no-store",
-      signal: AbortSignal.timeout(5000),
-    });
-
-    if (upstream.status === 429) return { kind: "rate_limited", diagnostic: { reason: "http_error", statusCode: 429 } };
-    if (upstream.status === 404 || upstream.status === 400) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
-    if (!upstream.ok) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
-
-    const payload: unknown = await upstream.json().catch(() => null);
-    const nickname = confirmedNickname(payload);
-    if (nickname) return { kind: "success", nickname, source: "smileone_role_check" };
-    if (explicitlyNotFound(payload)) return { kind: "not_found" };
-    return { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
-  } catch {
-    return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
-  }
-}
-
-/** Dunia Games inquiry endpoint; only asks for identity/role confirmation. */
-async function lookupDuniaGames(playerId: string, zoneId: string): Promise<LookupAttempt> {
-  const form = new URLSearchParams({
-    productId: "1",
-    itemId: "2",
-    catalogId: "57",
-    paymentId: "352",
-    gameId: playerId,
-    zoneId,
-    product_ref: "REG",
-    product_ref_denom: "AE",
-  });
-
-  try {
-    const upstream = await fetch("https://api.duniagames.co.id/api/transaction/v1/top-up/inquiry/store", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        Origin: "https://www.duniagames.co.id",
-        Referer: "https://www.duniagames.co.id/",
-        "User-Agent": "Mozilla/5.0 (compatible; EidrenMLBBLookup/1.0)",
-      },
-      body: form.toString(),
-      cache: "no-store",
-      signal: AbortSignal.timeout(5000),
-    });
-
-    if (upstream.status === 429) return { kind: "rate_limited", diagnostic: { reason: "http_error", statusCode: 429 } };
-    if (upstream.status === 404 || upstream.status === 400) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
-    if (!upstream.ok) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
-
-    const payload: unknown = await upstream.json().catch(() => null);
-    const nickname = confirmedNickname(payload);
-    if (nickname) return { kind: "success", nickname, source: "duniagames_role_check" };
-    if (explicitlyNotFound(payload)) return { kind: "not_found" };
-    return { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
-  } catch {
-    return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
-  }
-}
-
-/**
- * Codashop's public identity-validation/init flow. This does not submit a
- * payment. Its response parser uses the same strict placeholder guard.
- */
-async function lookupCodashopFallback(playerId: string, zoneId: string): Promise<LookupAttempt> {
-  const form = new URLSearchParams({
-    "voucherPricePoint.id": "27684",
-    "voucherPricePoint.price": "527250.0",
-    "voucherPricePoint.variablePrice": "0",
-    "user.userId": playerId,
-    "user.zoneId": zoneId,
-    voucherTypeName: "MOBILE_LEGENDS",
-    lvtId: "",
-    shopLang: "id_ID",
-    dynamicSkuToken: "",
-    pricePointDynamicSkuToken: "",
-    voucherTypeId: "",
-  });
-
-  try {
-    const upstream = await fetch(CODASHOP_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Accept: "application/json, text/plain, */*",
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        Origin: "https://www.codashop.com",
-        Referer: "https://www.codashop.com/",
-        "User-Agent": "Mozilla/5.0 (compatible; EidrenMLBBLookup/1.0)",
-      },
-      body: form.toString(),
-      cache: "no-store",
-      signal: AbortSignal.timeout(9000),
-    });
-
-    if (upstream.status === 429) return { kind: "rate_limited", diagnostic: { reason: "http_error", statusCode: 429 } };
-    if (!upstream.ok) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
-
-    const payload: unknown = await upstream.json().catch(() => null);
-    if (!payload || typeof payload !== "object") return { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
-
-    const data = payload as Record<string, unknown>;
-    if (String(data.RESULT_CODE ?? "") === "10001") return { kind: "rate_limited", diagnostic: { reason: "provider_error", statusCode: upstream.status } };
-    if (String(data.errorCode ?? "") === "-200") return { kind: "unavailable", diagnostic: { reason: "provider_error", statusCode: upstream.status } };
-
-    // Provider error payloads are not proof that the player ID is absent.
-    if (data.success !== true || Boolean(data.errorMsg)) {
-      return explicitlyNotFound(payload) ? { kind: "not_found" } : { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
-    }
-
-    const fields = record(data.confirmationFields);
-    const rawName = fields && typeof fields.username === "string" ? fields.username : "";
-    if (!isUsableNickname(rawName)) {
-      return explicitlyNotFound(payload) ? { kind: "not_found" } : { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
-    }
-    const nickname = cleanNickname(rawName);
-    return { kind: "success", nickname, source: "codashop_fallback" };
-  } catch {
-    return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
-  }
-}
-
-/**
  * Resolve an MLBB nickname without a password or game login. Provider
  * integrations are unofficial and may change or fail independently.
  */
@@ -345,12 +162,9 @@ export async function POST(request: NextRequest) {
       lookup: () => lookupPrimary(playerId, zoneId),
     }),
     [
+      // Keep only the two fallback adapters that passed the live provider sweep.
       () => observeProvider({ requestId, provider: "rapidapi_id_game_checker", lookup: () => lookupRapidApi(playerId, zoneId) }),
       () => observeProvider({ requestId, provider: "isan_nickname_api", lookup: () => lookupIsan(playerId, zoneId) }),
-      () => observeProvider({ requestId, provider: "elitedias_role_check", lookup: () => lookupEliteDias(playerId, zoneId) }),
-      () => observeProvider({ requestId, provider: "smileone_role_check", lookup: () => lookupSmileOne(playerId, zoneId) }),
-      () => observeProvider({ requestId, provider: "duniagames_role_check", lookup: () => lookupDuniaGames(playerId, zoneId) }),
-      () => observeProvider({ requestId, provider: "codashop_fallback", lookup: () => lookupCodashopFallback(playerId, zoneId) }),
     ],
   );
   const { primary, fallbacks, confirmed } = resolution;
