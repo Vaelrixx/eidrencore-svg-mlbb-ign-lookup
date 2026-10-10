@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return NextResponse.json({ error: "Invalid signature." }, { status: 400 });
   let event: RazorpayWebhookEvent;
   try { event = JSON.parse(raw) as RazorpayWebhookEvent; } catch { return NextResponse.json({ error: "Invalid JSON." }, { status: 400 }); }
-  if (!["payment.captured", "order.paid"].includes(event?.event)) return NextResponse.json({ received: true });
+  if (typeof event.event !== "string" || !["payment.captured", "order.paid"].includes(event.event)) return NextResponse.json({ received: true });
   const payment = event?.payload?.payment?.entity;
   const order = event?.payload?.order?.entity;
   const orderId = payment?.order_id || order?.id;
