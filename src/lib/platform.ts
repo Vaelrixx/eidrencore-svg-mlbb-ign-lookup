@@ -49,6 +49,32 @@ export async function getUserFromRequest(request: Request) {
   return null;
 }
 
+/**
+ * Idempotently provision the rows every signed-up developer needs. The
+ * database trigger in 20261011160000_signup_provisioning.sql does this at
+ * signup; this is the application-level safety net for users created before
+ * the trigger existed or while it was unavailable. Never throws.
+ */
+export async function ensureDeveloperAccount(userId: string) {
+  try {
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from("developer_subscriptions")
+      .upsert({ user_id: userId, plan_slug: "free", status: "free" }, { onConflict: "user_id", ignoreDuplicates: true });
+    if (error) console.error("[developer-account] provisioning failed", error.code || "unknown");
+    return !error;
+  } catch (error) {
+    console.error("[developer-account] provisioning failed", error instanceof Error ? error.message : "unknown");
+    return false;
+  }
+}
+
+/** Accept only same-site relative paths for post-login redirects. */
+export function safeNextPath(value: unknown, fallback = "/dashboard") {
+  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//") || value.includes("\\") || value.length > 200) return fallback;
+  return value;
+}
+
 export async function requireUser() {
   const supabase = await (await import("./supabase/server")).createClient();
   const { data: { user }, error } = await supabase.auth.getUser();

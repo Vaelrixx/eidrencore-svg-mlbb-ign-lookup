@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { enforceLookupRateLimit, persistLookupLog } from "../src/app/api/lookup/persistence.mjs";
+import { enforceLookupRateLimit, enforcePlaygroundLimit, persistLookupLog } from "../src/app/api/lookup/persistence.mjs";
 
 const baseEnv = {
   SUPABASE_URL: "https://example.supabase.co/",
@@ -105,4 +105,31 @@ test("unknown log statuses and sources cannot inject arbitrary values", async ()
   });
   assert.deepEqual(result, { persisted: false, reason: "invalid_status" });
   assert.equal(captured, undefined);
+});
+
+test("playground limiter stores only an HMAC of the account and uses a daily window", async () => {
+  let body;
+  const result = await enforcePlaygroundLimit("11111111-2222-3333-4444-555555555555", {
+    env: baseEnv,
+    fetchImpl: async (_url, init) => { body = JSON.parse(init.body); return Response.json([{ allowed: true, remaining: 49, reset_at: "2026-10-12T00:00:00Z" }]); },
+    logger: () => {},
+  });
+  assert.equal(result.allowed, true);
+  assert.equal(body.p_client_hash.length, 64);
+  assert.equal(body.p_client_hash.includes("11111111"), false);
+  assert.equal(body.p_window_seconds, 86400);
+  assert.equal(body.p_max_requests, 50);
+});
+
+test("playground limiter blocks with a retry delay and fails open when the database is down", async () => {
+  const blocked = await enforcePlaygroundLimit("user-1", {
+    env: baseEnv,
+    fetchImpl: async () => Response.json([{ allowed: false, remaining: 0, reset_at: new Date(Date.now() + 5000).toISOString() }]),
+    logger: () => {},
+  });
+  assert.equal(blocked.allowed, false);
+  assert.ok(blocked.retryAfterSeconds >= 1);
+  const open = await enforcePlaygroundLimit("user-1", { env: baseEnv, fetchImpl: async () => { throw new Error("down"); }, logger: () => {} });
+  assert.equal(open.allowed, true);
+  assert.equal(open.degraded, true);
 });

@@ -43,7 +43,7 @@ export function ConsoleFrame({ children }: { children: React.ReactNode }) {
           <div className="console-side-label">{group.label}</div>
           {group.items.map(item => { const active = item.exact ? pathname === item.href : pathname.startsWith(item.href); const Icon = item.icon; return <Link key={item.href} href={item.href} className={`console-nav-link${active ? " active" : ""}`} aria-current={active ? "page" : undefined}><Icon size={16}/><span>{item.label}</span>{active && <span className="console-nav-indicator" />}</Link>; })}
         </div>)}
-        <Link href="/" className="console-sidebar-bottom console-lookup-link"><span className="console-sidebar-mark"><Swords size={14}/></span><div><strong>Public lookup</strong><small>Open the player search</small></div><ArrowUpRight size={15}/></Link>
+        <Link href="/dashboard/playground" className="console-sidebar-bottom console-lookup-link"><span className="console-sidebar-mark"><FlaskConical size={14}/></span><div><strong>Playground</strong><small>Run a live lookup</small></div><ArrowUpRight size={15}/></Link>
       </aside>
       <section className="console-page">
         <div className="console-mobile-links">{items.map(item => { const active = item.exact ? pathname === item.href : pathname.startsWith(item.href); const Icon = item.icon; return <Link key={item.href} href={item.href} className={active ? "active" : ""}><Icon size={14}/>{item.label}</Link>; })}</div>

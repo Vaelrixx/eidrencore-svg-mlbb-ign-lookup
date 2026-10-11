@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireUser, PLAN_FALLBACKS } from "@/lib/platform";
+import { requireUser, PLAN_FALLBACKS, ensureDeveloperAccount } from "@/lib/platform";
 
 export async function GET() {
   const { user } = await requireUser();
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   const admin = createAdminClient();
   const { data: subscription } = await admin.from("developer_subscriptions").select("plan_slug,status,current_period_end").eq("user_id", user.id).maybeSingle();
+  if (!subscription) await ensureDeveloperAccount(user.id);
   const paidIsCurrent = subscription?.status === "active" && !!subscription.current_period_end && Date.parse(subscription.current_period_end) > Date.now();
   const plan = paidIsCurrent ? subscription.plan_slug : "free";
   const { data: planRow } = await admin.from("developer_plans").select("monthly_limit").eq("slug", plan).maybeSingle();

@@ -21,10 +21,12 @@ Open http://localhost:3000.
 
 `GET /api/lookup?playerId=123456789&zoneId=1234` or `POST /api/lookup`
 
-Opening `/api/lookup` in a browser with no query parameters returns service status and usage examples. For a browser-based lookup, pass both IDs as query parameters:
+**Authentication is required.** Lookups run only for a signed-in account: send an Eidren API key (`Authorization: Bearer eid_...`), or use the playground while signed in (cookie session, 50 lookups per account per day). Anonymous requests receive `401 AUTH_REQUIRED`. Create an account at `/login?mode=signup`; a free plan row is provisioned automatically at sign-up (database trigger in `20261011160000_signup_provisioning.sql`, with an application-level fallback).
+
+Opening `/api/lookup` in a browser with no query parameters returns service status and usage examples. With an API key, pass both IDs as query parameters:
 
 ```text
-/api/lookup?playerId=1114917746&zoneId=13486
+GET /api/lookup?playerId=1114917746&zoneId=13486   (Authorization: Bearer eid_...)
 ```
 
 For server-to-server usage, send JSON with POST:
@@ -47,7 +49,7 @@ Successful response:
 }
 ```
 
-Error responses preserve a stable `{ success: false, error, code }` shape. Common codes include `INVALID_JSON`, `INVALID_INPUT`, `INVALID_ID`, `PLAYER_NOT_FOUND`, `UPSTREAM_RATE_LIMIT`, `RATE_LIMITED`, and `UPSTREAM_UNAVAILABLE`. Every POST response includes an `X-Lookup-Request-Id` header for correlating a caller's result with sanitized server-side provider diagnostics without logging player identifiers.
+Error responses preserve a stable `{ success: false, error, code }` shape. Common codes include `AUTH_REQUIRED`, `INVALID_API_KEY`, `API_QUOTA_EXCEEDED`, `PLAYGROUND_LIMIT`, `INVALID_JSON`, `INVALID_INPUT`, `INVALID_ID`, `PLAYER_NOT_FOUND`, `UPSTREAM_RATE_LIMIT`, `RATE_LIMITED`, and `UPSTREAM_UNAVAILABLE`. Every POST response includes an `X-Lookup-Request-Id` header for correlating a caller's result with sanitized server-side provider diagnostics without logging player identifiers.
 
 A success is returned only when a provider returns a plausible nickname in a recognized response field. Generic error text is rejected. The primary provider is attempted first. If it cannot confirm a nickname, only the currently validated Isan and RapidAPI adapters run concurrently; the first confirmed nickname is returned without waiting for slower attempts. If no fallback confirms a nickname, the route waits for all results before deciding whether the account is not found or the providers are unavailable. Unreliable 403/500 sources and the Codashop checkout-initialization endpoint are not called by the production lookup path.
 
@@ -120,7 +122,7 @@ set price_paise = 149900, enabled = true, monthly_limit = 100000, updated_at = n
 where slug = 'business';
 ```
 
-These example prices are illustrative only; choose your actual pricing before enabling paid checkout. Razorpay verifies the checkout signature and fetches the payment to confirm it is captured before activating the plan. The webhook signature is independently verified. API keys are generated from cryptographic randomness, stored as SHA-256 hashes, shown once, and can be revoked. Paid keys receive monthly quotas from the active plan; public lookup requests without an Eidren API key remain available under the existing IP rate limit.
+These example prices are illustrative only; choose your actual pricing before enabling paid checkout. Razorpay verifies the checkout signature and fetches the payment to confirm it is captured before activating the plan. The webhook signature is independently verified. API keys are generated from cryptographic randomness, stored as SHA-256 hashes, shown once, and can be revoked. Paid keys receive monthly quotas from the active plan; lookups without an Eidren API key or a signed-in session are rejected with `AUTH_REQUIRED`; the IP rate limit still applies on top.
 
 Telegram sign-in creates an internal Supabase user with a non-routable synthetic email because Telegram does not provide an email by default. Users should not rely on email password recovery for Telegram-only accounts; account linking and account deletion UI are not included in this first platform pass.
 

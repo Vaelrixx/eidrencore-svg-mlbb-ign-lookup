@@ -14,7 +14,7 @@ This document records UI-level workflow conventions for the multi-route develope
 
 - Forms keep their values while a request is pending or fails. Disable duplicate submission while busy and keep the primary button's geometry stable.
 - Loading, success, empty, and error states are explicit and use existing inline/status components. Errors remain readable text; never rely on color alone.
-- The public lookup treats provider unavailability separately from a confirmed player-not-found result; UI copy must not imply that a timeout proves an account is invalid.
+- Tools require sign-up or an API key; signed-out visitors see a sign-in gate, never a working tool. The lookup treats provider unavailability separately from a confirmed player-not-found result; UI copy must not imply that a timeout proves an account is invalid.
 - API keys are sensitive. Show newly issued key material only in the existing creation result flow; never add it to URLs, logs, or decorative examples presented as real user data.
 - Copy controls retain their labels and show a short, visible success state. Clipboard failures must remain recoverable.
 - Billing UI reflects server-returned plan and order state. Visual work must not change checkout, verification, or webhook semantics.
