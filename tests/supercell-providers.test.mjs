@@ -4,10 +4,15 @@ import {
   classifySupercellResponse,
   lookupSupercellPlayer,
   normalizeSupercellTag,
+  ROYALEAPI_PROXY_IP,
 } from "../src/app/api/lookup/providers/supercell.mjs";
 import { lookupBrawlStars } from "../src/app/api/lookup/providers/brawl-stars.mjs";
 import { lookupClashOfClans } from "../src/app/api/lookup/providers/clash-of-clans.mjs";
 import { lookupClashRoyale } from "../src/app/api/lookup/providers/clash-royale.mjs";
+
+test("the RoyaleAPI proxy IP is noted for key allowlisting", () => {
+  assert.equal(ROYALEAPI_PROXY_IP, "45.79.218.79");
+});
 
 test("player tags normalize to uppercase with a leading hash", () => {
   assert.equal(normalizeSupercellTag("#2pp"), "#2PP");
@@ -76,11 +81,11 @@ test("missing game keys fail closed without fetching", async () => {
   assert.equal(fetchCalled, false);
 });
 
-test("each game adapter hits its own official host with a bearer key", async () => {
+test("each game adapter hits its own community proxy host with a bearer key", async () => {
   const cases = [
-    { lookup: lookupBrawlStars, envKey: "BRAWL_STARS_API_KEY", host: "https://api.brawlstars.com" },
-    { lookup: lookupClashOfClans, envKey: "CLASH_OF_CLANS_API_KEY", host: "https://api.clashofclans.com" },
-    { lookup: lookupClashRoyale, envKey: "CLASH_ROYALE_API_KEY", host: "https://api.clashroyale.com" },
+    { lookup: lookupBrawlStars, envKey: "BRAWL_STARS_API_KEY", host: "https://bsproxy.royaleapi.dev" },
+    { lookup: lookupClashOfClans, envKey: "CLASH_OF_CLANS_API_KEY", host: "https://cocproxy.royaleapi.dev" },
+    { lookup: lookupClashRoyale, envKey: "CLASH_ROYALE_API_KEY", host: "https://proxy.royaleapi.dev" },
   ];
   const previousFetch = globalThis.fetch;
   for (const { lookup, envKey, host } of cases) {

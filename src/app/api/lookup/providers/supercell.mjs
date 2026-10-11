@@ -2,13 +2,18 @@ import { confirmedNickname } from "../nickname-validation.mjs";
 
 /**
  * Shared core for Supercell player lookups (Brawl Stars, Clash of Clans,
- * Clash Royale) via the official per-game APIs.
+ * Clash Royale) via the official per-game APIs through the RoyaleAPI
+ * community proxy.
  *
- * Why official APIs instead of a keyless community proxy: the Isan community
- * proxy is MLBB-only, and ID Game Checker's own listing marks its Supercell
- * category "not available". Supercell developer keys are free; each game has
- * its own developer portal and key. Calls go direct to the official hosts
- * with a Bearer token — no egress proxy is used.
+ * Community proxy note: the Isan community proxy is MLBB-only, and ID Game
+ * Checker's own listing marks its Supercell category "not available", so
+ * Supercell traffic goes through the RoyaleAPI community proxy hosts below.
+ * Supercell developer keys are free; each game has its own developer portal
+ * and key. When creating each key, allowlist the RoyaleAPI proxy IP
+ * 45.79.218.79, then call the proxy host with the key as a Bearer token —
+ * no Fixie/other egress proxy is used. Per-game base URLs can still be
+ * overridden with BRAWL_STARS_API_BASE / CLASH_OF_CLANS_API_BASE /
+ * CLASH_ROYALE_API_BASE (e.g. to point at the official hosts directly).
  *
  * Privacy: adapters never log or return tags, nicknames, payloads, URLs,
  * headers, or credentials. Only the shared LookupAttempt shape leaves here.
@@ -16,6 +21,9 @@ import { confirmedNickname } from "../nickname-validation.mjs";
 
 const TAG_PATTERN = /^#?[0289PYLQGRJCUV]{3,20}$/i;
 const REQUEST_TIMEOUT_MS = 7000;
+// RoyaleAPI community proxy IP that must be allowlisted on each Supercell key.
+// Source: https://docs.royaleapi.com/proxy.html
+export const ROYALEAPI_PROXY_IP = "45.79.218.79";
 
 /**
  * Normalize a Supercell player tag: strip whitespace, force a leading `#`,
@@ -72,17 +80,17 @@ function configFor(game, env = process.env) {
   const table = {
     "brawl-stars": {
       key: env.BRAWL_STARS_API_KEY?.trim() || "",
-      base: (env.BRAWL_STARS_API_BASE?.trim() || "https://api.brawlstars.com").replace(/\/+$/, ""),
+      base: (env.BRAWL_STARS_API_BASE?.trim() || "https://bsproxy.royaleapi.dev").replace(/\/+$/, ""),
       source: "brawl_stars_official_api",
     },
     "clash-of-clans": {
       key: env.CLASH_OF_CLANS_API_KEY?.trim() || "",
-      base: (env.CLASH_OF_CLANS_API_BASE?.trim() || "https://api.clashofclans.com").replace(/\/+$/, ""),
+      base: (env.CLASH_OF_CLANS_API_BASE?.trim() || "https://cocproxy.royaleapi.dev").replace(/\/+$/, ""),
       source: "clash_of_clans_official_api",
     },
     "clash-royale": {
       key: env.CLASH_ROYALE_API_KEY?.trim() || "",
-      base: (env.CLASH_ROYALE_API_BASE?.trim() || "https://api.clashroyale.com").replace(/\/+$/, ""),
+      base: (env.CLASH_ROYALE_API_BASE?.trim() || "https://proxy.royaleapi.dev").replace(/\/+$/, ""),
       source: "clash_royale_official_api",
     },
   };
