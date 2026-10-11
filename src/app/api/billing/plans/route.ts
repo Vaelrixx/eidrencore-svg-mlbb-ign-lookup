@@ -5,12 +5,11 @@ import { PLAN_FALLBACKS } from "@/lib/platform";
 export const dynamic = "force-dynamic";
 
 function recurringConfigured() {
-  // Plan IDs are provisioned lazily and idempotently by the server-side
-  // subscription helper, so they are no longer required Railway variables.
   return Boolean(
     process.env.RAZORPAY_KEY_ID?.trim() &&
     process.env.RAZORPAY_KEY_SECRET?.trim() &&
-    process.env.RAZORPAY_WEBHOOK_SECRET?.trim()
+    process.env.RAZORPAY_PRO_PLAN_ID?.trim() &&
+    process.env.RAZORPAY_BUSINESS_PLAN_ID?.trim()
   );
 }
 
