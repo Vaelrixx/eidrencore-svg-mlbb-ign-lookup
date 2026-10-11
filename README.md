@@ -145,6 +145,16 @@ Apply supabase/migrations/20261011090000_daily_api_analytics.sql to the linked S
 
 The account page intentionally shows the current session rather than claiming to list every device. “Revoke all sessions” delegates to Supabase Auth's global sign-out scope. Password reset links must be allowed by the project's Supabase Auth URL configuration and email delivery must be configured.
 
+### Password hardening on Supabase free tier
+
+Supabase's HaveIBeenPwned-backed leaked-password protection requires Pro, so this app enforces its own baseline while on the free tier:
+
+- New email/password signups and password changes require 12–128 characters with mixed case, numbers, and symbols, and reject common passwords, passwords containing the email local part, and reused credentials by policy copy.
+- Sign-in attempts are throttled per client address (20 per 15 minutes), signups at 10 per hour, and recovery emails at 5 per hour. Auth fails closed when the limiter is configured but unreachable.
+- The login, reset, and account screens encourage social sign-in (Google, GitHub, Discord, Telegram) and password-manager use.
+- `npm run test:auth` covers the password policy and limiter behavior.
+- Revisit Supabase leaked-password protection after upgrading to Pro; this app-level policy is a mitigation, not a breach-corpus check.
+
 
 ## Team workspaces, webhooks, and audit logs
 

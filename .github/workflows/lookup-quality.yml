@@ -25,6 +25,8 @@ jobs:
         run: npm run test:observability
       - name: Run persistence and rate-limit tests
         run: npm run test:persistence
+      - name: Run auth hardening tests
+        run: npm run test:auth
       - name: Lint application
         run: npm run lint
       - name: Build Next.js app
