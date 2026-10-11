@@ -24,7 +24,7 @@ const faqs = [
   { q: "Do I need an account?", a: "Yes. Every lookup runs on your Eidren account, either from the console playground or with an API key. Sign-up is free and takes a minute." },
   { q: "What counts as a request?", a: "Each lookup call counts once against your monthly allowance, whether it comes from the playground or from your API key." },
   { q: "Is this official?", a: "No. Eidren is a community tool and is not affiliated with Moonton. Lookups rely on third-party providers, so we clearly separate a confirmed not-found from a temporary outage." },
-  { q: "Which games are supported?", a: "Mobile Legends is live today. Free Fire, PUBG Mobile and Call of Duty: Mobile are planned and will ship on the same keys and billing." },
+  { q: "Which games are supported?", a: "Mobile Legends, Brawl Stars, Clash of Clans, and Clash Royale are live today. Free Fire, PUBG Mobile and Call of Duty: Mobile are planned and will ship on the same keys and billing." },
 ];
 
 type PlanRow = { slug: string; name: string; price_paise: number; monthly_limit: number; enabled: boolean; description: string };

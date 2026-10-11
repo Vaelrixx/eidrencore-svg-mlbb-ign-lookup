@@ -26,4 +26,28 @@ export const platformTools: PlatformTool[] = [
   { id: "freefire-player-lookup", name: "Player lookup", game: "Free Fire", description: "Player identity by UID.", status: "planned" },
   { id: "pubg-player-lookup", name: "Player lookup", game: "PUBG Mobile", description: "Player identity by character ID.", status: "planned" },
   { id: "codm-player-lookup", name: "Player lookup", game: "Call of Duty: Mobile", description: "Player identity by UID.", status: "planned" },
+  {
+    id: "brawl-stars-player-lookup",
+    name: "Player lookup",
+    game: "Brawl Stars",
+    description: "Resolve a player name from a Supercell player tag.",
+    status: "live",
+    href: "/dashboard/playground?game=brawl-stars",
+  },
+  {
+    id: "clash-of-clans-player-lookup",
+    name: "Player lookup",
+    game: "Clash of Clans",
+    description: "Resolve a player name from a Supercell player tag.",
+    status: "live",
+    href: "/dashboard/playground?game=clash-of-clans",
+  },
+  {
+    id: "clash-royale-player-lookup",
+    name: "Player lookup",
+    game: "Clash Royale",
+    description: "Resolve a player name from a Supercell player tag.",
+    status: "live",
+    href: "/dashboard/playground?game=clash-royale",
+  },
 ];

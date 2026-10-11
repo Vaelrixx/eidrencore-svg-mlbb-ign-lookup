@@ -859,6 +859,11 @@ body {
 .pg-bad { color: #fda4af !important; }
 .pg-panel pre { margin: 0; padding: 16px; overflow-x: auto; font-family: "JetBrains Mono", monospace; font-size: 12.5px; line-height: 1.75; color: #c9d3ea; min-height: 96px; }
 .pg-panel code { font-family: "JetBrains Mono", monospace; }
+.pg-game-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 20px; }
+.pg-game-tab { padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.16); background: transparent; color: #9fb0cc; font-size: 13px; font-weight: 600; cursor: pointer; }
+.pg-game-tab:hover { color: #dfe4ff; border-color: rgba(255,255,255,.3); }
+.pg-game-tab.is-active { border-color: rgba(34,211,238,.4); background: linear-gradient(110deg, rgba(124,140,255,.25), rgba(34,211,238,.1)); color: #e8edf9; }
+.pg-game-tab:focus-visible { outline: 2px solid #7c8cff; outline-offset: 2px; }
 .pg-planned { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
 .pg-planned-item { display: flex; flex-direction: column; gap: 3px; padding: 14px 16px; border-radius: 14px; border: 1px dashed rgba(255,255,255,.2); opacity: .75; }
 .pg-planned-item small { color: #9fb0cc; font-size: 12px; }
