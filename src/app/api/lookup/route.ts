@@ -6,7 +6,7 @@ import { lookupIsan } from "./providers/isan.mjs";
 import { lookupRapidApi } from "./providers/rapidapi.mjs";
 import { logLookupSummary, observeProvider } from "./observability.mjs";
 import { enforceLookupRateLimit, enforcePlaygroundLimit, persistLookupLog } from "./persistence.mjs";
-import { getUserFromRequest, requireUser } from "@/lib/platform";
+import { getUserFromRequest, getUserFromSession, requireUser } from "@/lib/platform";
 import { recordDeveloperRequest } from "@/lib/developer-events";
 
 export const runtime = "nodejs";
@@ -237,6 +237,17 @@ export async function POST(request: NextRequest) {
         { "Retry-After": String(Math.max(1, playground.retryAfterSeconds)) },
       );
     }
+    const sessionAuth = await getUserFromSession(sessionUserId);
+    if (!sessionAuth || "error" in sessionAuth) {
+      const status = sessionAuth && typeof sessionAuth.status === "number" ? sessionAuth.status : 503;
+      return jsonError(
+        status === 429 ? "Monthly request quota reached. Upgrade your plan to continue." : "Playground is temporarily unavailable.",
+        status,
+        status === 429 ? "API_QUOTA_EXCEEDED" : "QUOTA_UNAVAILABLE",
+        requestId,
+      );
+    }
+    developerAuth = { userId: sessionAuth.userId, apiKeyId: sessionAuth.keyId, workspaceId: sessionAuth.workspaceId };
   } else {
     const keyAuth = await getUserFromRequest(request);
     if (!keyAuth) return jsonError("Invalid API key.", 401, "INVALID_API_KEY", requestId);

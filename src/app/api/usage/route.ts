@@ -41,9 +41,11 @@ export async function GET() {
     id: key.id, name: key.name, prefix: key.key_prefix, plan: key.plan_slug,
     createdAt: key.created_at, lastUsedAt: key.last_used_at, revoked: !!key.revoked_at,
   }));
+  // The internal Playground key carries playground traffic but is not a key the customer created.
+  const customerKeys = keys.filter(key => key.prefix !== "eid_playground");
   return NextResponse.json({
     plan: planSlug, monthlyUsage, monthlyLimit: Number(planRow?.monthly_limit ?? fallback?.monthly_limit ?? 100),
-    activeKeys: keys.filter(key => !key.revoked).length, totalKeys: keys.length, daily, keys,
+    activeKeys: customerKeys.filter(key => !key.revoked).length, totalKeys: customerKeys.length, daily, keys,
     periodStart: monthStart,
   }, { headers: { "Cache-Control": "no-store" } });
 }
