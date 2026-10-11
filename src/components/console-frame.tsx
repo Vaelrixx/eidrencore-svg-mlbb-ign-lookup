@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, BookOpen, CreditCard, LayoutDashboard, LogOut, Settings2, Swords, KeyRound, Building2, Webhook, ScrollText } from "lucide-react";
+import { Activity, ArrowUpRight, BookOpen, CreditCard, LayoutDashboard, LogOut, Settings2, Swords, KeyRound, Building2, Webhook, ScrollText } from "lucide-react";
 
 const items = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
@@ -14,6 +14,11 @@ const items = [
   { href: "/dashboard/workspaces", label: "Workspaces", icon: Building2 },
   { href: "/dashboard/webhooks", label: "Webhooks", icon: Webhook },
   { href: "/dashboard/logs", label: "Logs & audit", icon: ScrollText },
+];
+
+const groups = [
+  { label: "BUILD", items: items.slice(0, 4) },
+  { label: "MANAGE", items: items.slice(4) },
 ];
 
 export function ConsoleFrame({ children }: { children: React.ReactNode }) {
@@ -32,9 +37,11 @@ export function ConsoleFrame({ children }: { children: React.ReactNode }) {
     </nav>
     <div className="console-layout">
       <aside className="console-sidebar" aria-label="Developer console sections">
-        <div className="console-side-label">WORKSPACE</div>
-        {items.map(item => { const active = item.exact ? pathname === item.href : pathname.startsWith(item.href); const Icon = item.icon; return <Link key={item.href} href={item.href} className={`console-nav-link${active ? " active" : ""}`} aria-current={active ? "page" : undefined}><Icon size={16}/><span>{item.label}</span>{active && <span className="console-nav-indicator" />}</Link>; })}
-        <div className="console-sidebar-bottom"><span className="console-sidebar-mark"><Swords size={14}/></span><div><strong>Eidren Platform</strong><small>MLBB Identity API</small></div></div>
+        {groups.map(group => <div className="console-side-group" key={group.label}>
+          <div className="console-side-label">{group.label}</div>
+          {group.items.map(item => { const active = item.exact ? pathname === item.href : pathname.startsWith(item.href); const Icon = item.icon; return <Link key={item.href} href={item.href} className={`console-nav-link${active ? " active" : ""}`} aria-current={active ? "page" : undefined}><Icon size={16}/><span>{item.label}</span>{active && <span className="console-nav-indicator" />}</Link>; })}
+        </div>)}
+        <Link href="/" className="console-sidebar-bottom console-lookup-link"><span className="console-sidebar-mark"><Swords size={14}/></span><div><strong>Public lookup</strong><small>Open the player search</small></div><ArrowUpRight size={15}/></Link>
       </aside>
       <section className="console-page">
         <div className="console-mobile-links">{items.map(item => { const active = item.exact ? pathname === item.href : pathname.startsWith(item.href); const Icon = item.icon; return <Link key={item.href} href={item.href} className={active ? "active" : ""}><Icon size={14}/>{item.label}</Link>; })}</div>

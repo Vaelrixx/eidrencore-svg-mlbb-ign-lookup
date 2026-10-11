@@ -2,10 +2,22 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, Copy, Gamepad2, LoaderCircle, Search, ShieldCheck, Sparkles, Swords, Zap } from "lucide-react";
+import { ArrowRight, Check, Copy, Gamepad2, KeyRound, LoaderCircle, Search, ShieldCheck, Sparkles, Swords, Terminal, Webhook, Zap } from "lucide-react";
 
 type LookupResult = { nickname: string; playerId: string; zoneId: string };
 type ApiResponse = { success: boolean; data?: LookupResult; error?: string };
+
+const steps = [
+  { n: "01", title: "Open your profile", body: "Launch MLBB and tap your profile avatar in the top left." },
+  { n: "02", title: "Find the ID line", body: "Your Player ID and the Zone ID in brackets sit under your in-game name." },
+  { n: "03", title: "Enter both numbers", body: "Type them in above and we resolve the in-game name for that exact account." },
+];
+
+const features = [
+  { icon: Gamepad2, title: "Zone-aware", body: "Player ID and Zone ID are checked together, so the name belongs to the account you typed." },
+  { icon: ShieldCheck, title: "Honest results", body: "A confirmed not-found is never mixed up with the provider being unavailable." },
+  { icon: Zap, title: "Live validation", body: "Names come from a live account-validation response, not a stale list." },
+];
 
 export default function Home() {
   const [playerId, setPlayerId] = useState("");
@@ -50,72 +62,106 @@ export default function Home() {
     }
   }
 
+  const initial = result ? result.nickname.trim().charAt(0).toUpperCase() || "?" : "?";
+
   return (
-    <main className="shell">
-      <nav className="nav">
-        <Link className="brand" href="/" aria-label="Eidren home">
-          <span className="brand-mark"><Swords size={19} strokeWidth={2.4} /></span>
-          <span>EIDREN<span className="brand-dot">.</span></span>
-        </Link>
-        <div className="nav-right"><span className="live-dot" /> PLAYER INTELLIGENCE <span className="nav-divider" /> <span className="nav-version">BETA 01</span><Link href="/login" className="developer-link">Developer console <ArrowRight size={13}/></Link></div>
-      </nav>
+    <div className="x-page">
+      <div className="x-orbs" aria-hidden="true"><i className="x-orb x-orb-a" /><i className="x-orb x-orb-b" /><i className="x-orb x-orb-c" /></div>
+      <main className="x-wrap">
+        <header className="x-nav">
+          <Link className="x-brand" href="/" aria-label="Eidren home">
+            <span className="x-brand-mark"><Swords size={19} strokeWidth={2.4} /></span>
+            <span>EIDREN<b>.</b></span>
+          </Link>
+          <nav className="x-nav-links" aria-label="Primary">
+            <a href="#lookup">Lookup</a>
+            <a href="#how">How it works</a>
+            <a href="#developers">Developers</a>
+            <Link href="/login" className="x-nav-cta">Developer console <ArrowRight size={14} /></Link>
+          </nav>
+        </header>
 
-      <section className="hero">
-        <div className="hero-copy">
-          <div className="eyebrow"><span className="eyebrow-line" /> MOBILE LEGENDS: BANG BANG</div>
-          <h1>Know who<br />you&apos;re <span>playing with.</span></h1>
-          <p className="lede">A focused identity check for the Land of Dawn. Enter a player ID and zone to resolve their in-game name.</p>
-          <div className="trust-row"><span><ShieldCheck size={15} /> No account login</span><span><Zap size={15} /> Live account validation</span></div>
-        </div>
-        <div className="hero-art" aria-hidden="true">
-          <div className="orbit orbit-one" /><div className="orbit orbit-two" />
-          <div className="art-core"><Swords size={70} strokeWidth={1.1} /></div>
-          <div className="art-ring ring-a" /><div className="art-ring ring-b" />
-          <div className="art-tag"><span className="live-dot" /> IDENTITY SYSTEM</div>
-          <div className="art-coord">MLBB / 01<br />PLAYER IDENTITY</div>
-        </div>
-      </section>
+        <section className="x-hero" id="lookup">
+          <div className="x-hero-copy">
+            <span className="x-chip"><i className="x-chip-dot" /> MOBILE LEGENDS: BANG BANG</span>
+            <h1>Know who you&apos;re <span>playing with.</span></h1>
+            <p className="x-lede">Resolve an in-game name from a Player ID and Zone ID. No login, no password, one honest answer.</p>
 
-      <section className="workspace">
-        <div className="section-label"><span>01</span> PLAYER LOOKUP <span className="section-line" /></div>
-        <div className="lookup-grid">
-          <div className="form-panel">
-            <div className="panel-heading"><div><h2>Find a player</h2><p>Use the ID shown on their in-game profile.</p></div><div className="panel-icon"><Search size={19} /></div></div>
-            <form onSubmit={lookup}>
-              <label htmlFor="player-id">PLAYER ID <span>REQUIRED</span></label>
-              <input id="player-id" inputMode="numeric" autoComplete="off" value={playerId} onChange={(e) => setPlayerId(e.target.value.replace(/\D/g, "").slice(0, 20))} placeholder="e.g. 123456789" required minLength={4} maxLength={20} />
-              <label htmlFor="zone-id">ZONE ID <span>REQUIRED</span></label>
-              <input id="zone-id" inputMode="numeric" autoComplete="off" value={zoneId} onChange={(e) => setZoneId(e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="e.g. 1234" required minLength={1} maxLength={10} />
-              <div className="hint"><Gamepad2 size={14} /> Zone ID is the number in brackets beside your Player ID.</div>
-              <button className="submit" type="submit" disabled={loading || !playerId || !zoneId}>
-                {loading ? <><LoaderCircle className="spin" size={17} /> Resolving identity…</> : <>Resolve player <ArrowRight size={17} /></>}
+            <form className="x-form" onSubmit={lookup}>
+              <div className="x-form-row">
+                <div className="x-field">
+                  <label htmlFor="player-id">PLAYER ID</label>
+                  <input id="player-id" inputMode="numeric" autoComplete="off" value={playerId} onChange={(e) => setPlayerId(e.target.value.replace(/\D/g, "").slice(0, 20))} placeholder="123456789" required minLength={4} maxLength={20} />
+                </div>
+                <div className="x-field x-field-zone">
+                  <label htmlFor="zone-id">ZONE ID</label>
+                  <input id="zone-id" inputMode="numeric" autoComplete="off" value={zoneId} onChange={(e) => setZoneId(e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="1234" required minLength={1} maxLength={10} />
+                </div>
+              </div>
+              <button className="x-submit" type="submit" disabled={loading || !playerId || !zoneId}>
+                {loading ? <><LoaderCircle className="spin" size={18} /> Resolving identity…</> : <><Search size={18} /> Resolve player</>}
               </button>
+              <p className="x-hint"><Gamepad2 size={14} /> Zone ID is the number in brackets beside your Player ID.</p>
+              {error && <div className="x-error" role="alert"><span aria-hidden="true">!</span><div><strong>Lookup unsuccessful</strong><p>{error}</p></div></div>}
             </form>
-            {error && <div className="error-box" role="alert"><span className="error-mark">!</span><div><strong>Lookup unsuccessful</strong><p>{error}</p></div></div>}
-            {result && <div className="result-box" aria-live="polite">
-              <div className="result-top"><span className="result-status"><Check size={13} /> IDENTITY RESOLVED</span><button className="copy-button" type="button" onClick={copyResult}>{copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Copied" : "Copy"}</button></div>
-              <div className="result-name">{result.nickname}</div>
-              <div className="result-ids"><span>PLAYER <b>{result.playerId}</b></span><span>ZONE <b>{result.zoneId}</b></span></div>
-              <p className="result-foot">Nickname returned by the upstream account-validation response.</p>
-            </div>}
           </div>
-          <aside className="side-panel">
-            <div className="side-top"><span className="tiny-label">HOW IT WORKS</span><Gamepad2 size={19} /></div>
-            <h3>Two numbers.<br />One identity.</h3>
-            <p>MLBB uses both your Player ID and Zone ID to identify the right account.</p>
-            <div className="id-example"><div className="avatar-placeholder"><Swords size={20} /></div><div><span>PLAYER PROFILE</span><strong>123456789 <em>(1234)</em></strong></div><span className="example-check"><Check size={14} /></span></div>
-            <div className="steps">
-              <div className="step"><span>1</span><p>Open MLBB and tap your profile avatar.</p></div>
-              <div className="step"><span>2</span><p>Find the ID line below your in-game name.</p></div>
-              <div className="step"><span>3</span><p>Enter both numbers here to check the IGN.</p></div>
-            </div>
-            <div className="privacy-note"><ShieldCheck size={16} /><span><strong>Privacy by design</strong><br />No password or Moonton login required.</span></div>
-          </aside>
-        </div>
-      </section>
 
-      <section className="bottom-strip"><div><span className="strip-icon"><Sparkles size={16} /></span><div><strong>Built for the community</strong><p>A focused identity tool. Nothing more, nothing hidden.</p></div></div><div className="strip-right">MLBB COMMUNITY TOOL <span>·</span> NOT AFFILIATED WITH MOONTON</div></section>
-      <footer><span>© {new Date().getFullYear()} EIDREN LOOKUP</span><span>ACCOUNT VALIDATION · UPSTREAM DEPENDENCY</span></footer>
-    </main>
+          <div className="x-hero-art">
+            <span className="x-ring x-ring-a" aria-hidden="true" />
+            <span className="x-ring x-ring-b" aria-hidden="true" />
+            <article className={`x-card${result ? " is-live" : ""}`} aria-live="polite">
+              <div className="x-card-top">
+                <span className="x-card-status">{result ? <><Check size={13} /> IDENTITY RESOLVED</> : "EXAMPLE RESULT"}</span>
+                {result ? <button className="x-copy" type="button" onClick={copyResult}>{copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Copied" : "Copy"}</button> : <i className="x-pulse" aria-hidden="true" />}
+              </div>
+              <div className="x-card-body">
+                <span className="x-avatar" aria-hidden="true">{result ? initial : <Swords size={26} />}</span>
+                <div className="x-card-text">
+                  <strong>{result ? result.nickname : "Player name"}</strong>
+                  <code>{result ? `${result.playerId} (${result.zoneId})` : "123456789 (1234)"}</code>
+                </div>
+              </div>
+              <div className="x-tags"><span>Mobile Legends</span><span>Zone-aware</span></div>
+              {result && <p className="x-card-foot">Nickname returned by the upstream account-validation response.</p>}
+            </article>
+            <div className="x-float x-float-a"><ShieldCheck size={15} /> No account login</div>
+            <div className="x-float x-float-b"><Sparkles size={15} /> Live validation</div>
+          </div>
+        </section>
+
+        <section className="x-section" id="how" aria-labelledby="how-title">
+          <div className="x-section-head"><span className="x-eyebrow">HOW IT WORKS</span><h2 id="how-title">Two numbers. One identity.</h2><p>MLBB uses both your Player ID and Zone ID to identify the right account.</p></div>
+          <ol className="x-steps">
+            {steps.map((s) => <li className="x-step" key={s.n}><span className="x-step-n">{s.n}</span><h3>{s.title}</h3><p>{s.body}</p></li>)}
+          </ol>
+        </section>
+
+        <section className="x-section" aria-labelledby="why-title">
+          <div className="x-section-head"><span className="x-eyebrow">WHY EIDREN</span><h2 id="why-title">Fast on the surface. Honest underneath.</h2></div>
+          <div className="x-features">
+            {features.map((f) => { const Icon = f.icon; return <article className="x-feature" key={f.title}><span className="x-feature-icon"><Icon size={22} /></span><h3>{f.title}</h3><p>{f.body}</p></article>; })}
+          </div>
+        </section>
+
+        <section className="x-dev" id="developers" aria-labelledby="dev-title">
+          <div className="x-dev-copy">
+            <span className="x-eyebrow">FOR DEVELOPERS</span>
+            <h2 id="dev-title">Ship it in your own app.</h2>
+            <p>Create API keys, manage workspaces and webhooks, and read your own logs from one secure console.</p>
+            <ul className="x-dev-list"><li><KeyRound size={16} /> Hashed API keys</li><li><Webhook size={16} /> Webhooks</li><li><Terminal size={16} /> Usage and logs</li></ul>
+            <Link href="/login" className="x-submit x-dev-cta">Open the developer console <ArrowRight size={17} /></Link>
+          </div>
+          <pre className="x-code" aria-label="Example request"><code>{`curl -X POST /api/lookup \\
+  -H "Authorization: Bearer YOUR_EIDREN_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{"playerId":"123456789","zoneId":"1234"}'`}</code></pre>
+        </section>
+
+        <footer className="x-footer">
+          <span>© {new Date().getFullYear()} EIDREN LOOKUP · MLBB COMMUNITY TOOL</span>
+          <span>NOT AFFILIATED WITH MOONTON · ACCOUNT VALIDATION IS AN UPSTREAM DEPENDENCY</span>
+        </footer>
+      </main>
+    </div>
   );
 }
