@@ -29,5 +29,6 @@ jobs:
           npm run test:provider-adapters
           npm run test:observability
           npm run test:persistence
+          npm run test:billing
       - name: Production build
         run: npm run build

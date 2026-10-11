@@ -24,7 +24,11 @@ async function consumeKeyQuota(admin: ReturnType<typeof createAdminClient>, key:
     ? await admin.from("developer_workspace_subscriptions").select("plan_slug,status,current_period_end").eq("workspace_id", key.workspace_id).maybeSingle()
     : await admin.from("developer_subscriptions").select("plan_slug,status,current_period_end").eq("user_id", key.user_id).maybeSingle();
   const subscription = subscriptionResult.data;
-  const paidIsCurrent = subscription?.status === "active" && !!subscription.current_period_end && Date.parse(subscription.current_period_end) > Date.now();
+  const periodIsCurrent = !!subscription?.current_period_end && Date.parse(subscription.current_period_end) > Date.now();
+  // A failed renewal does not erase an already-paid period. Keep the paid
+  // tier until period end while dunning is in progress, then fall back to free.
+  const eligiblePaidStatuses = key.workspace_id ? ["active", "pending"] : ["active", "past_due"];
+  const paidIsCurrent = periodIsCurrent && eligiblePaidStatuses.includes(subscription?.status || "");
   const planSlug = paidIsCurrent ? subscription.plan_slug : "free";
   if (planSlug !== key.plan_slug) await admin.from("api_keys").update({ plan_slug: planSlug }).eq("id", key.id);
   const { data: plan } = await admin.from("developer_plans").select("monthly_limit").eq("slug", planSlug).maybeSingle();
