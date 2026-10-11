@@ -6,7 +6,7 @@ import { lookupIsan } from "./providers/isan.mjs";
 import { lookupRapidApi } from "./providers/rapidapi.mjs";
 import { logLookupSummary, observeProvider } from "./observability.mjs";
 import { enforceLookupRateLimit, enforcePlaygroundLimit, persistLookupLog } from "./persistence.mjs";
-import { getUserFromRequest, requireUser } from "@/lib/platform";
+import { getUserFromRequest, getUserFromSession, requireUser } from "@/lib/platform";
 import { recordDeveloperRequest } from "@/lib/developer-events";
 
 export const runtime = "nodejs";
@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let developerAuth: { userId: string; apiKeyId: string; workspaceId: string | null } | null = null;
+  let developerAuth: { userId: string; apiKeyId: string; workspaceId: string | null };
 
   // API keys must validate and pass their plan's monthly quota. Session
   // (playground) callers get a separate daily per-account allowance.
@@ -237,6 +237,17 @@ export async function POST(request: NextRequest) {
         { "Retry-After": String(Math.max(1, playground.retryAfterSeconds)) },
       );
     }
+    const sessionAuth = await getUserFromSession(sessionUserId);
+    if (!sessionAuth || "error" in sessionAuth) {
+      const status = sessionAuth && typeof sessionAuth.status === "number" ? sessionAuth.status : 503;
+      return jsonError(
+        status === 429 ? "Monthly request quota reached. Upgrade your plan to continue." : "Playground is temporarily unavailable.",
+        status,
+        status === 429 ? "API_QUOTA_EXCEEDED" : "QUOTA_UNAVAILABLE",
+        requestId,
+      );
+    }
+    developerAuth = { userId: sessionAuth.userId, apiKeyId: sessionAuth.keyId, workspaceId: sessionAuth.workspaceId };
   } else {
     const keyAuth = await getUserFromRequest(request);
     if (!keyAuth) return jsonError("Invalid API key.", 401, "INVALID_API_KEY", requestId);
@@ -277,7 +288,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (confirmed?.kind === "success") {
-    if (developerAuth) await recordDeveloperRequest({ ...developerAuth, requestId, status: 200, responseMs: Date.now() - requestStartedAt });
+    await recordDeveloperRequest({ ...developerAuth, requestId, status: 200, responseMs: Date.now() - requestStartedAt });
     void persistLookupLog({
       status: "success",
       responseMs: Date.now() - requestStartedAt,
@@ -289,7 +300,7 @@ export async function POST(request: NextRequest) {
   const attempts: LookupAttempt[] = [primary, ...fallbacks];
 
   if (attempts.every((attempt) => attempt.kind === "not_found")) {
-    if (developerAuth) await recordDeveloperRequest({ ...developerAuth, requestId, status: 404, responseMs: Date.now() - requestStartedAt });
+    await recordDeveloperRequest({ ...developerAuth, requestId, status: 404, responseMs: Date.now() - requestStartedAt });
     return loggedError(
       "No provider found an MLBB account for that Player ID and Zone ID.",
       404,
@@ -301,7 +312,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (attempts.every((attempt) => attempt.kind === "rate_limited")) {
-    if (developerAuth) await recordDeveloperRequest({ ...developerAuth, requestId, status: 429, responseMs: Date.now() - requestStartedAt });
+    await recordDeveloperRequest({ ...developerAuth, requestId, status: 429, responseMs: Date.now() - requestStartedAt });
     return loggedError(
       "All lookup providers are rate-limiting requests. Try again shortly.",
       429,
@@ -312,7 +323,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (developerAuth) await recordDeveloperRequest({ ...developerAuth, requestId, status: 502, responseMs: Date.now() - requestStartedAt });
+  await recordDeveloperRequest({ ...developerAuth, requestId, status: 502, responseMs: Date.now() - requestStartedAt });
   return loggedError(
     "We couldn't verify this ID right now because lookup providers are unavailable. Please retry shortly.",
     502,

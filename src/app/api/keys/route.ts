@@ -8,7 +8,7 @@ export async function GET() {
   const { user } = await requireUser();
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   const admin = createAdminClient();
-  const { data, error } = await admin.from("api_keys").select("id,name,key_prefix,plan_slug,created_at,last_used_at,revoked_at").eq("user_id", user.id).is("workspace_id", null).order("created_at", { ascending: false });
+  const { data, error } = await admin.from("api_keys").select("id,name,key_prefix,plan_slug,created_at,last_used_at,revoked_at").eq("user_id", user.id).is("workspace_id", null).neq("key_prefix", "eid_playground").order("created_at", { ascending: false });
   if (error) return NextResponse.json({ error: "Could not load API keys." }, { status: 500 });
   return NextResponse.json({ keys: data || [] }, { headers: { "Cache-Control": "no-store" } });
 }
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   const paidIsCurrent = subscription?.status === "active" && !!subscription.current_period_end && Date.parse(subscription.current_period_end) > Date.now();
   const planSlug = paidIsCurrent ? subscription.plan_slug : "free";
   const { data: plan } = await admin.from("developer_plans").select("monthly_limit").eq("slug", planSlug).maybeSingle();
-  const { count } = await admin.from("api_keys").select("id", { count: "exact", head: true }).eq("user_id", user.id).is("workspace_id", null).is("revoked_at", null);
+  const { count } = await admin.from("api_keys").select("id", { count: "exact", head: true }).eq("user_id", user.id).is("workspace_id", null).neq("key_prefix", "eid_playground").is("revoked_at", null);
   if ((count || 0) >= 10) return NextResponse.json({ error: "You can have up to 10 active API keys." }, { status: 409 });
   const generated = newApiKey();
   const { data, error } = await admin.from("api_keys").insert({ user_id: user.id, name, key_hash: hashApiKey(generated.value), key_prefix: generated.prefix, plan_slug: planSlug }).select("id,name,key_prefix,plan_slug,created_at").single();
