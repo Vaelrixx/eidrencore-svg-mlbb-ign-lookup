@@ -8,8 +8,7 @@ function recurringConfigured() {
   return Boolean(
     process.env.RAZORPAY_KEY_ID?.trim() &&
     process.env.RAZORPAY_KEY_SECRET?.trim() &&
-    process.env.RAZORPAY_PRO_PLAN_ID?.trim() &&
-    process.env.RAZORPAY_BUSINESS_PLAN_ID?.trim()
+    process.env.RAZORPAY_WEBHOOK_SECRET?.trim()
   );
 }
 
