@@ -29,6 +29,8 @@ jobs:
         run: npm run test:auth
       - name: Run Supercell provider tests
         run: npm run test:supercell
+      - name: Run TypeScript client tests
+        run: npm run test:ts-client
       - name: Lint application
         run: npm run lint
       - name: Build Next.js app

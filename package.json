@@ -15,7 +15,8 @@
     "test:provider-sweep:live": "node --test tests/provider-diagnostics-live.test.mjs tests/rapidapi-live-contract.test.mjs",
     "test:billing": "node --test tests/razorpay-subscriptions.test.mjs",
     "test:auth": "node --test tests/auth-hardening.test.mjs",
-    "test:supercell": "node --test tests/supercell-providers.test.mjs"
+    "test:supercell": "node --test tests/supercell-providers.test.mjs",
+    "test:ts-client": "node --test tests/typescript-client.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
