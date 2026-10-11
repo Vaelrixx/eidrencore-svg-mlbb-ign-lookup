@@ -81,6 +81,7 @@ test("recurring Plan validation fails closed on mismatched or missing billing fi
   assert.equal(razorpayPlanMatchesCatalog({ ...valid, item: { amount: 49900 } }, expected), false);
   assert.equal(razorpayPlanMatchesCatalog({ ...valid, item: { ...valid.item, currency: "USD" } }, expected), false);
   assert.equal(razorpayPlanMatchesCatalog({ ...valid, item: { ...valid.item, active: false } }, expected), false);
+  assert.equal(razorpayPlanMatchesCatalog({ ...valid, item: { amount: 49900, currency: "INR" } }, expected), false);
   assert.equal(razorpayPlanMatchesCatalog(null, expected), false);
 });
 
