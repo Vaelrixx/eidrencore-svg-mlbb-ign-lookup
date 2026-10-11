@@ -106,9 +106,8 @@ These lookups use the official per-game Supercell APIs — there is no keyless c
 - `BRAWL_STARS_API_KEY`: from [developer.brawlstars.com](https://developer.brawlstars.com). Endpoint: `POST /api/lookup/brawl-stars` with `{ "tag": "#2PP" }`.
 - `CLASH_OF_CLANS_API_KEY`: from [developer.clashofclans.com](https://developer.clashofclans.com). Endpoint: `POST /api/lookup/clash-of-clans` with `{ "tag": "#2PP" }`.
 - `CLASH_ROYALE_API_KEY`: from [developer.clashroyale.com](https://developer.clashroyale.com). Endpoint: `POST /api/lookup/clash-royale` with `{ "tag": "#2PP" }`.
-- `FIXIE_URL` (already set): static-egress proxy. Supercell keys are IP-allowlisted, and Railway has no static IP without it — the adapters route upstream calls through this proxy automatically.
 
-When creating each key, allowlist the Fixie static egress IP (find it in the Fixie dashboard or `curl -x $FIXIE_URL https://api.ipify.org`). Until a game's key is set, its endpoint returns `GAME_NOT_CONFIGURED` (503) instead of failing obscurely. Tags use Supercell&apos;s `0289PYLQGRJCUV` alphabet and are case-insensitive. `npm run test:supercell` covers tag normalization, response classification, and per-game routing.
+Calls go direct to the official hosts with a Bearer token — no egress proxy is used. Note: Supercell keys are IP-allowlisted, so allowlist your server's egress IP when creating each key (Railway egress IPs can change; if lookups start returning 403s, re-check the allowlist). Until a game's key is set, its endpoint returns `GAME_NOT_CONFIGURED` (503) instead of failing obscurely. Tags use Supercell&apos;s `0289PYLQGRJCUV` alphabet and are case-insensitive. `npm run test:supercell` covers tag normalization, response classification, and per-game routing.
 
 ### Provider dashboard configuration
 

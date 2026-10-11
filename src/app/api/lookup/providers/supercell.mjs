@@ -1,4 +1,3 @@
-import { ProxyAgent } from "undici";
 import { confirmedNickname } from "../nickname-validation.mjs";
 
 /**
@@ -8,8 +7,8 @@ import { confirmedNickname } from "../nickname-validation.mjs";
  * Why official APIs instead of a keyless community proxy: the Isan community
  * proxy is MLBB-only, and ID Game Checker's own listing marks its Supercell
  * category "not available". Supercell developer keys are free; each game has
- * its own developer portal and key, allowlisted to the server's static egress
- * IP (Railway provides this via the FIXIE_URL proxy).
+ * its own developer portal and key. Calls go direct to the official hosts
+ * with a Bearer token — no egress proxy is used.
  *
  * Privacy: adapters never log or return tags, nicknames, payloads, URLs,
  * headers, or credentials. Only the shared LookupAttempt shape leaves here.
@@ -17,20 +16,6 @@ import { confirmedNickname } from "../nickname-validation.mjs";
 
 const TAG_PATTERN = /^#?[0289PYLQGRJCUV]{3,20}$/i;
 const REQUEST_TIMEOUT_MS = 7000;
-
-let cachedProxyAgent = null;
-let cachedProxyUrl = null;
-
-function proxyAgent(env = process.env) {
-  const proxyUrl = env.FIXIE_URL?.trim() || env.HTTPS_PROXY?.trim() || env.https_proxy?.trim() || "";
-  if (!proxyUrl) return null;
-  // Cache per proxy URL so every lookup reuses one agent (connection pooling).
-  if (!cachedProxyAgent || cachedProxyUrl !== proxyUrl) {
-    cachedProxyAgent = new ProxyAgent(proxyUrl);
-    cachedProxyUrl = proxyUrl;
-  }
-  return cachedProxyAgent;
-}
 
 /**
  * Normalize a Supercell player tag: strip whitespace, force a leading `#`,
@@ -122,14 +107,12 @@ export async function lookupSupercellPlayer(game, tag, {
   const normalized = normalizeSupercellTag(tag);
   if (!normalized) return { kind: "unavailable", diagnostic: { reason: "provider_error" } };
 
-  const dispatcher = proxyAgent(env);
   try {
     const upstream = await fetchImpl(`${config.base}/v1/players/${encodeURIComponent(normalized)}`, {
       method: "GET",
       headers: { Accept: "application/json", Authorization: `Bearer ${config.key}` },
       cache: "no-store",
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      ...(dispatcher ? { dispatcher } : {}),
     });
     const payload = await upstream.json().catch(() => null);
     return classifySupercellResponse(upstream.status, payload, config.source);
