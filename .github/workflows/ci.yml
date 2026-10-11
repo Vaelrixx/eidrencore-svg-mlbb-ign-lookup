@@ -32,5 +32,6 @@ jobs:
           npm run test:billing
           npm run test:auth
           npm run test:supercell
+          npm run test:ts-client
       - name: Production build
         run: npm run build
