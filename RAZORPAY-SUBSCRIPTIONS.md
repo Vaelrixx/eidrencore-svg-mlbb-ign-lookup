@@ -12,11 +12,11 @@ Recurring checkout fails closed unless all of the following are true:
 - The database migration 20261011200917_razorpay_recurring_billing.sql has been applied after the repository's previous migration-version alignment has been resolved and reviewed.
 - RAZORPAY_WEBHOOK_SECRET is set to the signing secret configured for the appropriate Test or Live webhook.
 
-Plan IDs are separate from the prices stored in Eidren. The application deliberately does not create or modify Plans automatically, and does not accept recurring payments if the IDs, amount, currency, or monthly cadence do not match.
+Plan IDs are separate from the prices stored in Eidren. The server automatically provisions a Plan only when the matching canonical Eidren Plan cannot be found, using `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` already configured on the server. It searches for an exact active monthly INR Plan at the catalog price before creating one, records provider/slug notes on new Plans, caches the ID per server process, and validates the Plan again before creating a Subscription. Explicit Plan ID variables remain supported as overrides. The system fails closed if credentials are invalid or the Plan amount, currency, active status, or monthly cadence do not match.
 
 ## Razorpay dashboard configuration
 
-1. In Razorpay Test Mode, create a monthly INR Plan for each paid tier using the current amounts from the Eidren plan catalog. Copy the resulting Plan IDs into the staging environment's RAZORPAY_PRO_PLAN_ID and RAZORPAY_BUSINESS_PLAN_ID. Do not put Test Mode keys on the current production deployment.
+1. Use the matching Razorpay mode for the target environment. Plan IDs are automatically discovered or created by the backend from the current Eidren catalog; manually setting RAZORPAY_PRO_PLAN_ID and RAZORPAY_BUSINESS_PLAN_ID is optional. Do not put Test Mode keys on the production Live deployment.
 2. Configure the staging backend's Razorpay Test Mode key ID, key secret, and webhook secret. Keep all values in server-side Railway environment variables; never add them to source code or NEXT_PUBLIC_* variables.
 3. Add a Razorpay Test Mode webhook for the staging URL:
 

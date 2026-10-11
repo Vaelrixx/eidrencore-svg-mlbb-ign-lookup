@@ -21,8 +21,14 @@ export type RazorpayPlan = {
   id: string;
   period: string;
   interval: number;
-  item?: { active?: boolean; amount?: number; currency?: string; name?: string };
+  item?: { active?: boolean; amount?: number; currency?: string; name?: string; description?: string };
+  notes?: Record<string, string>;
 };
+
+type RazorpayPlanCollection = { items?: RazorpayPlan[]; count?: number };
+
+const automaticPlanInFlight = new Map<string, Promise<string | null>>();
+const automaticPlanCache = new Map<string, string>();
 
 export type RazorpaySubscription = {
   id: string;
@@ -107,15 +113,78 @@ export async function razorpayApi<T>(
   }
 }
 
-/** Fails closed unless the merchant plan matches the in-app price and monthly cadence. */
+/**
+ * Resolve a paid plan without requiring manually copied Plan IDs.
+ * Existing configured IDs remain supported; otherwise we reuse an exact match
+ * or create the canonical monthly INR Plan through Razorpay's server-side API.
+ * The in-process lock prevents duplicate creation from concurrent requests on
+ * the same instance. Plan IDs are never exposed outside the server.
+ */
+async function ensureRecurringPlanId(slug: PaidPlanSlug, expectedPricePaise: number): Promise<string | null> {
+  const explicitId = recurringPlanId(slug);
+  if (explicitId) return explicitId;
+
+  const cacheKey = slug + ":" + expectedPricePaise;
+  const cached = automaticPlanCache.get(cacheKey);
+  if (cached) return cached;
+
+  const existing = automaticPlanInFlight.get(cacheKey);
+  if (existing) return existing;
+
+  const work = (async (): Promise<string | null> => {
+    const canonicalName = slug === "pro" ? "Eidren Pro Monthly" : "Eidren Business Monthly";
+    const listed = await razorpayApi<RazorpayPlanCollection>("/plans?count=100");
+    if (!listed.ok) return null;
+
+    const match = (listed.data.items || []).find(plan =>
+      plan.item?.name === canonicalName &&
+      razorpayPlanMatchesCatalog(plan, { id: plan.id, pricePaise: expectedPricePaise })
+    );
+    if (match) {
+      automaticPlanCache.set(cacheKey, match.id);
+      return match.id;
+    }
+
+    const created = await razorpayApi<RazorpayPlan>("/plans", {
+      method: "POST",
+      body: {
+        period: "monthly",
+        interval: 1,
+        item: {
+          name: canonicalName,
+          amount: expectedPricePaise,
+          currency: "INR",
+          description: canonicalName + " for EidrenCore",
+        },
+        notes: {
+          provider: "eidren",
+          plan_slug: slug,
+          billing_scope: "platform",
+        },
+      },
+    });
+    if (!created.ok || !created.data.id) return null;
+    if (!razorpayPlanMatchesCatalog(created.data, { id: created.data.id, pricePaise: expectedPricePaise })) return null;
+    automaticPlanCache.set(cacheKey, created.data.id);
+    return created.data.id;
+  })();
+
+  automaticPlanInFlight.set(cacheKey, work);
+  try {
+    return await work;
+  } finally {
+    automaticPlanInFlight.delete(cacheKey);
+  }
+}
+
+/** Fails closed unless the merchant Plan matches the in-app price and monthly cadence. */
 export async function validateRecurringPlan(slug: PaidPlanSlug, expectedPricePaise: number, displayName: string) {
-  const planId = recurringPlanId(slug);
-  const envName = slug === "pro" ? "RAZORPAY_PRO_PLAN_ID" : "RAZORPAY_BUSINESS_PLAN_ID";
+  const planId = await ensureRecurringPlanId(slug, expectedPricePaise);
   if (!planId) {
     return {
       ok: false as const,
       status: 503,
-      error: "Recurring billing for " + displayName + " is not configured. Set " + envName + " to the matching monthly Razorpay plan ID.",
+      error: "Could not find or automatically create the monthly Razorpay Plan for " + displayName + ". Verify the existing Razorpay API credentials and that Subscriptions is enabled.",
     };
   }
 
@@ -127,7 +196,7 @@ export async function validateRecurringPlan(slug: PaidPlanSlug, expectedPricePai
     return {
       ok: false as const,
       status: 409,
-      error: "The configured Razorpay plan for " + displayName + " does not match the enabled INR monthly price. Check the plan ID, amount, currency and billing interval before accepting payments.",
+      error: "The configured Razorpay plan for " + displayName + " does not match the enabled INR monthly price. Check the plan ID, amount, currency and monthly interval before accepting payments.",
     };
   }
 
