@@ -12,6 +12,9 @@ const LOG_SOURCES = new Set([
   "community_lookup",
   "isan_nickname_api",
   "rapidapi_id_game_checker",
+  "brawl_stars_official_api",
+  "clash_of_clans_official_api",
+  "clash_royale_official_api",
 ]);
 
 function configuration(env = process.env) {

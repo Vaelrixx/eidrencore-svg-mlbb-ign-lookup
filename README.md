@@ -99,6 +99,16 @@ The developer console lives at `/login` and `/dashboard`. It supports email/pass
 - `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET`: Razorpay Checkout and webhook credentials.
 - Optional plan defaults: `RAZORPAY_PRO_PRICE_PAISE`, `RAZORPAY_BUSINESS_PRICE_PAISE`, `PLAN_PRO_MONTHLY_LIMIT`, `PLAN_BUSINESS_MONTHLY_LIMIT`. The database plan catalog is authoritative after migration.
 
+### Supercell games (Brawl Stars, Clash of Clans, Clash Royale)
+
+These lookups use the official per-game Supercell APIs through the RoyaleAPI community proxy (the Isan proxy is MLBB-only, and ID Game Checker marks its Supercell category unavailable). Keys are free:
+
+- `BRAWL_STARS_API_KEY`: from [developer.brawlstars.com](https://developer.brawlstars.com). Endpoint: `POST /api/lookup/brawl-stars` with `{ "tag": "#2PP" }`.
+- `CLASH_OF_CLANS_API_KEY`: from [developer.clashofclans.com](https://developer.clashofclans.com). Endpoint: `POST /api/lookup/clash-of-clans` with `{ "tag": "#2PP" }`.
+- `CLASH_ROYALE_API_KEY`: from [developer.clashroyale.com](https://developer.clashroyale.com). Endpoint: `POST /api/lookup/clash-royale` with `{ "tag": "#2PP" }`.
+
+Community proxy note: calls go to `bsproxy.royaleapi.dev` (Brawl Stars), `cocproxy.royaleapi.dev` (Clash of Clans), and `proxy.royaleapi.dev` (Clash Royale) with your key as a Bearer token — no Fixie/other egress proxy is used. When creating each key, allowlist the RoyaleAPI proxy IP **45.79.218.79** ([proxy docs](https://docs.royaleapi.com/proxy.html)). To bypass the proxy and call the official hosts directly, set `BRAWL_STARS_API_BASE` / `CLASH_OF_CLANS_API_BASE` / `CLASH_ROYALE_API_BASE`. Until a game's key is set, its endpoint returns `GAME_NOT_CONFIGURED` (503) instead of failing obscurely. Tags use Supercell&apos;s `0289PYLQGRJCUV` alphabet and are case-insensitive. `npm run test:supercell` covers tag normalization, response classification, and per-game routing.
+
 ### Provider dashboard configuration
 
 - In Supabase Auth > URL Configuration, set the Site URL to the Railway production URL and add `https://nexus-mlbb-ign-lookup-production.up.railway.app/auth/callback` to allowed redirect URLs. Also allow the Telegram completion URL `https://nexus-mlbb-ign-lookup-production.up.railway.app/auth/telegram/complete`.
