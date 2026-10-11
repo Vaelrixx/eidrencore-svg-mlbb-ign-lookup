@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, ArrowDownRight, ArrowRight, Check, CircleHelp, Copy, CreditCard, KeyRound, LoaderCircle, LogOut, Plus, RefreshCw, ShieldCheck, Swords, Trash2, Zap, Building2, Webhook, ScrollText } from "lucide-react";
+import { Activity, ArrowDownRight, ArrowRight, Check, CircleHelp, Copy, CreditCard, KeyRound, LoaderCircle, Plus, RefreshCw, ShieldCheck, Trash2, Zap, Webhook, ScrollText } from "lucide-react";
+import { ConsoleFrame } from "@/components/console-frame";
 
 type ApiKey = { id: string; name: string; key_prefix: string; plan_slug: string; created_at: string; last_used_at: string | null; revoked_at: string | null };
 type Plan = { slug: string; name: string; price_paise: number; monthly_limit: number; enabled: boolean; description: string };
@@ -93,33 +94,27 @@ export default function DashboardPage() {
     } catch (e) { setError(e instanceof Error ? e.message : "Checkout failed."); }
     finally { setBillingBusy(""); }
   }
-  async function signOut() { await fetch("/api/auth/signout", { method: "POST" }); router.replace("/"); router.refresh(); }
 
   const activeKeys = keys.filter(k => !k.revoked_at).length;
   const currentPlan = plans.find(p => p.slug === (account?.plan || "free")) || plans.find(p => p.slug === "free");
   const percent = account ? Math.min(100, Math.round(account.monthlyUsage / Math.max(1, account.monthlyLimit) * 100)) : 0;
 
-  return <main className="platform-shell dashboard-shell">
-    <nav className="platform-nav"><Link className="brand" href="/"><span className="brand-mark"><Swords size={19}/></span><span>EIDREN<span className="brand-dot">.</span></span></Link><div className="dashboard-nav-right"><span className="account-email">{userEmail}</span><button className="quiet-button" onClick={signOut}><LogOut size={15}/> Sign out</button></div></nav>
-    <nav className="console-overview-links" aria-label="Developer console sections">
-      <Link href="/dashboard" className="active"><Activity size={14}/> Overview</Link>
-      <Link href="/dashboard/keys"><KeyRound size={14}/> API keys</Link>
-      <Link href="/dashboard/usage"><Zap size={14}/> Usage & analytics</Link>
-      <Link href="/dashboard/docs"><CircleHelp size={14}/> API reference</Link>
-      <Link href="/dashboard/billing"><CreditCard size={14}/> Billing</Link>
-      <Link href="/dashboard/account"><ShieldCheck size={14}/> Account & sessions</Link>
-      <Link href="/dashboard/workspaces"><Building2 size={14}/> Workspaces</Link>
-      <Link href="/dashboard/webhooks"><Webhook size={14}/> Webhooks</Link>
-      <Link href="/dashboard/logs"><ScrollText size={14}/> Logs & audit</Link>
-    </nav>
-    <div className="dashboard-heading"><div><span className="platform-eyebrow">DEVELOPER CONSOLE / OVERVIEW</span><h1>Your API.<br/><span>Your rules.</span></h1><p>Manage access, monitor quota, and configure your developer plan.</p></div><button className="quiet-button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={15} className={loading ? "spin" : ""}/> Refresh</button></div>
+  return <ConsoleFrame>
+    <div className="overview-toolbar"><span className="account-email">{userEmail}</span><button className="quiet-button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={15} className={loading ? "spin" : ""}/> Refresh</button></div>
     {error && <div className="platform-alert error" role="alert">{error}</div>}{notice && <div className="platform-alert success"><Check size={16}/>{notice}</div>}
     {loading ? <div className="loading-panel"><LoaderCircle className="spin" size={24}/> Loading developer account…</div> : <>
       <section className="stats-grid">
         <article className="stat-card"><span><Activity size={16}/> CURRENT PLAN</span><strong>{currentPlan?.name || "Free"}</strong><small>{account?.status === "active" ? "Subscription active" : "No paid subscription"}</small></article>
         <article className="stat-card"><span><Zap size={16}/> MONTHLY API CALLS</span><strong>{(account?.monthlyUsage || 0).toLocaleString("en-IN")}<em> / {(account?.monthlyLimit || currentPlan?.monthly_limit || 100).toLocaleString("en-IN")}</em></strong><div className="usage-track"><i style={{ width: `${percent}%` }}/></div><small>{Math.max(0, (account?.monthlyLimit || currentPlan?.monthly_limit || 100) - (account?.monthlyUsage || 0)).toLocaleString("en-IN")} requests remaining</small></article>
         <article className="stat-card"><span><KeyRound size={16}/> ACTIVE API KEYS</span><strong>{activeKeys}<em> / 10</em></strong><small>Revoke keys any time</small></article>
+        <article className="stat-card"><span><ShieldCheck size={16}/> QUOTA USED</span><strong>{percent}<em>%</em></strong><small>{percent >= 90 ? "Close to your monthly limit" : "Within your monthly limit"}</small></article>
       </section>
+      <nav className="overview-quicklinks" aria-label="Quick links">
+        <Link href="/dashboard/docs"><CircleHelp size={18}/><span><strong>API reference</strong><small>Endpoints and examples</small></span></Link>
+        <Link href="/dashboard/usage"><Zap size={18}/><span><strong>Usage &amp; analytics</strong><small>Requests over time</small></span></Link>
+        <Link href="/dashboard/webhooks"><Webhook size={18}/><span><strong>Webhooks</strong><small>Event notifications</small></span></Link>
+        <Link href="/dashboard/logs"><ScrollText size={18}/><span><strong>Logs &amp; audit</strong><small>Recent activity</small></span></Link>
+      </nav>
       <section className="dashboard-section"><div className="dashboard-section-title"><div><span className="platform-eyebrow">01 / CREDENTIALS</span><h2>API keys</h2><p>Keys are hashed before storage. The secret is only shown once at creation.</p></div><span className="section-count">{activeKeys} ACTIVE</span></div>
         {newKey && <div className="new-key-panel"><div className="new-key-copy"><ShieldCheck size={18}/><div><strong>Copy your new key now</strong><p>Anyone with this key can use your API quota. Store it in a secret manager.</p></div></div><code>{newKey}</code><button className="submit" onClick={() => void copy(newKey)}><Copy size={15}/>{copied ? "Copied" : "Copy API key"}</button></div>}
         <form className="create-key-form" onSubmit={createKey}><div><label htmlFor="key-name">KEY NAME</label><input id="key-name" value={keyName} onChange={e=>setKeyName(e.target.value)} placeholder="e.g. Discord bot, production app" maxLength={80} required/></div><button className="submit" disabled={creating || activeKeys >= 10}>{creating ? <LoaderCircle className="spin" size={16}/> : <Plus size={16}/>} Create key</button></form>
@@ -132,6 +127,5 @@ export default function DashboardPage() {
       </section>
       <section className="docs-strip"><div><ArrowDownRight size={18}/><div><strong>Ready to integrate?</strong><p>Use the API key in the Authorization header. Never embed it in frontend JavaScript.</p></div></div><Link href="/">Open public lookup <ArrowRight size={15}/></Link></section>
     </>}
-    <footer className="platform-footer"><span>© {new Date().getFullYear()} EIDREN DEVELOPER PLATFORM</span><span>KEYS HASHED AT REST · RAZORPAY SIGNATURE VERIFIED</span></footer>
-  </main>;
+  </ConsoleFrame>;
 }
