@@ -5,9 +5,9 @@ import { getSessionUser } from "@/lib/session";
 const links = [
   { href: "/#tools", label: "Tools" },
   { href: "/#platform", label: "Platform" },
+  { href: "/#pricing", label: "Pricing" },
   { href: "/#developers", label: "Developers" },
-  { href: "/dashboard/docs", label: "Docs" },
-  { href: "/playground", label: "Playground" },
+  { href: "/#faq", label: "FAQ" },
 ];
 
 export async function SiteShell({ children }: { children: React.ReactNode }) {
@@ -44,7 +44,7 @@ export async function SiteShell({ children }: { children: React.ReactNode }) {
             <p>Player identity tools and APIs for game communities and top-up platforms.</p>
           </div>
           <div className="x-footer2-cols">
-            <div><h4>Product</h4><Link href="/playground">Playground</Link><Link href="/#tools">Tools</Link><Link href="/#platform">Platform</Link></div>
+            <div><h4>Product</h4><Link href="/#tools">Tools</Link><Link href="/#platform">Platform</Link><Link href="/#pricing">Pricing</Link></div>
             <div><h4>Developers</h4><Link href="/dashboard/docs">API reference</Link><Link href="/dashboard/keys">API keys</Link><Link href="/dashboard/webhooks">Webhooks</Link></div>
             <div><h4>Account</h4><Link href="/login">{user ? "Account" : "Sign in"}</Link><Link href="/dashboard">Console</Link><Link href="/dashboard/billing">Billing</Link></div>
           </div>

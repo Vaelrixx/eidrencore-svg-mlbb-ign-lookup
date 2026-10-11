@@ -25,7 +25,12 @@ const groups = [
 ];
 
 // Primary destinations pinned to the mobile tab bar; everything else lives in the menu.
-const tabs = [items[0], items[1], items[2], items[4]];
+const tabs = [
+  { ...items[0], short: "Overview" },
+  { ...items[1], short: "Keys" },
+  { ...items[2], short: "Usage" },
+  { ...items[4], short: "Tools" },
+];
 
 export function ConsoleFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -84,7 +89,7 @@ export function ConsoleFrame({ children }: { children: React.ReactNode }) {
     </aside>
 
     <nav className="cm-tabbar" aria-label="Console quick navigation">
-      {tabs.map(item => { const Icon = item.icon; const active = isActive(item); return <Link key={item.href} href={item.href} className={active ? "active" : ""} aria-current={active ? "page" : undefined}><Icon size={19}/><span>{item.label.split(" ")[0]}</span></Link>; })}
+      {tabs.map(item => { const Icon = item.icon; const active = isActive(item); return <Link key={item.href} href={item.href} className={active ? "active" : ""} aria-current={active ? "page" : undefined}><Icon size={19}/><span>{item.short}</span></Link>; })}
       <button onClick={() => setOpen(true)} aria-label="More sections"><Menu size={19}/><span>More</span></button>
     </nav>
 
