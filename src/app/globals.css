@@ -881,3 +881,13 @@ body {
   .lp-cta-main, .lp-cta-ghost { width: 100%; justify-content: center; }
 }
 @media (prefers-reduced-motion: reduce) { .lp-skel { animation: none; } .lp-tool.is-live:hover { transform: none; } }
+
+/* ---- Auth-gated tools: playground gate + sign-up notice ---- */
+.pg-gate { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; padding: clamp(24px, 4vw, 40px); border-radius: 28px; border: 1px solid rgba(255,255,255,.16); background: linear-gradient(150deg, rgba(255,255,255,.12), rgba(255,255,255,.03)); -webkit-backdrop-filter: blur(26px); backdrop-filter: blur(26px); box-shadow: 0 24px 60px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.2); }
+.pg-gate-icon { display: grid; place-items: center; width: 54px; height: 54px; border-radius: 18px; color: #c7d0ff; background: linear-gradient(145deg, rgba(124,140,255,.35), rgba(34,211,238,.18)); border: 1px solid rgba(255,255,255,.2); box-shadow: 0 10px 30px rgba(124,140,255,.25); }
+.pg-gate h2 { margin: 0; font-family: Outfit, Manrope, sans-serif; font-size: clamp(24px, 3.4vw, 32px); letter-spacing: -.03em; }
+.pg-gate p { margin: 0; max-width: 56ch; color: #b3bfd6; font-size: 15px; line-height: 1.6; }
+.pg-gate-points { display: grid; gap: 10px; margin: 4px 0 6px; padding: 0; list-style: none; color: #d6def0; font-size: 14px; }
+.pg-gate-points li { display: flex; align-items: center; gap: 10px; }
+.pg-gate-points svg { color: #7c8cff; flex: none; }
+.auth-notice { margin: 14px 0 0; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(34,211,238,.35); background: rgba(34,211,238,.1); color: #bff4ff; font-size: 14px; line-height: 1.5; }

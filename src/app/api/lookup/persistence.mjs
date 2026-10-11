@@ -105,6 +105,44 @@ export async function enforceLookupRateLimit(request, {
   };
 }
 
+const PLAYGROUND_WINDOW_SECONDS = 86_400;
+const PLAYGROUND_MAX_REQUESTS = 50;
+
+/**
+ * Daily per-account allowance for signed-in (cookie session) lookups made from
+ * the playground. API-key requests are metered by their plan quota instead.
+ * Only an HMAC of the account id is stored. Fails open like the IP limiter.
+ */
+export async function enforcePlaygroundLimit(userId, {
+  fetchImpl = fetch,
+  env = process.env,
+  logger = console.warn,
+  maxRequests = PLAYGROUND_MAX_REQUESTS,
+  windowSeconds = PLAYGROUND_WINDOW_SECONDS,
+} = {}) {
+  const secret = env.LOOKUP_RATE_LIMIT_SECRET;
+  if (!configuration(env) || !secret || typeof userId !== "string" || !userId) {
+    return { enabled: false, allowed: true, retryAfterSeconds: 0 };
+  }
+  const result = await requestSupabase("rpc/consume_lookup_limit", {
+    p_client_hash: clientHash(`playground:${userId}`, secret),
+    p_window_seconds: windowSeconds,
+    p_max_requests: maxRequests,
+  }, { fetchImpl, env });
+  const row = Array.isArray(result.data) ? result.data[0] : result.data;
+  if (!result.ok || !row || typeof row.allowed !== "boolean") {
+    try { logger(JSON.stringify({ event: "lookup.playground_limit_unavailable" })); } catch { /* best effort */ }
+    return { enabled: true, allowed: true, retryAfterSeconds: 0, degraded: true };
+  }
+  const resetAt = typeof row.reset_at === "string" ? Date.parse(row.reset_at) : NaN;
+  return {
+    enabled: true,
+    allowed: row.allowed,
+    retryAfterSeconds: row.allowed ? 0 : Math.max(1, Number.isFinite(resetAt) ? Math.ceil((resetAt - Date.now()) / 1000) : windowSeconds),
+    remaining: Number.isInteger(row.remaining) ? Math.max(0, row.remaining) : undefined,
+  };
+}
+
 /**
  * Store only the bounded outcome, latency and source label. Never pass request
  * IDs, client hashes, player IDs, zone IDs, nicknames, URLs or provider payloads.

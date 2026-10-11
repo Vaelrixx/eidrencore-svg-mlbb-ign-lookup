@@ -5,8 +5,8 @@ import { resolveLookupWithFallbacks } from "./resolve-lookup.mjs";
 import { lookupIsan } from "./providers/isan.mjs";
 import { lookupRapidApi } from "./providers/rapidapi.mjs";
 import { logLookupSummary, observeProvider } from "./observability.mjs";
-import { enforceLookupRateLimit, persistLookupLog } from "./persistence.mjs";
-import { getUserFromRequest } from "@/lib/platform";
+import { enforceLookupRateLimit, enforcePlaygroundLimit, persistLookupLog } from "./persistence.mjs";
+import { getUserFromRequest, requireUser } from "@/lib/platform";
 import { recordDeveloperRequest } from "@/lib/developer-events";
 
 export const runtime = "nodejs";
@@ -177,6 +177,25 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Every lookup needs an account: either an Eidren API key (Bearer eid_...)
+  // or a signed-in session (the playground). Checked before reading the body
+  // so anonymous callers learn nothing about input validation.
+  const usesApiKey = (request.headers.get("authorization") || "").startsWith("Bearer eid_");
+  let sessionUserId: string | null = null;
+  if (!usesApiKey) {
+    const { user } = await requireUser().catch(() => ({ user: null }));
+    if (!user) {
+      return jsonError(
+        "Sign in or create an API key to run lookups.",
+        401,
+        "AUTH_REQUIRED",
+        requestId,
+        { "WWW-Authenticate": 'Bearer realm="eidren"' },
+      );
+    }
+    sessionUserId = user.id;
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -205,9 +224,20 @@ export async function POST(request: NextRequest) {
 
   let developerAuth: { userId: string; apiKeyId: string; workspaceId: string | null } | null = null;
 
-  // API keys are optional for the public lookup, but any Eidren key supplied
-  // in the Authorization header must validate and pass its monthly quota.
-  if ((request.headers.get("authorization") || "").startsWith("Bearer eid_")) {
+  // API keys must validate and pass their plan's monthly quota. Session
+  // (playground) callers get a separate daily per-account allowance.
+  if (sessionUserId) {
+    const playground = await enforcePlaygroundLimit(sessionUserId);
+    if (!playground.allowed) {
+      return jsonError(
+        "Daily playground limit reached. Create an API key to keep integrating.",
+        429,
+        "PLAYGROUND_LIMIT",
+        requestId,
+        { "Retry-After": String(Math.max(1, playground.retryAfterSeconds)) },
+      );
+    }
+  } else {
     const keyAuth = await getUserFromRequest(request);
     if (!keyAuth) return jsonError("Invalid API key.", 401, "INVALID_API_KEY", requestId);
     if ("error" in keyAuth) {
@@ -308,7 +338,8 @@ export async function GET(request: NextRequest) {
         success: true,
         service: "Eidren MLBB IGN Lookup API",
         status: "online",
-        message: "This endpoint is an API, not a standalone lookup form.",
+        message: "This endpoint is an API. Authenticate with an Eidren API key (Authorization: Bearer eid_...).",
+        auth: "Required. Create a key in the console after signing up.",
         methods: ["GET", "POST"],
         getExample: "/api/lookup?playerId=1114917746&zoneId=13486",
         postExample: {
@@ -327,7 +358,7 @@ export async function GET(request: NextRequest) {
     zoneId: url.searchParams.get("zoneId") ?? "",
   });
   const forwardedHeaders = new Headers({ "Content-Type": "application/json" });
-  for (const name of ["x-real-ip", "x-forwarded-for", "authorization"]) {
+  for (const name of ["x-real-ip", "x-forwarded-for", "authorization", "cookie"]) {
     const value = request.headers.get(name);
     if (value) forwardedHeaders.set(name, value);
   }

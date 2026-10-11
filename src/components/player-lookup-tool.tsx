@@ -36,6 +36,10 @@ export function PlayerLookupTool() {
       setStatus(response.status);
       setMs(Math.round(performance.now() - started));
       setRaw(JSON.stringify(body, null, 2));
+      if (response.status === 401) {
+        setError("Your session has expired. Sign in again to keep using the playground.");
+        return;
+      }
       if (!response.ok || !body.success || !body.data) {
         setError(body.error || "Lookup failed. Check the IDs and try again.");
         return;
@@ -80,7 +84,7 @@ export function PlayerLookupTool() {
           <button className="x-submit" type="submit" disabled={loading || !playerId || !zoneId}>
             {loading ? <><LoaderCircle className="spin" size={18} /> Resolving identity…</> : <><Search size={18} /> Run lookup</>}
           </button>
-          <p className="x-hint"><ShieldCheck size={14} /> Zone ID is the number in brackets beside your Player ID. No login needed.</p>
+          <p className="x-hint"><ShieldCheck size={14} /> Zone ID is the number in brackets beside your Player ID.</p>
           {error && <div className="x-error" role="alert"><span aria-hidden="true">!</span><div><strong>Lookup unsuccessful</strong><p>{error}</p></div></div>}
         </form>
 

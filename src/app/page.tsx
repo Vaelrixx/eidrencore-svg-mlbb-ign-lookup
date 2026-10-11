@@ -13,9 +13,9 @@ const platform = [
 ];
 
 const steps = [
-  { n: "01", title: "Try it in the playground", body: "Run a real lookup with no account. See the exact request and response." },
-  { n: "02", title: "Create an account", body: "Sign in with email or a social provider and open the console." },
-  { n: "03", title: "Ship with an API key", body: "Call the API from your app and watch usage in the dashboard." },
+  { n: "01", title: "Create a free account", body: "Sign up with email, Google, GitHub, Discord or Telegram. Your free plan is ready instantly." },
+  { n: "02", title: "Try the playground", body: "Run live lookups and see the exact request and response before you write any code." },
+  { n: "03", title: "Ship with an API key", body: "Create a key, call the API from your app and watch usage in the dashboard." },
 ];
 
 const bars = [38, 52, 44, 66, 58, 82, 74, 96, 88, 70, 92, 80];
@@ -27,12 +27,12 @@ export default function Home() {
         <div className="x-hero-copy">
           <span className="x-chip"><i className="x-chip-dot" /> PLAYER IDENTITY PLATFORM</span>
           <h1>Player identity, <span>as an API.</span></h1>
-          <p className="x-lede">Resolve in-game names today, with more games and tools on the way. Try it in the playground, then ship it with an API key.</p>
+          <p className="x-lede">Resolve in-game names today, with more games and tools on the way. Create a free account, try it in the playground, then ship it with an API key.</p>
           <div className="lp-cta">
-            <Link href="/playground" className="x-submit lp-cta-main">Open the playground <ArrowRight size={18} /></Link>
-            <Link href="/login" className="lp-cta-ghost">Create an API key</Link>
+            <Link href="/login?mode=signup" className="x-submit lp-cta-main">Create free account <ArrowRight size={18} /></Link>
+            <Link href="/playground" className="lp-cta-ghost">Open the playground</Link>
           </div>
-          <ul className="lp-points"><li><Zap size={15} /> Live account validation</li><li><KeyRound size={15} /> Hashed API keys</li><li><Activity size={15} /> Usage dashboard</li></ul>
+          <ul className="lp-points"><li><Zap size={15} /> Free plan, no card</li><li><KeyRound size={15} /> Hashed API keys</li><li><Activity size={15} /> Usage dashboard</li></ul>
         </div>
 
         <div className="lp-preview" aria-label="Illustrative console preview">
@@ -65,7 +65,7 @@ export default function Home() {
                 <div className="lp-tool-top"><span className="lp-tool-game">{t.game}</span><span className={`lp-status${live ? " is-live" : ""}`}>{live ? "LIVE" : "PLANNED"}</span></div>
                 <h3>{t.name}</h3>
                 <p>{t.description}</p>
-                {live && <span className="lp-tool-link">Try it <ArrowRight size={15} /></span>}
+                {live && <span className="lp-tool-link">Open in playground <ArrowRight size={15} /></span>}
               </>
             );
             return live
