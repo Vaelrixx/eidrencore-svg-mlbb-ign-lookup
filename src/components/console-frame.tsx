@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, ArrowUpRight, BookOpen, CreditCard, LayoutDashboard, LogOut, Settings2, Swords, KeyRound, Building2, Webhook, ScrollText } from "lucide-react";
+import { Activity, ArrowUpRight, BookOpen, FlaskConical, CreditCard, LayoutDashboard, LogOut, Settings2, Swords, KeyRound, Building2, Webhook, ScrollText } from "lucide-react";
 
 const items = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/dashboard/keys", label: "API keys", icon: KeyRound },
   { href: "/dashboard/usage", label: "Usage & analytics", icon: Activity },
   { href: "/dashboard/docs", label: "API reference", icon: BookOpen },
+  { href: "/dashboard/playground", label: "Playground", icon: FlaskConical },
   { href: "/dashboard/billing", label: "Billing & plans", icon: CreditCard },
   { href: "/dashboard/account", label: "Account & sessions", icon: Settings2 },
   { href: "/dashboard/workspaces", label: "Workspaces", icon: Building2 },
@@ -18,7 +19,8 @@ const items = [
 
 const groups = [
   { label: "BUILD", items: items.slice(0, 4) },
-  { label: "MANAGE", items: items.slice(4) },
+  { label: "TOOLS", items: items.slice(4, 5) },
+  { label: "MANAGE", items: items.slice(5) },
 ];
 
 export function ConsoleFrame({ children }: { children: React.ReactNode }) {
