@@ -9,7 +9,7 @@ Recurring checkout fails closed unless all of the following are true:
 - The server has RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET for the same Razorpay mode (Test or Live).
 - RAZORPAY_PRO_PLAN_ID and RAZORPAY_BUSINESS_PLAN_ID point to Razorpay Plans created in that same mode.
 - Each provider Plan is active, monthly with interval 1, denominated in INR, and its amount exactly matches the corresponding enabled row in public.developer_plans.
-- The database migration 20261012100000_razorpay_recurring_billing.sql has been applied after the repository's previous migration-version alignment has been resolved and reviewed.
+- The database migration 20261011200917_razorpay_recurring_billing.sql has been applied after the repository's previous migration-version alignment has been resolved and reviewed.
 - RAZORPAY_WEBHOOK_SECRET is set to the signing secret configured for the appropriate Test or Live webhook.
 
 Plan IDs are separate from the prices stored in Eidren. The application deliberately does not create or modify Plans automatically, and does not accept recurring payments if the IDs, amount, currency, or monthly cadence do not match.
