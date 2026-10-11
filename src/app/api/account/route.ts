@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/platform";
+import { passwordErrorMessage } from "@/lib/password-policy.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,9 +31,10 @@ export async function PATCH(request: Request) {
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401, headers: { "Cache-Control": "no-store" } });
   const body = await request.json().catch(() => null);
   const password = typeof body?.password === "string" ? body.password : "";
-  if (password.length < 12 || password.length > 128) {
-    return NextResponse.json({ error: "Use a password between 12 and 128 characters." }, { status: 400 });
-  }
+  // Same app-level baseline as signup: length, variety, and common-password
+  // screening while Supabase breach-corpus checks remain Pro-only.
+  const policyError = passwordErrorMessage(password, user.email ?? "");
+  if (policyError) return NextResponse.json({ error: policyError }, { status: 400 });
   const { error } = await supabase.auth.updateUser({ password });
   if (error) return NextResponse.json({ error: "Could not update password. Check whether this sign-in provider supports password credentials." }, { status: 400 });
   return NextResponse.json({ success: true }, { headers: { "Cache-Control": "no-store" } });

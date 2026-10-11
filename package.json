@@ -13,7 +13,8 @@
     "test:observability": "node --test tests/observability.test.mjs",
     "test:persistence": "node --test tests/persistence.test.mjs tests/persistence-latency.test.mjs",
     "test:provider-sweep:live": "node --test tests/provider-diagnostics-live.test.mjs tests/rapidapi-live-contract.test.mjs",
-    "test:billing": "node --test tests/razorpay-subscriptions.test.mjs"
+    "test:billing": "node --test tests/razorpay-subscriptions.test.mjs",
+    "test:auth": "node --test tests/auth-hardening.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
