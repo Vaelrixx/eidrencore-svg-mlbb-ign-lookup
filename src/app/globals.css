@@ -891,3 +891,55 @@ body {
 .pg-gate-points li { display: flex; align-items: center; gap: 10px; }
 .pg-gate-points svg { color: #7c8cff; flex: none; }
 .auth-notice { margin: 14px 0 0; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(34,211,238,.35); background: rgba(34,211,238,.1); color: #bff4ff; font-size: 14px; line-height: 1.5; }
+
+/* ---- Console mobile navigation: menu drawer + bottom tab bar ---- */
+.console-mobile-links { display: none !important; }
+.cm-menu-btn, .cm-tabbar, .cm-overlay, .cm-drawer { display: none; }
+.account-chip { display: inline-flex; align-items: center; gap: 10px; min-width: 0; padding: 6px 14px 6px 6px; border-radius: 999px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.05); }
+.account-chip i { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 50%; font-style: normal; font-weight: 700; font-size: 13px; color: #fff; background: linear-gradient(135deg, #7c8cff, #22d3ee); }
+.account-chip .account-email { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 720px) {
+  .cm-signout, .console-top-actions .console-secure { display: none; }
+  .cm-menu-btn { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,.18); background: linear-gradient(150deg, rgba(255,255,255,.12), rgba(255,255,255,.04)); color: #e8edf9; font: 600 13px Manrope, sans-serif; cursor: pointer; -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+  .cm-menu-btn:focus-visible, .cm-close:focus-visible, .cm-link:focus-visible, .cm-tabbar a:focus-visible, .cm-tabbar button:focus-visible { outline: 2px solid #7c8cff; outline-offset: 2px; }
+
+  .cm-overlay { display: block; position: fixed; inset: 0; z-index: 60; background: rgba(4,7,14,.62); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity .22s ease; }
+  .cm-overlay.is-open { opacity: 1; pointer-events: auto; }
+  .cm-drawer { display: flex; flex-direction: column; position: fixed; z-index: 61; top: 0; bottom: 0; right: 0; width: min(88vw, 360px); transform: translateX(104%); visibility: hidden; transition: transform .26s cubic-bezier(.2,.8,.2,1), visibility 0s linear .26s; border-left: 1px solid rgba(255,255,255,.16); background: linear-gradient(170deg, rgba(24,30,52,.96), rgba(9,12,24,.98)); -webkit-backdrop-filter: blur(28px); backdrop-filter: blur(28px); box-shadow: -24px 0 60px rgba(0,0,0,.5); padding-bottom: env(safe-area-inset-bottom); }
+  .cm-drawer.is-open { transform: none; visibility: visible; transition-delay: 0s; }
+  .cm-drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 12px; border-bottom: 1px solid rgba(255,255,255,.1); }
+  .cm-close { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.06); color: #dfe6f7; cursor: pointer; }
+  .cm-drawer-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 8px 12px 12px; }
+  .cm-group { padding-top: 10px; }
+  .cm-group-label { padding: 4px 8px 8px; font: 11px "JetBrains Mono", monospace; letter-spacing: .14em; color: #8d9bb8; }
+  .cm-link { display: flex; align-items: center; gap: 12px; padding: 11px 10px; margin: 3px 0; border-radius: 14px; border: 1px solid transparent; color: #cfd8ec; text-decoration: none; }
+  .cm-link:active { background: rgba(255,255,255,.08); }
+  .cm-link-icon { display: grid; place-items: center; flex: none; width: 38px; height: 38px; border-radius: 12px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); color: #a9b6d3; }
+  .cm-link-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+  .cm-link-text strong { font: 600 15px Outfit, Manrope, sans-serif; color: #eef2fc; }
+  .cm-link-text small { font-size: 12px; color: #8e9bb6; }
+  .cm-chevron { flex: none; color: #6f7c99; }
+  .cm-link.active { border-color: rgba(124,140,255,.4); background: linear-gradient(135deg, rgba(124,140,255,.2), rgba(34,211,238,.07)); }
+  .cm-link.active .cm-link-icon { color: #fff; border-color: rgba(124,140,255,.5); background: linear-gradient(135deg, #7c8cff, #5663d6); box-shadow: 0 8px 20px rgba(124,140,255,.35); }
+  .cm-drawer-foot { display: grid; gap: 8px; padding: 12px; border-top: 1px solid rgba(255,255,255,.1); }
+  .cm-home { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,.12); color: #b9c4dd; text-decoration: none; font-size: 14px; }
+  .cm-signout-row { display: flex; align-items: center; justify-content: center; gap: 10px; height: 46px; border-radius: 14px; border: 1px solid rgba(255,120,120,.3); background: rgba(255,90,90,.08); color: #ffb4b4; font: 600 14px Manrope, sans-serif; cursor: pointer; }
+
+  .cm-tabbar { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; z-index: 50; left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); padding: 6px; gap: 2px; border-radius: 22px; border: 1px solid rgba(255,255,255,.18); background: linear-gradient(150deg, rgba(30,37,62,.88), rgba(12,16,30,.9)); -webkit-backdrop-filter: blur(22px); backdrop-filter: blur(22px); box-shadow: 0 18px 44px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.16); }
+  .cm-tabbar a, .cm-tabbar button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-width: 0; height: 54px; border: 0; border-radius: 16px; background: transparent; color: #8f9cb8; text-decoration: none; font: 600 11px Manrope, sans-serif; cursor: pointer; }
+  .cm-tabbar a.active { color: #fff; background: linear-gradient(135deg, rgba(124,140,255,.34), rgba(34,211,238,.12)); box-shadow: inset 0 0 0 1px rgba(124,140,255,.45); }
+  .cm-tabbar a.active svg { color: #aeb8ff; }
+  .console-page { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+
+  /* Overview: compact two-column stat grid instead of four tall stacked cards */
+  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .stats-grid .stat-card { padding: 14px; border-radius: 16px; min-width: 0; }
+  .stats-grid .stat-card>span { font-size: 10px; letter-spacing: .08em; }
+  .stats-grid .stat-card>strong { font-size: 28px; }
+  .stats-grid .stat-card>small { font-size: 12px; }
+  .overview-toolbar { flex-wrap: nowrap; }
+  .overview-quicklinks { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .overview-quicklinks a { padding: 12px; flex-direction: column; align-items: flex-start; gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .cm-drawer, .cm-overlay { transition: none; } }

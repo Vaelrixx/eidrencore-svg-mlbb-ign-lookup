@@ -81,7 +81,7 @@ export default function DashboardPage() {
       if (!Razorpay) throw new Error("Razorpay Checkout is unavailable.");
       const checkout = new Razorpay({
         key: body.keyId, amount: body.amount, currency: body.currency, name: body.name, description: body.description, order_id: body.orderId, prefill: body.prefill,
-        theme: { color: "#c9f36b" },
+        theme: { color: "#7c8cff" },
         handler: async (payment: Record<string, string>) => {
           const verify = await fetch("/api/billing/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payment) });
           const result = await verify.json();
@@ -100,7 +100,7 @@ export default function DashboardPage() {
   const percent = account ? Math.min(100, Math.round(account.monthlyUsage / Math.max(1, account.monthlyLimit) * 100)) : 0;
 
   return <ConsoleFrame>
-    <div className="overview-toolbar"><span className="account-email">{userEmail}</span><button className="quiet-button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={15} className={loading ? "spin" : ""}/> Refresh</button></div>
+    <div className="overview-toolbar"><span className="account-chip"><i aria-hidden="true">{(userEmail || "?").charAt(0).toUpperCase()}</i><span className="account-email">{userEmail || "Signed in"}</span></span><button className="quiet-button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={15} className={loading ? "spin" : ""}/> Refresh</button></div>
     {error && <div className="platform-alert error" role="alert">{error}</div>}{notice && <div className="platform-alert success"><Check size={16}/>{notice}</div>}
     {loading ? <div className="loading-panel"><LoaderCircle className="spin" size={24}/> Loading developer account…</div> : <>
       <section className="stats-grid">
@@ -125,7 +125,7 @@ export default function DashboardPage() {
         <div className="plans-grid">{plans.map((plan) => <article className={`plan-card ${plan.slug === (account?.plan || "free") ? "selected" : ""}`} key={plan.slug}>{plan.slug === (account?.plan || "free") && <span className="plan-current">CURRENT PLAN</span>}<div className="plan-title"><h3>{plan.name}</h3><p>{plan.description}</p></div><div className="plan-price">{plan.price_paise > 0 ? <><strong>₹{(plan.price_paise / 100).toLocaleString("en-IN")}</strong><span>/ month</span></> : <><strong>Free</strong><span>forever</span></>}</div><ul><li><Check size={15}/> {plan.monthly_limit.toLocaleString("en-IN")} API calls / month</li><li><Check size={15}/> API key management</li><li><Check size={15}/> Usage visibility</li></ul>{plan.slug === (account?.plan || "free") ? <button className="plan-button current" disabled>Current plan</button> : plan.slug === "free" ? <button className="plan-button" disabled>Included</button> : <button className="plan-button" disabled={billingBusy === plan.slug || !plan.enabled} onClick={() => void upgrade(plan)}>{billingBusy === plan.slug ? <LoaderCircle size={15} className="spin"/> : <ArrowRight size={15}/>} {plan.enabled ? "Upgrade with Razorpay" : "Price not configured"}</button>}</article>)}</div>
         <div className="billing-note"><CircleHelp size={17}/><p><strong>Billing setup:</strong> Paid checkout is only enabled after Razorpay credentials are configured and a paid plan is enabled with a price in Supabase. Webhook events are signature-verified.</p></div>
       </section>
-      <section className="docs-strip"><div><ArrowDownRight size={18}/><div><strong>Ready to integrate?</strong><p>Use the API key in the Authorization header. Never embed it in frontend JavaScript.</p></div></div><Link href="/">Open public lookup <ArrowRight size={15}/></Link></section>
+      <section className="docs-strip"><div><ArrowDownRight size={18}/><div><strong>Ready to integrate?</strong><p>Use the API key in the Authorization header. Never embed it in frontend JavaScript.</p></div></div><Link href="/dashboard/playground">Open the playground <ArrowRight size={15}/></Link></section>
     </>}
   </ConsoleFrame>;
 }

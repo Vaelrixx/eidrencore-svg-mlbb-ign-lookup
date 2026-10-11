@@ -53,7 +53,7 @@ export default function BillingPage() {
       if (!Razorpay) throw new Error("Razorpay Checkout is unavailable.");
       const checkout = new Razorpay({
         key: body.keyId, amount: body.amount, currency: body.currency, name: body.name, description: body.description, order_id: body.orderId, prefill: body.prefill,
-        theme: { color: "#c9f36b" },
+        theme: { color: "#7c8cff" },
         handler: async (payment: Record<string, string>) => {
           const verify = await fetch("/api/billing/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payment) });
           const result = await verify.json();
