@@ -95,7 +95,7 @@ export function razorpayPlanMatchesCatalog(plan, expected) {
     plan.id === expected.id &&
     plan.period === "monthly" &&
     plan.interval === 1 &&
-    plan.item?.active !== false &&
+    plan.item?.active === true &&
     Number(plan.item?.amount) === expected.pricePaise &&
     typeof plan.item?.currency === "string" &&
     plan.item.currency.toUpperCase() === "INR"
