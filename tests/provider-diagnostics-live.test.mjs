@@ -4,6 +4,7 @@ import { performance } from "node:perf_hooks";
 import { confirmedNickname } from "../src/app/api/lookup/nickname-validation.mjs";
 import { lookupIsan } from "../src/app/api/lookup/providers/isan.mjs";
 import { lookupWhoPlays } from "../src/app/api/lookup/providers/whoplays.mjs";
+import { lookupGoPayGames } from "../src/app/api/lookup/providers/gopay-games.mjs";
 import { normalizeProviderOutcome } from "./helpers/provider-outcome-normalization.mjs";
 
 const playerId = process.env.LIVE_LOOKUP_PLAYER_ID ?? "1114917746";
@@ -141,6 +142,16 @@ test("live provider sweep reports sanitized status for a known-valid test accoun
   } else {
     results.push({ provider: "whoplays_check", outcome: "skipped_missing_ci_secret" });
   }
+
+  // This is the keyless direct-validation adapter used by the production chain.
+  const goPayStartedAt = performance.now();
+  const goPay = await lookupGoPayGames(playerId, zoneId);
+  results.push({
+    provider: "gopay_games_validation",
+    ...normalizeProviderOutcome(goPay.kind, goPay.diagnostic?.reason),
+    ...(Number.isInteger(goPay.diagnostic?.statusCode) ? { upstreamStatus: goPay.diagnostic.statusCode } : {}),
+    durationMs: Math.round(performance.now() - goPayStartedAt),
+  });
 
   const rapidApiKey = process.env.RAPIDAPI_KEY?.trim() || process.env.RAPIDAPI_APP_TOKEN?.trim();
   if (rapidApiKey) {
