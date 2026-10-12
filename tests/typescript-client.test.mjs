@@ -51,13 +51,13 @@ test("identity-game helpers post each documented input shape to its endpoint", a
   await client.lookupCallOfDutyMobile("8370310025568788000");
   await client.lookupValorant("ucup", "123");
   await client.lookupGenshinImpact("844335555", "asia");
-  await client.lookupHonorOfKings("17960996468644334000");
+  await client.lookupHonorOfKings("17960996468644334037");
   assert.deepEqual(seen, [
     { url: "https://example.test/api/lookup/pubg-mobile", body: { playerId: "5204837417" } },
     { url: "https://example.test/api/lookup/call-of-duty-mobile", body: { playerId: "8370310025568788000" } },
     { url: "https://example.test/api/lookup/valorant", body: { name: "ucup", tag: "123" } },
     { url: "https://example.test/api/lookup/genshin-impact", body: { playerId: "844335555", server: "asia" } },
-    { url: "https://example.test/api/lookup/honor-of-kings", body: { playerId: "17960996468644334000" } },
+    { url: "https://example.test/api/lookup/honor-of-kings", body: { playerId: "17960996468644334037" } },
   ]);
   assert.equal(typeof seen.at(-1).body.playerId, "string");
 });

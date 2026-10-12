@@ -41,8 +41,8 @@ const GAME_CONFIG: Record<IdentityGame, GameSpec> = {
   "honor-of-kings": {
     label: "Honor of Kings",
     endpoint: "/api/lookup/honor-of-kings",
-    fields: [{ key: "playerId", label: "PLAYER ID", placeholder: "17960996468644334000", inputMode: "numeric", maxLength: 24 }],
-    sample: { playerId: "17960996468644334000" },
+    fields: [{ key: "playerId", label: "PLAYER ID", placeholder: "17960996468644334037", inputMode: "numeric", maxLength: 24 }],
+    sample: { playerId: "17960996468644334037" },
   },
 };
 

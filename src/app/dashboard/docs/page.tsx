@@ -72,7 +72,7 @@ export default function DocsPage() {
         <div><code>POST /api/lookup/call-of-duty-mobile</code><span>Call of Duty: Mobile (Garena) · body: {"{ \"playerId\": \"8370310025568788000\" }"}</span></div>
         <div><code>POST /api/lookup/valorant</code><span>VALORANT · body: {"{ \"name\": \"ucup\", \"tag\": \"123\" }"}</span></div>
         <div><code>POST /api/lookup/genshin-impact</code><span>Genshin Impact · body: {"{ \"playerId\": \"844335555\", \"server\": \"asia\" }"}</span></div>
-        <div><code>POST /api/lookup/honor-of-kings</code><span>Honor of Kings · body: {"{ \"playerId\": \"17960996468644334000\" }"}</span></div>
+        <div><code>POST /api/lookup/honor-of-kings</code><span>Honor of Kings · body: {"{ \"playerId\": \"17960996468644334037\" }"}</span></div>
       </div>
       <p className="docs-body">Send numeric-looking account IDs as JSON strings; Honor of Kings IDs can exceed JavaScript&apos;s safe integer range. Genshin requires a server value: <code>asia</code>, <code>america</code>, <code>europa</code>, or <code>china</code>. The VALORANT route accepts Riot ID name and tag separately. The Call of Duty route is Garena-specific.</p>
       <Link className="docs-inline-link" href="/dashboard/playground">Try the game tools in the playground <ExternalLink size={13}/></Link>

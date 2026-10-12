@@ -65,7 +65,7 @@ const configs: Record<string, { providerGame: RapidApiGame; config: Omit<IdGameL
       publicSource: "eidren_honor_of_kings",
       notFoundCode: "HONOR_OF_KINGS_PLAYER_NOT_FOUND",
       internalProvider: "rapidapi_id_game_checker_honor_of_kings",
-      fields: [{ key: "playerId", label: "Player ID", example: "17960996468644334000", minLength: 3, maxLength: 24, pattern: numericId }],
+      fields: [{ key: "playerId", label: "Player ID", example: "17960996468644334037", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
 };
