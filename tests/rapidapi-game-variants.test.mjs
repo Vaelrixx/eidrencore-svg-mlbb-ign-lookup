@@ -173,7 +173,7 @@ test("degraded responses carry an allowlisted message code without payload text"
   });
   assert.equal(degraded.kind, "unavailable");
   assert.equal(degraded.diagnostic.reason, "provider_error");
-  assert.equal(degraded.diagnostic.messageCode, "no_content_0");
+  assert.equal(degraded.diagnostic.messageCode, "no_content_n");
   assert.equal(JSON.stringify(degraded).includes("SECRET_PLAYER"), false);
 });
 
@@ -198,4 +198,57 @@ test("unfamiliar provider codes collapse to unlisted and still emit safely", asy
   assert.equal(event.providerMessageCode, "unlisted");
   assert.equal(lines[0].includes("SECRET_PLAYER"), false);
   assert.equal(lines[0].includes("brand_new_secret_code"), false);
+});
+
+test("live Genshin no_content_5 envelope stays degraded, never unrecognized", () => {
+  // Exact live shape from E-002 (probe deploy f2b4d66a), values redacted.
+  const result = classifyRapidApiGameResponse(200, {
+    error: false,
+    status: 204,
+    msg: "no_content_5",
+    data: { id: "REDACTED_ID", server: "asia", username: "" },
+  });
+  assert.equal(result.kind, "unavailable");
+  assert.equal(result.diagnostic.reason, "provider_error");
+  assert.equal(result.diagnostic.statusCode, 200);
+  assert.equal(result.diagnostic.responseKind, "id_game_checker_schema");
+  assert.equal(result.diagnostic.messageCode, "no_content_n");
+  assert.equal(result.diagnostic.responseShape, "envelope:data,error,msg,status|data:object:id,server,username");
+});
+
+test("live HoK no_content_2 envelope stays degraded with ban-flag shape", () => {
+  // Exact live shape from E-002 (probe deploy f2b4d66a), values redacted.
+  const result = classifyRapidApiGameResponse(200, {
+    error: false,
+    status: 204,
+    msg: "no_content_2",
+    data: { id: "REDACTED_ID", is_ban: false, username: "" },
+  });
+  assert.equal(result.kind, "unavailable");
+  assert.equal(result.diagnostic.reason, "provider_error");
+  assert.equal(result.diagnostic.messageCode, "no_content_n");
+  assert.equal(result.diagnostic.responseShape, "envelope:data,error,msg,status|data:object:id,is_ban,username");
+});
+
+test("no-content message without embedded status still degrades when nickname is empty", () => {
+  const result = classifyRapidApiGameResponse(200, {
+    error: false,
+    status: 200,
+    msg: "no_content_9",
+    data: { username: "" },
+  });
+  assert.equal(result.kind, "unavailable");
+  assert.equal(result.diagnostic.reason, "provider_error");
+  assert.equal(result.diagnostic.messageCode, "no_content_n");
+});
+
+test("no-content message with a usable nickname still succeeds", () => {
+  const result = classifyRapidApiGameResponse(200, {
+    error: false,
+    status: 200,
+    msg: "no_content_9",
+    data: { username: "RealPlayer" },
+  });
+  assert.equal(result.kind, "success");
+  assert.equal(result.nickname, "RealPlayer");
 });

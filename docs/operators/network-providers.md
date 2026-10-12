@@ -57,6 +57,15 @@ rather than a key/gateway outage. The game classifier therefore accepts these va
   `data:object:unlisted_keys`; values are never logged. Degraded and unrecognized
   failures also attach an allowlisted `providerMessageCode` (`msg`/`code` normalized
   to a known token, else `unlisted`, else `absent`); raw provider text is never logged.
+  Per-game `no_content_N` codes collapse to `no_content_n`.
+- Live HoK/Genshin evidence (2026-10-12 probe): both routes return HTTP 200 with
+  `error:false`, embedded `status:204`, per-game codes `no_content_2` (HoK) and
+  `no_content_5` (Genshin), and an empty `data.username`. HoK `data` also carries
+  an `is_ban` flag. These classify as `provider_error`/unavailable — the same
+  degraded treatment as MLBB `no_content_0` — and never as not-found or
+  unrecognized. Whether `no_content_N` means dead sample IDs or degraded routes
+  for all IDs is still open; it needs a plausibly-valid ID per game (preferably
+  the provider's own documented examples) through a contracted probe.
 - Identity fetches use a 15s timeout with one retry after 800ms for transport
   failures only. The retry does not repeat on explicit not-found, rate limits, or
   degraded provider bodies. Post-#53 production evidence: HoK hit the old 7s timeout
