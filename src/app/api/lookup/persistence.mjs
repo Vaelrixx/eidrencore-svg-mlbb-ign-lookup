@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { isIP } from "node:net";
 
 const DEFAULT_WINDOW_SECONDS = 60;
 const DEFAULT_MAX_REQUESTS = 30;
@@ -20,6 +21,8 @@ const LOG_SOURCES = new Set([
   "eidren_valorant",
   "eidren_genshin_impact",
   "eidren_honor_of_kings",
+  "eidren_free_fire",
+  "eidren_free_fire_global",
 ]);
 
 function configuration(env = process.env) {
@@ -37,14 +40,17 @@ function authHeaders(key) {
 
 function clientAddress(request) {
   const realIp = request?.headers?.get?.("x-real-ip")?.trim();
-  if (realIp && !realIp.includes(",") && realIp.length <= 128) return realIp;
+  // Only trust X-Real-IP when it is a single IP literal. A hostname or a
+  // comma-joined list is caller-controlled on unmanaged ingress, so treat it
+  // as absent and fall through to the last X-Forwarded-For entry.
+  if (realIp && isIP(realIp)) return realIp;
   // Railway's ingress appends the connecting client address to X-Forwarded-For.
   // Use the final entry rather than a caller-controlled leftmost value.
   const forwarded = request?.headers?.get?.("x-forwarded-for");
   if (!forwarded) return null;
   const entries = forwarded.split(",").map((entry) => entry.trim()).filter(Boolean);
   const address = entries.at(-1);
-  return address && address.length <= 128 ? address : null;
+  return address && isIP(address) ? address : null;
 }
 
 function clientHash(address, secret) {
