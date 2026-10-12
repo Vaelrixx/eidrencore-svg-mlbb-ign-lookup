@@ -71,7 +71,7 @@ Persistent `lookup_logs` rows contain only a bounded status (`success`, `invalid
 
 Production logs emit structured JSON events for each provider attempt and each completed lookup. Provider events include a request correlation ID, provider label, outcome, latency in milliseconds, and the selected source only on success. Failed attempts may also include a bounded failure reason (`missing_config`, `http_error`, `network_or_timeout`, `unrecognized_response`, or `provider_error`) and an upstream HTTP status code. RapidAPI diagnostics may also include a low-cardinality response-shape label; raw content is never logged. The summary records total duration and outcome counts. Player IDs, zone IDs, nicknames, upstream payloads, URLs, request headers, and credentials are intentionally excluded. Logging is best-effort and cannot change lookup results. Use Railway deployment logs to compare provider latency and availability over time; these are event logs, not a persistent metrics dashboard.
 
-Run `npm run test:provider-adapters` to cover RapidAPI response classification, including structured 404 handling and `no_content_0`. Run `npm run test:observability` to check telemetry privacy and failure isolation. Run `npm run test:persistence` to cover the shared limiter and sanitized Supabase logging payloads.
+Run `npm run test:provider-adapters` to cover RapidAPI and WhoPlays response classification, including structured 404 handling and `no_content_0`. Run `npm run test:observability` to check telemetry privacy and failure isolation. Run `npm run test:persistence` to cover the shared limiter and sanitized Supabase logging payloads.
 
 ## Live fallback takeover smoke test
 
@@ -79,7 +79,20 @@ Run `npm run test:lookup:live` to simulate an unavailable primary and call the r
 
 ## Manual live provider sweep
 
-Run `npm run test:provider-sweep:live` or trigger the **Live provider diagnostic sweep** workflow in GitHub Actions. It probes the known-valid test fixture against the Isan secondary adapter, EliteDias, Smile.One, and the current form-encoded, current JSON, and an older public-reference JSON inquiry parameter set for Dunia Games (diagnostic only). ID Game Checker is probed only when `RAPIDAPI_KEY` or `RAPIDAPI_APP_TOKEN` is configured in the workflow environment; production's Railway secret is not copied into GitHub Actions.
+Run `npm run test:provider-sweep:live` or trigger the **Live provider diagnostic sweep** workflow in GitHub Actions. It probes the known-valid test fixture against the Isan secondary adapter, EliteDias, Smile.One, and the current form-encoded, current JSON, and an older public-reference JSON inquiry parameter set for Dunia Games (diagnostic only). ID Game Checker is probed only when `RAPIDAPI_KEY` or `RAPIDAPI_APP_TOKEN` is configured in the workflow environment; production's Railway secret is not copied into GitHub Actions. WhoPlays is probed only when `WHOPLAYS_API_KEY` is configured in the workflow environment.
+
+## MLBB fallback providers
+
+The MLBB route resolves lookups primary-first with concurrent fallbacks. Fallbacks that passed the live provider sweep are wired into production:
+
+| Provider | Source label | Auth | Notes |
+|---|---|---|---|
+| Isan find (primary) | `isan_find` | None | Direct community endpoint. |
+| ID Game Checker | `rapidapi_id_game_checker` | `RAPIDAPI_KEY` (Railway) | Degrades to `missing_config` when unset. |
+| Isan nickname | `isan_nickname_api` | None | Independent host/path from the primary. |
+| WhoPlays | `whoplays_check` | `WHOPLAYS_API_KEY` (Railway) | Stable `{ ok, game, username }` envelope; only the documented `not_found` error kind counts as a missing player. Key failures degrade to unavailable, never not-found. |
+
+Set `WHOPLAYS_API_KEY` in Railway from a key created at [whoplays.doedja.com/dashboard](https://whoplays.doedja.com/dashboard) (free tier: 30 lookups/min). Keep the key server-side; it is never logged.
 
 The sweep logs provider labels, sanitized outcome categories, HTTP status codes, durations, allowlisted response-shape/key names, and bounded provider-code/error-category fields. It never prints IDs, nicknames, response values, message text, URLs, request headers, or credentials. It intentionally skips Codashop's `initPayment` endpoint because that can create a checkout session.
 

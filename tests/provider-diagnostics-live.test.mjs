@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { performance } from "node:perf_hooks";
 import { confirmedNickname } from "../src/app/api/lookup/nickname-validation.mjs";
 import { lookupIsan } from "../src/app/api/lookup/providers/isan.mjs";
+import { lookupWhoPlays } from "../src/app/api/lookup/providers/whoplays.mjs";
 import { normalizeProviderOutcome } from "./helpers/provider-outcome-normalization.mjs";
 
 const playerId = process.env.LIVE_LOOKUP_PLAYER_ID ?? "1114917746";
@@ -127,6 +128,19 @@ test("live provider sweep reports sanitized status for a known-valid test accoun
     ...(Number.isInteger(isan.diagnostic?.statusCode) ? { upstreamStatus: isan.diagnostic.statusCode } : {}),
     durationMs: Math.round(performance.now() - isanStartedAt),
   });
+  // This is the exact WhoPlays adapter used by production. Never print its nickname.
+  if (process.env.WHOPLAYS_API_KEY?.trim()) {
+    const whoPlaysStartedAt = performance.now();
+    const whoPlays = await lookupWhoPlays(playerId, zoneId);
+    results.push({
+      provider: "whoplays_check",
+      ...normalizeProviderOutcome(whoPlays.kind, whoPlays.diagnostic?.reason),
+      ...(Number.isInteger(whoPlays.diagnostic?.statusCode) ? { upstreamStatus: whoPlays.diagnostic.statusCode } : {}),
+      durationMs: Math.round(performance.now() - whoPlaysStartedAt),
+    });
+  } else {
+    results.push({ provider: "whoplays_check", outcome: "skipped_missing_ci_secret" });
+  }
 
   const rapidApiKey = process.env.RAPIDAPI_KEY?.trim() || process.env.RAPIDAPI_APP_TOKEN?.trim();
   if (rapidApiKey) {

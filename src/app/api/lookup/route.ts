@@ -4,6 +4,7 @@ import { confirmedNickname } from "./nickname-validation.mjs";
 import { resolveLookupWithFallbacks } from "./resolve-lookup.mjs";
 import { lookupIsan } from "./providers/isan.mjs";
 import { lookupRapidApi } from "./providers/rapidapi.mjs";
+import { lookupWhoPlays } from "./providers/whoplays.mjs";
 import { logLookupSummary, observeProvider } from "./observability.mjs";
 import { enforceLookupRateLimit, enforcePlaygroundLimit, persistLookupLog } from "./persistence.mjs";
 import { getUserFromRequest, getUserFromSession, requireUser } from "@/lib/platform";
@@ -272,9 +273,10 @@ export async function POST(request: NextRequest) {
       lookup: () => lookupPrimary(playerId, zoneId),
     }),
     [
-      // Keep only the two fallback adapters that passed the live provider sweep.
+      // Keep only the fallback adapters that passed the live provider sweep.
       () => observeProvider({ requestId, provider: "rapidapi_id_game_checker", lookup: () => lookupRapidApi(playerId, zoneId) }),
       () => observeProvider({ requestId, provider: "isan_nickname_api", lookup: () => lookupIsan(playerId, zoneId) }),
+      () => observeProvider({ requestId, provider: "whoplays_check", lookup: () => lookupWhoPlays(playerId, zoneId) }),
     ],
   );
   const { primary, fallbacks, confirmed, pendingFallbacks } = resolution;
