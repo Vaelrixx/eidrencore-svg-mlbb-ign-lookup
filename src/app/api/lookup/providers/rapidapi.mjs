@@ -111,7 +111,7 @@ const NOT_FOUND_MESSAGE_PATTERN = /not[\s_-]*found|id[\s_-]*not[\s_-]*found|does
 const DEGRADED_MESSAGE_PATTERN = /no[\s_-]*content|temporar|try again|maintenance|upstream|timeout|timed out|rate[\s_-]*limit|too many|service unavailable|internal error|server error|bad gateway|gateway/i;
 
 const DATA_SHAPE_PATTERNS = [
-  /^data:object:(avatar|id|uid|userId|playerId|username|nickname|name|ign|gameName|playerName|roleName)(,(avatar|id|uid|userId|playerId|username|nickname|name|ign|gameName|playerName|roleName|game|server|region|zone|avatarUrl|profilePicture|level|rank|title))*$/,
+  /^data:object:(avatar|id|uid|userId|playerId|username|nickname|name|ign|gameName|playerName|roleName)(,(avatar|id|uid|userId|playerId|username|nickname|name|ign|gameName|playerName|roleName|game|server|region|zone|avatarUrl|profilePicture|level|rank|title|is_ban|isBan|banned))*$/,
   /^data:(missing|array|string|number|boolean|null|empty)$/,
   /^data:object:unlisted_keys$/,
 ];
@@ -198,6 +198,10 @@ function messageCodeLabel(payload) {
   }
   for (const raw of candidates) {
     const normalized = raw.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 48);
+    // The provider emits per-game/per-reason no-content variants (no_content_0,
+    // no_content_2, no_content_5, ...). Collapse them to one label so telemetry
+    // stays stable without allowlisting every numeric suffix.
+    if (/^no_content(_\d+)?$/.test(normalized)) return "no_content_n";
     if (MESSAGE_CODE_ALLOWLIST.has(normalized)) return normalized;
   }
   if (!candidates.length) return "absent";
@@ -218,6 +222,8 @@ function dataShapeLabel(payload) {
     "avatar", "avatarUrl", "game", "gameName", "id", "ign", "level",
     "name", "nickname", "playerId", "playerName", "profilePicture", "rank",
     "region", "roleName", "server", "title", "uid", "userId", "username", "zone",
+    // Observed live on the HoK route (E-002): data carries a ban flag.
+    "is_ban", "isBan", "banned",
   ]);
   const unknown = keys.some((key) => !allowlisted.has(key));
   if (unknown) return "data:object:unlisted_keys";
@@ -268,7 +274,12 @@ function classifyIdGameCheckerEnvelope(httpStatus, payload) {
   if (
     httpStatus === 204 ||
     providerStatus === 204 ||
-    (errorFlag && DEGRADED_MESSAGE_PATTERN.test(normalized))
+    (errorFlag && DEGRADED_MESSAGE_PATTERN.test(normalized)) ||
+    // Live HoK/Genshin evidence (E-002): the provider returns error:false with
+    // embedded 204 already covered above, but some no_content_N variants may
+    // arrive without the embedded status. A no-content message plus an empty
+    // nickname is degraded, never a missing account and never unrecognized.
+    (DEGRADED_MESSAGE_PATTERN.test(normalized) && !confirmedNickname(payload))
   ) {
     return {
       kind: "unavailable",

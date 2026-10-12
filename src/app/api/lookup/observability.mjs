@@ -4,7 +4,7 @@ const OUTCOMES = new Set(["success", "not_found", "rate_limited", "unavailable"]
 const DIAGNOSTIC_REASONS = new Set(["missing_config", "http_error", "network_or_timeout", "unrecognized_response", "provider_error"]);
 const RESPONSE_KINDS = new Set(["id_game_checker_schema", "nested_status_error", "gateway_message_json", "other_json_object", "json_array", "empty_or_non_json"]);
 const MESSAGE_CODES = new Set([
-  "absent", "unlisted", "id_found", "id_not_found", "no_content_0", "no_content",
+  "absent", "unlisted", "id_found", "id_not_found", "no_content_0", "no_content", "no_content_n",
   "not_found", "invalid_id", "invalid_player_id", "invalid_user_id", "invalid_uid",
   "user_not_found", "player_not_found", "account_not_found", "success", "error",
   "failed", "timeout", "timed_out", "rate_limit", "rate_limited", "too_many_requests",
