@@ -154,6 +154,56 @@ function providerErrorFlag(payload) {
   );
 }
 
+const MESSAGE_CODE_ALLOWLIST = new Set([
+  "id_found",
+  "id_not_found",
+  "no_content_0",
+  "no_content",
+  "not_found",
+  "invalid_id",
+  "invalid_player_id",
+  "invalid_user_id",
+  "invalid_uid",
+  "user_not_found",
+  "player_not_found",
+  "account_not_found",
+  "success",
+  "error",
+  "failed",
+  "timeout",
+  "timed_out",
+  "rate_limit",
+  "rate_limited",
+  "too_many_requests",
+  "service_unavailable",
+  "internal_error",
+  "server_error",
+  "bad_gateway",
+  "gateway_timeout",
+  "maintenance",
+  "temporarily_unavailable",
+  "try_again",
+]);
+
+function messageCodeLabel(payload) {
+  const root = record(payload);
+  const data = record(root?.data);
+  const result = record(root?.result);
+  const candidates = [];
+  for (const candidate of [root, data, result]) {
+    for (const key of ["msg", "code", "errorCode", "error_code", "reason", "statusText", "status_text"]) {
+      const value = candidate?.[key];
+      if ((typeof value === "string" && value.trim()) || typeof value === "number") candidates.push(String(value));
+    }
+  }
+  for (const raw of candidates) {
+    const normalized = raw.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 48);
+    if (MESSAGE_CODE_ALLOWLIST.has(normalized)) return normalized;
+  }
+  if (!candidates.length) return "absent";
+  return "unlisted";
+}
+
 function dataShapeLabel(payload) {
   const root = record(payload);
   if (!root) return "root:non_object";
@@ -198,6 +248,7 @@ function classifyIdGameCheckerEnvelope(httpStatus, payload) {
   const providerStatus = Number(root?.status ?? nested?.status);
   const errorFlag = providerErrorFlag(payload);
   const responseKindLabel = responseKind(payload);
+  const messageCode = messageCodeLabel(payload);
 
   if (httpStatus === 429 || /rate[\s_-]*limit|too many/.test(normalized)) {
     return {
@@ -226,6 +277,7 @@ function classifyIdGameCheckerEnvelope(httpStatus, payload) {
         statusCode: Number.isInteger(httpStatus) ? httpStatus : 502,
         responseKind: responseKindLabel,
         responseShape: classifyGameResponseShape(payload),
+        messageCode,
       },
     };
   }
@@ -253,6 +305,7 @@ function classifyIdGameCheckerEnvelope(httpStatus, payload) {
       statusCode: httpStatus,
       responseKind: responseKindLabel,
       responseShape: classifyGameResponseShape(payload),
+      messageCode,
     },
   };
 }

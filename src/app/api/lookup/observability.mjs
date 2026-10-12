@@ -3,6 +3,14 @@ import { performance } from "node:perf_hooks";
 const OUTCOMES = new Set(["success", "not_found", "rate_limited", "unavailable"]);
 const DIAGNOSTIC_REASONS = new Set(["missing_config", "http_error", "network_or_timeout", "unrecognized_response", "provider_error"]);
 const RESPONSE_KINDS = new Set(["id_game_checker_schema", "nested_status_error", "gateway_message_json", "other_json_object", "json_array", "empty_or_non_json"]);
+const MESSAGE_CODES = new Set([
+  "absent", "unlisted", "id_found", "id_not_found", "no_content_0", "no_content",
+  "not_found", "invalid_id", "invalid_player_id", "invalid_user_id", "invalid_uid",
+  "user_not_found", "player_not_found", "account_not_found", "success", "error",
+  "failed", "timeout", "timed_out", "rate_limit", "rate_limited", "too_many_requests",
+  "service_unavailable", "internal_error", "server_error", "bad_gateway",
+  "gateway_timeout", "maintenance", "temporarily_unavailable", "try_again",
+]);
 const SHAPE_ENVELOPE_KEYS = new Set(["error", "status", "msg", "message", "success", "valid", "ok", "data", "result", "code", "reason"]);
 const SHAPE_DATA_KEYS = new Set([
   "avatar", "avatarUrl", "game", "gameName", "id", "ign", "level", "name", "nickname",
@@ -72,6 +80,9 @@ export async function observeProvider({ requestId, provider, lookup, logger = un
       : {}),
     ...(isAllowlistedResponseShape(result?.diagnostic?.responseShape)
       ? { providerResponseShape: result.diagnostic.responseShape }
+      : {}),
+    ...(typeof result?.diagnostic?.messageCode === "string" && MESSAGE_CODES.has(result.diagnostic.messageCode)
+      ? { providerMessageCode: result.diagnostic.messageCode }
       : {}),
   };
 

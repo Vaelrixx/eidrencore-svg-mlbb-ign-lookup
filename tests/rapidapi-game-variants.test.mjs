@@ -125,3 +125,77 @@ test("shape telemetry passes through the games adapter without leaking values", 
   assert.equal(event.providerResponseShape, result.diagnostic.responseShape);
   assert.equal(lines[0].includes(secretNickname), false);
 });
+
+test("transient transport failures retry once before reporting unavailable", async () => {
+  let calls = 0;
+  let sleptMs = 0;
+  const result = await lookupRapidApiGame("honor-of-kings", { playerId: "17960996468644334000" }, {
+    apiKey: "test-key",
+    sleepImpl: async (ms) => { sleptMs += ms; },
+    fetchImpl: async () => {
+      calls += 1;
+      if (calls === 1) throw new Error("simulated timeout");
+      return new Response(JSON.stringify({
+        error: false,
+        status: 200,
+        msg: "id_found",
+        data: { username: "HonorPlayer" },
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    },
+  });
+
+  assert.equal(calls, 2);
+  assert.equal(sleptMs > 0, true);
+  assert.deepEqual(result, { kind: "success", nickname: "HonorPlayer", source: "rapidapi_id_game_checker" });
+});
+
+test("persistent transport failures stay unavailable after the retry budget", async () => {
+  let calls = 0;
+  const result = await lookupRapidApiGame("genshin-impact", { playerId: "844335555", server: "asia" }, {
+    apiKey: "test-key",
+    sleepImpl: async () => {},
+    fetchImpl: async () => {
+      calls += 1;
+      throw new Error("simulated timeout");
+    },
+  });
+
+  assert.equal(calls, 2);
+  assert.deepEqual(result, { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } });
+});
+
+test("degraded responses carry an allowlisted message code without payload text", () => {
+  const degraded = classifyRapidApiGameResponse(200, {
+    error: true,
+    status: 200,
+    msg: "no_content_0",
+    data: { id: "844335555", server: "asia", username: "SECRET_PLAYER" },
+  });
+  assert.equal(degraded.kind, "unavailable");
+  assert.equal(degraded.diagnostic.reason, "provider_error");
+  assert.equal(degraded.diagnostic.messageCode, "no_content_0");
+  assert.equal(JSON.stringify(degraded).includes("SECRET_PLAYER"), false);
+});
+
+test("unfamiliar provider codes collapse to unlisted and still emit safely", async () => {
+  const result = classifyRapidApiGameResponse(200, {
+    error: true,
+    status: 200,
+    msg: "brand_new_secret_code",
+    data: { username: "SECRET_PLAYER" },
+  });
+  assert.equal(result.diagnostic.messageCode, "unlisted");
+  assert.equal(JSON.stringify(result).includes("brand_new_secret_code"), false);
+
+  const lines = [];
+  await observeProvider({
+    requestId: "req-message-code-test",
+    provider: "rapidapi_id_game_checker_genshin_impact",
+    lookup: async () => result,
+    logger: (line) => lines.push(line),
+  });
+  const event = JSON.parse(lines[0]);
+  assert.equal(event.providerMessageCode, "unlisted");
+  assert.equal(lines[0].includes("SECRET_PLAYER"), false);
+  assert.equal(lines[0].includes("brand_new_secret_code"), false);
+});

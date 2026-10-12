@@ -29,6 +29,29 @@ function classifyGameResponse(httpStatus, payload) {
   return classifyRapidApiGameResponse(httpStatus, payload);
 }
 
+const GAME_FETCH_TIMEOUT_MS = 15000;
+const GAME_FETCH_MAX_ATTEMPTS = 2;
+const GAME_FETCH_RETRY_DELAY_MS = 800;
+
+function delay(ms, sleepImpl) {
+  if (ms <= 0) return Promise.resolve();
+  if (typeof sleepImpl === "function") return sleepImpl(ms);
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(url, init, fetchImpl, sleepImpl) {
+  let lastError;
+  for (let attempt = 1; attempt <= GAME_FETCH_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      return await fetchImpl(url, { ...init, signal: AbortSignal.timeout(GAME_FETCH_TIMEOUT_MS) });
+    } catch (error) {
+      lastError = error;
+      if (attempt < GAME_FETCH_MAX_ATTEMPTS) await delay(GAME_FETCH_RETRY_DELAY_MS, sleepImpl);
+    }
+  }
+  throw lastError;
+}
+
 export async function lookupRapidApiGame(game, input, options = {}) {
   const apiKey = options.apiKey ?? process.env.RAPIDAPI_KEY?.trim() ?? process.env.RAPIDAPI_APP_TOKEN?.trim();
   if (!apiKey) return { kind: "unavailable", diagnostic: { reason: "missing_config" } };
@@ -36,8 +59,9 @@ export async function lookupRapidApiGame(game, input, options = {}) {
   if (!path) return { kind: "unavailable", diagnostic: { reason: "invalid_input" } };
 
   const fetchImpl = options.fetchImpl ?? fetch;
+  const sleepImpl = options.sleepImpl;
   try {
-    const upstream = await fetchImpl(`https://${RAPIDAPI_HOST}${path}`, {
+    const upstream = await fetchWithRetry(`https://${RAPIDAPI_HOST}${path}`, {
       method: "GET",
       headers: {
         Accept: "application/json",
@@ -45,8 +69,7 @@ export async function lookupRapidApiGame(game, input, options = {}) {
         "x-rapidapi-key": apiKey,
       },
       cache: "no-store",
-      signal: AbortSignal.timeout(7000),
-    });
+    }, fetchImpl, sleepImpl);
     const payload = await upstream.json().catch(() => null);
     return classifyGameResponse(upstream.status, payload);
   } catch {

@@ -54,7 +54,16 @@ rather than a key/gateway outage. The game classifier therefore accepts these va
   and similar) under the existing placeholder guard.
 - Unrecognized or degraded failures attach a PII-free `providerResponseShape` label
   (envelope keys plus allowlisted `data` keys only). Unknown keys collapse to
-  `data:object:unlisted_keys`; values are never logged.
+  `data:object:unlisted_keys`; values are never logged. Degraded and unrecognized
+  failures also attach an allowlisted `providerMessageCode` (`msg`/`code` normalized
+  to a known token, else `unlisted`, else `absent`); raw provider text is never logged.
+- Identity fetches use a 15s timeout with one retry after 800ms for transport
+  failures only. The retry does not repeat on explicit not-found, rate limits, or
+  degraded provider bodies. Post-#53 production evidence: HoK hit the old 7s timeout
+  (`network_or_timeout`, 7004ms) while Genshin returned a degraded
+  `id_game_checker_schema` body (`provider_error`, shape
+  `envelope:data,error,msg,status|data:object:id,server,username`), so the retry
+  targets HoK-class slowness and the message code targets Genshin-class degradation.
 
 ## Supercell lookups (`/api/lookup/{brawl-stars,clash-of-clans,clash-royale}`)
 
