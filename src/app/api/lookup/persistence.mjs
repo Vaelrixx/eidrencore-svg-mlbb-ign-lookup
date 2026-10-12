@@ -15,6 +15,11 @@ const LOG_SOURCES = new Set([
   "brawl_stars_official_api",
   "clash_of_clans_official_api",
   "clash_royale_official_api",
+  "eidren_pubg_mobile",
+  "eidren_call_of_duty_mobile",
+  "eidren_valorant",
+  "eidren_genshin_impact",
+  "eidren_honor_of_kings",
 ]);
 
 function configuration(env = process.env) {

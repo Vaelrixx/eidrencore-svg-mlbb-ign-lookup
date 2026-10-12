@@ -94,6 +94,28 @@ test("lookup log persists only bounded status, latency and source", async () => 
   assert.equal(JSON.stringify(captured.body).includes("SECRET"), false);
 });
 
+test("all five Eidren identity-game source labels persist without fallback", async () => {
+  const sources = [
+    "eidren_pubg_mobile",
+    "eidren_call_of_duty_mobile",
+    "eidren_valorant",
+    "eidren_genshin_impact",
+    "eidren_honor_of_kings",
+  ];
+  for (const source of sources) {
+    let captured;
+    const result = await persistLookupLog({ status: "success", responseMs: 1, source }, {
+      env: baseEnv,
+      fetchImpl: async (_url, init) => {
+        captured = JSON.parse(init.body);
+        return new Response(null, { status: 201 });
+      },
+    });
+    assert.equal(result.persisted, true, source);
+    assert.deepEqual(captured, { status: "success", response_ms: 1, source }, source);
+  }
+});
+
 test("unknown log statuses and sources cannot inject arbitrary values", async () => {
   let captured;
   const result = await persistLookupLog({ status: "SECRET", responseMs: -10, source: "SECRET" }, {

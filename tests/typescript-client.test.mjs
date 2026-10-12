@@ -29,7 +29,37 @@ test("client source stays in sync with the documented game slugs", async () => {
   for (const slug of ["brawl-stars", "clash-of-clans", "clash-royale"]) {
     assert.match(source, new RegExp(`"${slug}": "/api/lookup/${slug}"`));
   }
+  for (const slug of ["pubg-mobile", "call-of-duty-mobile", "valorant", "genshin-impact", "honor-of-kings"]) {
+    assert.match(source, new RegExp(`"${slug}": "/api/lookup/${slug}"`));
+  }
   assert.match(source, /lookupMlbb\(playerId: string, zoneId: string\)/);
+  assert.match(source, /lookupGenshinImpact\(playerId: string, server: GenshinServer\)/);
+  assert.doesNotMatch(source, /lookupFreeFire|"free-fire": "/);
+});
+
+test("identity-game helpers post each documented input shape to its endpoint", async (t) => {
+  const { createEidrenClient } = await loadClient(t);
+  const seen = [];
+  const client = createEidrenClient("eid_unit-test-key", {
+    baseUrl: "https://example.test",
+    fetchImpl: async (url, init) => {
+      seen.push({ url: String(url), body: JSON.parse(init.body) });
+      return response(200, { success: true, data: { nickname: "ValidNickname", source: "test" } });
+    },
+  });
+  await client.lookupPubgMobile("5204837417");
+  await client.lookupCallOfDutyMobile("8370310025568788000");
+  await client.lookupValorant("ucup", "123");
+  await client.lookupGenshinImpact("844335555", "asia");
+  await client.lookupHonorOfKings("17960996468644334000");
+  assert.deepEqual(seen, [
+    { url: "https://example.test/api/lookup/pubg-mobile", body: { playerId: "5204837417" } },
+    { url: "https://example.test/api/lookup/call-of-duty-mobile", body: { playerId: "8370310025568788000" } },
+    { url: "https://example.test/api/lookup/valorant", body: { name: "ucup", tag: "123" } },
+    { url: "https://example.test/api/lookup/genshin-impact", body: { playerId: "844335555", server: "asia" } },
+    { url: "https://example.test/api/lookup/honor-of-kings", body: { playerId: "17960996468644334000" } },
+  ]);
+  assert.equal(typeof seen.at(-1).body.playerId, "string");
 });
 
 test("each Supercell helper posts the tag to its own endpoint", async (t) => {
