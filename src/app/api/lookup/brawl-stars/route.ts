@@ -12,6 +12,7 @@ const { POST, GET } = createGameLookupHandler({
   endpoint: "/api/lookup/brawl-stars",
   gameLabel: "Brawl Stars",
   tagExample: "#2PP",
+  publicSource: "eidren_brawl_stars",
   provider: "brawl_stars_official_api",
   logSource: "brawl_stars_official_api",
   notFoundCode: "BS_PLAYER_NOT_FOUND",

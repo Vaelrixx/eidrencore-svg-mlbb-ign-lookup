@@ -16,6 +16,8 @@ export type GameLookupConfig = {
   gameLabel: string;
   /** Tag example shown in validation errors, e.g. "#2PP". */
   tagExample: string;
+  /** Customer-facing source label returned in success responses, e.g. "eidren_brawl_stars". */
+  publicSource: string;
   /** Provider label for telemetry, e.g. "brawl_stars_official_api". */
   provider: string;
   /** Log source label, e.g. "brawl_stars_official_api". */
@@ -69,6 +71,7 @@ async function loggedError(
 }
 
 function jsonSuccess(
+  config: GameLookupConfig,
   confirmed: Extract<LookupAttempt, { kind: "success" }>,
   tag: string,
   requestId: string,
@@ -79,7 +82,7 @@ function jsonSuccess(
       data: {
         nickname: confirmed.nickname,
         tag,
-        source: confirmed.source,
+        source: config.publicSource,
       },
     },
     {
@@ -225,7 +228,7 @@ export function createGameLookupHandler(config: GameLookupConfig) {
         responseMs: Date.now() - requestStartedAt,
         source: config.logSource,
       });
-      return jsonSuccess(attempt, tag, requestId);
+      return jsonSuccess(config, attempt, tag, requestId);
     }
 
     if (attempt.kind === "not_found") {
@@ -246,9 +249,9 @@ export function createGameLookupHandler(config: GameLookupConfig) {
       await recordDeveloperRequest({ ...developerAuth, endpoint: config.endpoint, requestId, status: 429, responseMs: Date.now() - requestStartedAt });
       return loggedError(
         config,
-        `The ${config.gameLabel} provider is rate-limiting requests. Try again shortly.`,
+        `Eidren is rate-limiting ${config.gameLabel} requests right now. Try again shortly.`,
         429,
-        "UPSTREAM_RATE_LIMIT",
+        "SERVICE_RATE_LIMIT",
         requestId,
         requestStartedAt,
         "rate_limited",
@@ -272,9 +275,9 @@ export function createGameLookupHandler(config: GameLookupConfig) {
     await recordDeveloperRequest({ ...developerAuth, endpoint: config.endpoint, requestId, status: 502, responseMs: Date.now() - requestStartedAt });
     return loggedError(
       config,
-      `We couldn't verify this tag right now because the ${config.gameLabel} provider is unavailable. Please retry shortly.`,
+      `Eidren couldn't verify this ${config.gameLabel} tag right now. Please retry shortly.`,
       502,
-      "UPSTREAM_UNAVAILABLE",
+      "SERVICE_UNAVAILABLE",
       requestId,
       requestStartedAt,
       "upstream_error",
@@ -298,7 +301,7 @@ export function createGameLookupHandler(config: GameLookupConfig) {
             method: "POST",
             body: { tag: config.tagExample },
           },
-          note: "Nickname lookup depends on the official game provider and its availability.",
+          note: "Nickname lookup is served by the Eidren identity network.",
         },
         { headers: { "Cache-Control": "no-store" } },
       );

@@ -42,8 +42,8 @@ export type LookupErrorCode =
   | "PLAYGROUND_LIMIT"
   | "API_QUOTA_EXCEEDED"
   | "QUOTA_UNAVAILABLE"
-  | "UPSTREAM_RATE_LIMIT"
-  | "UPSTREAM_UNAVAILABLE"
+  | "SERVICE_RATE_LIMIT"
+  | "SERVICE_UNAVAILABLE"
   | "GAME_NOT_CONFIGURED";
 
 export class EidrenApiError extends Error {
@@ -76,8 +76,8 @@ export class EidrenApiError extends Error {
       this.status === 429 ||
       this.status === 502 ||
       this.status === 503 ||
-      this.code === "UPSTREAM_RATE_LIMIT" ||
-      this.code === "UPSTREAM_UNAVAILABLE"
+      this.code === "SERVICE_RATE_LIMIT" ||
+      this.code === "SERVICE_UNAVAILABLE"
     );
   }
 }
@@ -125,7 +125,7 @@ async function post<T>(
   const envelope = (payload ?? {}) as ErrorEnvelope;
   throw new EidrenApiError({
     status: response.status,
-    code: envelope.code || "UPSTREAM_UNAVAILABLE",
+    code: envelope.code || "SERVICE_UNAVAILABLE",
     message: envelope.error || `Lookup failed with HTTP ${response.status}.`,
     requestId,
     retryAfterSeconds: retryAfterSeconds(response.headers),

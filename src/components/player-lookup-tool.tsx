@@ -108,7 +108,7 @@ export function PlayerLookupTool() {
             </div>
           </div>
           <div className="x-tags"><span>Mobile Legends</span><span>Zone-aware</span></div>
-          {result && <p className="x-card-foot">Nickname returned by the upstream account-validation response.</p>}
+          {result && <p className="x-card-foot">Identity resolved by the Eidren network.</p>}
         </article>
 
         <div className="pg-panel">

@@ -38,5 +38,5 @@ All endpoints take `Authorization: Bearer eid_...` and return `{ "success": true
 | `BS_PLAYER_NOT_FOUND` / `COC_PLAYER_NOT_FOUND` / `CR_PLAYER_NOT_FOUND` | Confirmed: no account for that tag (404) |
 | `PLAYER_NOT_FOUND` | Confirmed: no MLBB account for that ID (404) |
 | `API_QUOTA_EXCEEDED` | Monthly quota reached (429) |
-| `UPSTREAM_RATE_LIMIT` / `UPSTREAM_UNAVAILABLE` | Temporary provider failure — retry (429/502) |
+| `SERVICE_RATE_LIMIT` / `SERVICE_UNAVAILABLE` | Temporary Eidren outage — retry (429/502) |
 | `GAME_NOT_CONFIGURED` | Game key not set server-side (503) |
