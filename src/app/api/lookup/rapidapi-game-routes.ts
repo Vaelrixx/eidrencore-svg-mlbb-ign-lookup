@@ -4,6 +4,7 @@ import { lookupEnkaGenshin } from "./providers/enka-genshin.mjs";
 import { lookupGoPayGameFallback } from "./providers/gopay-game-fallback.mjs";
 import { lookupFcMobile } from "./providers/gopay-fc-mobile.mjs";
 import { lookupGoPayFreeFire } from "./providers/gopay-free-fire.mjs";
+import { lookupJawakerVerifyUser } from "./providers/jawaker-verify-user.mjs";
 
 const numericId = /^\d{3,24}$/;
 const riotName = /^[\p{L}\p{N} _.'-]{3,16}$/u;
@@ -68,6 +69,26 @@ async function lookupFreeFireWithFallback(
   }
   const playerId = "playerId" in input ? input.playerId : "";
   const fallback = await lookupGoPayFreeFire(playerId);
+  if (fallback.kind === "success" || fallback.kind === "not_found" || fallback.kind === "rate_limited") {
+    return fallback;
+  }
+  return primary;
+}
+
+/**
+ * Jawaker chain: keyed primary first, then the official webshop verify_user
+ * fallback (live-verified 2026-10-13: docs sample resolves to login+level,
+ * bogus numbers give explicit HTTP 404). Same terminal-verdict discipline.
+ */
+async function lookupJawakerWithFallback(
+  input: RapidApiGameInput,
+) {
+  const primary = await lookupRapidApiGame("jawaker", input);
+  if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") {
+    return primary;
+  }
+  const playerId = "playerId" in input ? input.playerId : "";
+  const fallback = await lookupJawakerVerifyUser(playerId);
   if (fallback.kind === "success" || fallback.kind === "not_found" || fallback.kind === "rate_limited") {
     return fallback;
   }
@@ -182,7 +203,7 @@ const configs: Record<string, { providerGame: RapidApiGame; config: Omit<IdGameL
       gameLabel: "Jawaker",
       publicSource: "eidren_jawaker",
       notFoundCode: "JAWAKER_PLAYER_NOT_FOUND",
-      internalProvider: "rapidapi_id_game_checker_jawaker",
+      internalProvider: "eidren_jawaker_chain",
       fields: [{ key: "playerId", label: "Player ID", example: "1473084005", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
@@ -226,9 +247,10 @@ const configs: Record<string, { providerGame: RapidApiGame; config: Omit<IdGameL
       fields: [{ key: "playerId", label: "UID", example: "12341234", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
-  // Live/social + board verticals (primary-only: no keyless fallback found;
-  // honest degraded when the keyed feed misses). Samples are the provider's
-  // documented examples: Bigo 901234567, Higgs 55666.
+  // Live/social + board verticals. Bigo/Higgs run primary-only (no keyless
+  // fallback found; honest degraded). Jawaker runs keyed primary + official
+  // webshop verify_user fallback. Samples are the provider's documented
+  // examples: Bigo 901234567, Higgs 55666.
   "bigo-live": {
     providerGame: "bigo-live",
     config: {
@@ -271,6 +293,9 @@ export function createRapidApiGameHandler(game: keyof typeof configs) {
       }
       if (entry.providerGame === "pubg-lite") {
         return lookupWithGoPayFallback("pubg-lite", input as RapidApiGameInput, "PUBG_ID");
+      }
+      if (entry.providerGame === "jawaker") {
+        return lookupJawakerWithFallback(input as RapidApiGameInput);
       }
       if (entry.providerGame === "fc-mobile") {
         const playerId = "playerId" in input ? (input as { playerId: string }).playerId : "";
