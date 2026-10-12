@@ -185,3 +185,35 @@ test("normalizes the documented Arena of Valor and PUBG Lite success examples", 
     assert.deepEqual(result, { kind: "success", nickname: fixture.body.data.username, source: "rapidapi_id_game_checker" });
   }
 });
+
+test("builds Teen Patti Gold and Jawaker paths in documented field order", () => {
+  assert.equal(rapidApiGamePath("teen-patti-gold", { playerId: "100439992784" }), "/teen-patti-gold/100439992784");
+  assert.equal(rapidApiGamePath("jawaker", { playerId: "1473084005" }), "/jawaker/1473084005");
+});
+
+test("normalizes the documented Teen Patti Gold and Jawaker success examples", async () => {
+  const fixtures = [
+    {
+      game: "teen-patti-gold",
+      input: { playerId: "100439992784" },
+      body: { success: true, data: { game: "Teen Patti Gold", userId: "100439992784", username: "TpgPlayer" } },
+      expectedUrl: "https://id-game-checker.p.rapidapi.com/teen-patti-gold/100439992784",
+    },
+    {
+      game: "jawaker",
+      input: { playerId: "1473084005" },
+      body: { success: true, data: { game: "Jawaker", userId: "1473084005", username: "JawakerPlayer" } },
+      expectedUrl: "https://id-game-checker.p.rapidapi.com/jawaker/1473084005",
+    },
+  ];
+  for (const fixture of fixtures) {
+    const result = await lookupRapidApiGame(fixture.game, fixture.input, {
+      apiKey: "test-key",
+      fetchImpl: async (url) => {
+        assert.equal(String(url), fixture.expectedUrl);
+        return new Response(JSON.stringify(fixture.body), { status: 200 });
+      },
+    });
+    assert.deepEqual(result, { kind: "success", nickname: fixture.body.data.username, source: "rapidapi_id_game_checker" });
+  }
+});

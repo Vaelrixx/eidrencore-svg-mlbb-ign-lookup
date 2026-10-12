@@ -2,6 +2,7 @@ import { createIdGameLookupHandler, type IdGameLookupConfig } from "./id-game-ro
 import { lookupRapidApiGame, type RapidApiGame, type RapidApiGameInput } from "./providers/rapidapi-games.mjs";
 import { lookupEnkaGenshin } from "./providers/enka-genshin.mjs";
 import { lookupGoPayGameFallback } from "./providers/gopay-game-fallback.mjs";
+import { lookupFcMobile } from "./providers/gopay-fc-mobile.mjs";
 
 const numericId = /^\d{3,24}$/;
 const riotName = /^[\p{L}\p{N} _.'-]{3,16}$/u;
@@ -138,6 +139,46 @@ const configs: Record<string, { providerGame: RapidApiGame; config: Omit<IdGameL
       fields: [{ key: "playerId", label: "Character ID", example: "7228395004", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
+  // Card vertical (primary-only: no keyless fallback found; honest degraded
+  // when the keyed feed misses). Samples are the provider's documented
+  // examples: TPG 100439992784, Jawaker 1473084005.
+  "teen-patti-gold": {
+    providerGame: "teen-patti-gold",
+    config: {
+      endpoint: "/api/lookup/teen-patti-gold",
+      gameLabel: "Teen Patti Gold",
+      publicSource: "eidren_teen_patti_gold",
+      notFoundCode: "TEEN_PATTI_GOLD_PLAYER_NOT_FOUND",
+      internalProvider: "rapidapi_id_game_checker_teen_patti_gold",
+      fields: [{ key: "playerId", label: "Player ID", example: "100439992784", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
+  jawaker: {
+    providerGame: "jawaker",
+    config: {
+      endpoint: "/api/lookup/jawaker",
+      gameLabel: "Jawaker",
+      publicSource: "eidren_jawaker",
+      notFoundCode: "JAWAKER_PLAYER_NOT_FOUND",
+      internalProvider: "rapidapi_id_game_checker_jawaker",
+      fields: [{ key: "playerId", label: "Player ID", example: "1473084005", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
+  // FC Mobile: no RapidAPI slug on the current key, so the keyless GoPay
+  // FC_MOBILE leg is the primary. The 19-digit UID sample below is a
+  // real-format ID; the playground default stays until a known-good UID is
+  // confirmed live via a signed-in sample run.
+  "fc-mobile": {
+    providerGame: "fc-mobile",
+    config: {
+      endpoint: "/api/lookup/fc-mobile",
+      gameLabel: "FC Mobile",
+      publicSource: "eidren_fc_mobile",
+      notFoundCode: "FC_MOBILE_PLAYER_NOT_FOUND",
+      internalProvider: "eidren_fc_mobile_chain",
+      fields: [{ key: "playerId", label: "UID", example: "1856150661662899105", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
   // Free Fire key-ready (case 20261013-ffown): primary answers once a direct
   // provider key (or a live keyless fallback) is wired into the chain below.
   // Until then the route validates input and returns honest 502 degraded,
@@ -185,6 +226,10 @@ export function createRapidApiGameHandler(game: keyof typeof configs) {
       }
       if (entry.providerGame === "pubg-lite") {
         return lookupWithGoPayFallback("pubg-lite", input as RapidApiGameInput, "PUBG_ID");
+      }
+      if (entry.providerGame === "fc-mobile") {
+        const playerId = "playerId" in input ? (input as { playerId: string }).playerId : "";
+        return lookupFcMobile(playerId);
       }
       return lookupRapidApiGame(entry.providerGame, input as RapidApiGameInput);
     },

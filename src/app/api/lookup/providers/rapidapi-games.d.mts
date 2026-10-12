@@ -8,6 +8,9 @@ export type RapidApiGame =
   | "honor-of-kings"
   | "arena-of-valor"
   | "pubg-lite"
+  | "teen-patti-gold"
+  | "jawaker"
+  | "fc-mobile"
   | "free-fire"
   | "free-fire-global";
 
