@@ -18,6 +18,7 @@ result before deciding not-found vs. unavailable.
 | Fallback 1 | `providers/rapidapi.mjs` | `rapidapi_id_game_checker` | `RAPIDAPI_KEY` (or legacy `RAPIDAPI_APP_TOKEN`) |
 | Fallback 2 | `providers/isan.mjs` | `isan_nickname_api` | None — `https://api.isan.eu.org/nickname/ml` |
 | Fallback 3 | `providers/whoplays.mjs` | `whoplays_check` | `WHOPLAYS_API_KEY` from whoplays.doedja.com/dashboard (free: 30/min) |
+| Fallback 4 | `providers/gopay-games.mjs` | `gopay_games_validation` | None — direct JSON validation endpoint |
 
 Contract notes:
 
@@ -26,6 +27,12 @@ Contract notes:
 - WhoPlays: only `error: "not_found"` (HTTP 422) counts as not-found.
   `unauthorized` / `parse` / `upstream` degrade to unavailable so a bad key
   never poisons the all-not-found verdict.
+- GoPay Games: HTTP 404 counts as not-found only when the response also has
+  `statusCode: 404`, `error: "Not Found"`, and a message beginning
+  `Invalid User Account:`. Unknown 404 bodies remain unavailable. Success
+  requires the observed `message: "Success"` envelope and a confirmed
+  `data.username` nickname. The endpoint is a secondary Codashop-family data
+  path, so treat it as operationally separate, not data-lineage independent.
 - Missing keyed-provider keys degrade to `missing_config` without fetching.
 - Customer-facing source is always `eidren_mlbb` regardless of adapter.
 
@@ -51,7 +58,11 @@ signal stays in Railway logs, never in the API response.
 
 ## Diagnostics
 
-- `npm run test:provider-adapters` — RapidAPI + WhoPlays classification.
+- `npm run test:provider-adapters` — RapidAPI, WhoPlays, and GoPay response
+  classification plus request-contract unit tests.
+- `RUN_LIVE_PROVIDER_CONTRACTS=1 npm run test:provider-sweep:live` — also runs
+  the opt-in GoPay valid/invalid contract checks. It sends only two read-only
+  identity lookups to the observed validation endpoint; no order/payment call.
 - `npm run test:provider-sweep:live` — live sweep against the known-valid
   fixture (`1114917746` / `13486` → "Outrageous Dominance"). Keyed
   providers probe only when their keys are in the workflow environment;
@@ -70,3 +81,12 @@ signal stays in Railway logs, never in the API response.
   production paths must not call it.
 - EliteDias / Smile.One / DuniaGames — failed the live sweep (invalid
   verdicts, bot redirects, HTTP 500); diagnostic-only.
+- REDX Game — its public checker was exercised through the normal browser form
+  and returned the fixture nickname. The form uses a CSRF token and POSTs to
+  `/tools/check`; keep it diagnostic-only until the server-to-server contract
+  and direct production egress are independently proven. Do not bypass its
+  browser protections.
+- MaxwellGG — public handler requires a page-issued `checkToken`; its checker
+  contract was not live-verified. Do not integrate from source inspection only.
+- VocaGame — its product page contains purchase-flow fields; no checkout or
+  payment action was invoked, and it is not treated as a lookup backup.
