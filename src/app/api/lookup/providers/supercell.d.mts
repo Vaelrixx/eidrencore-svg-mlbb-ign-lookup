@@ -7,7 +7,6 @@ export type LookupAttempt =
   | { kind: "unavailable"; diagnostic?: { reason: string; statusCode?: number } };
 
 export function normalizeSupercellTag(value: unknown): string;
-export const ROYALEAPI_PROXY_IP: string;
 export function classifySupercellResponse(
   httpStatus: number,
   payload: unknown,

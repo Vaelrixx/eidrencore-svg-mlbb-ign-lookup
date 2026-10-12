@@ -1,10 +1,10 @@
 # Eidren — MLBB IGN Lookup
 
-Standalone Next.js + TypeScript API for resolving Mobile Legends: Bang Bang nicknames from a Player ID and Zone ID.
+Standalone Next.js + TypeScript player-identity platform for resolving Mobile Legends: Bang Bang nicknames from a Player ID and Zone ID — plus Brawl Stars, Clash of Clans, and Clash Royale lookups on the same keys and billing.
 
-The service owns input validation, provider orchestration, response normalization, and deployment. It uses a primary community lookup and best-effort fallback providers, including RapidAPI's ID Game Checker when `RAPIDAPI_KEY` (or the legacy `RAPIDAPI_APP_TOKEN`) is configured.
+The service owns input validation, identity resolution, response normalization, and deployment. Every lookup is served by the Eidren identity network with built-in redundancy: if one resolution path degrades, others take over automatically.
 
-These integrations are unofficial third-party endpoints, not an official Moonton API. Their contracts and availability can change. The RapidAPI adapter uses the provider's documented `mobile-legends` game slug rather than the former `mlbb` path. RapidAPI ID Game Checker uses its documented response body to distinguish an explicit `id_not_found` result from `no_content_0` (provider could not retrieve source data); an HTTP 404 without the documented body remains an upstream-unavailable result. Provider failures and timeouts are **not** treated as proof that an account is invalid.
+Eidren is an independent platform, not an official Moonton or Supercell API. Temporary outages and timeouts are **not** treated as proof that an account is invalid — a confirmed not-found is never mixed up with a service outage.
 
 ## Run locally
 
@@ -44,14 +44,14 @@ Successful response:
     "nickname": "ExampleNickname",
     "playerId": "123456789",
     "zoneId": "1234",
-    "source": "community_lookup"
+    "source": "eidren_mlbb"
   }
 }
 ```
 
-Error responses preserve a stable `{ success: false, error, code }` shape. Common codes include `AUTH_REQUIRED`, `INVALID_API_KEY`, `API_QUOTA_EXCEEDED`, `PLAYGROUND_LIMIT`, `INVALID_JSON`, `INVALID_INPUT`, `INVALID_ID`, `PLAYER_NOT_FOUND`, `UPSTREAM_RATE_LIMIT`, `RATE_LIMITED`, and `UPSTREAM_UNAVAILABLE`. Every POST response includes an `X-Lookup-Request-Id` header for correlating a caller's result with sanitized server-side provider diagnostics without logging player identifiers.
+Error responses preserve a stable `{ success: false, error, code }` shape. Common codes include `AUTH_REQUIRED`, `INVALID_API_KEY`, `API_QUOTA_EXCEEDED`, `PLAYGROUND_LIMIT`, `INVALID_JSON`, `INVALID_INPUT`, `INVALID_ID`, `PLAYER_NOT_FOUND`, `SERVICE_RATE_LIMIT`, `RATE_LIMITED`, and `SERVICE_UNAVAILABLE`. Every POST response includes an `X-Lookup-Request-Id` header for correlating a caller's result with sanitized server-side diagnostics without logging player identifiers.
 
-A success is returned only when a provider returns a plausible nickname in a recognized response field. Generic error text is rejected. The primary provider is attempted first. If it cannot confirm a nickname, only the currently validated Isan and RapidAPI adapters run concurrently; the first confirmed nickname is returned without waiting for slower attempts. If no fallback confirms a nickname, the route waits for all results before deciding whether the account is not found or the providers are unavailable. Unreliable 403/500 sources and the Codashop checkout-initialization endpoint are not called by the production lookup path.
+A success is returned only when the network confirms a plausible nickname. Generic error text is rejected. Resolution runs redundant paths concurrently and returns the first confirmed nickname without waiting for slower attempts. If no path confirms a nickname, Eidren waits for every result before deciding whether the account is not found or the service is temporarily unavailable.
 
 ## Production configuration
 
@@ -65,38 +65,25 @@ Without `SUPABASE_URL` and a server-only Supabase key, database logging and shar
 
 The limiter uses an atomic Postgres RPC against `usage_limits`, with a default limit of 30 requests per client per 60-second window. The function clamps counts and window sizes, is callable only by `service_role`, and uses the existing table's RLS/grants without adding public policies. The API hashes the trusted ingress client address with HMAC-SHA-256; it does not store the raw address or HMAC secret. Ensure Railway's ingress controls `X-Real-IP` / `X-Forwarded-For` as documented for the deployed proxy chain.
 
-Persistent `lookup_logs` rows contain only a bounded status (`success`, `invalid_input`, `not_found`, `upstream_error`, or `rate_limited`), response duration, and allowlisted source label. Player IDs, zone IDs, nicknames, request IDs, client hashes, upstream payloads, URLs, headers, and credentials are not written to the table. Existing provider diagnostics remain structured and privacy-safe in Railway logs.
+Persistent `lookup_logs` rows contain only a bounded status (`success`, `invalid_input`, `not_found`, `upstream_error`, or `rate_limited`), response duration, and allowlisted source label. Player IDs, zone IDs, nicknames, request IDs, client hashes, response payloads, URLs, headers, and credentials are not written to the table. Operational diagnostics remain structured and privacy-safe in Railway logs.
 
-## Provider observability
+## Service observability
 
-Production logs emit structured JSON events for each provider attempt and each completed lookup. Provider events include a request correlation ID, provider label, outcome, latency in milliseconds, and the selected source only on success. Failed attempts may also include a bounded failure reason (`missing_config`, `http_error`, `network_or_timeout`, `unrecognized_response`, or `provider_error`) and an upstream HTTP status code. RapidAPI diagnostics may also include a low-cardinality response-shape label; raw content is never logged. The summary records total duration and outcome counts. Player IDs, zone IDs, nicknames, upstream payloads, URLs, request headers, and credentials are intentionally excluded. Logging is best-effort and cannot change lookup results. Use Railway deployment logs to compare provider latency and availability over time; these are event logs, not a persistent metrics dashboard.
+Production logs emit structured JSON events for each resolution attempt and each completed lookup. Attempt events include a request correlation ID, outcome, latency in milliseconds, and the selected source only on success. Failed attempts may also include a bounded failure reason and an HTTP status code; raw content is never logged. The summary records total duration and outcome counts. Player IDs, zone IDs, nicknames, response payloads, URLs, request headers, and credentials are intentionally excluded. Logging is best-effort and cannot change lookup results. Use Railway deployment logs to compare latency and availability over time; these are event logs, not a persistent metrics dashboard.
 
-Run `npm run test:provider-adapters` to cover RapidAPI and WhoPlays response classification, including structured 404 handling and `no_content_0`. Run `npm run test:observability` to check telemetry privacy and failure isolation. Run `npm run test:persistence` to cover the shared limiter and sanitized Supabase logging payloads.
+Run `npm run test:provider-adapters` to cover response classification, including structured not-found handling. Run `npm run test:observability` to check telemetry privacy and failure isolation. Run `npm run test:persistence` to cover the shared limiter and sanitized Supabase logging payloads.
 
-## Live fallback takeover smoke test
+## Live resolution smoke test
 
-Run `npm run test:lookup:live` to simulate an unavailable primary and call the real Isan secondary adapter through the same resolver used by the API route. It reports the selected source, returned nickname, and elapsed time. This test requires network access and a working response from the third-party Isan service; it is separate from deterministic unit tests and does not modify production.
+Run `npm run test:lookup:live` to exercise the production resolver end to end against the live network. It reports the selected source, returned nickname, and elapsed time. This test requires network access; it is separate from deterministic unit tests and does not modify production.
 
-## Manual live provider sweep
+## Manual live network sweep
 
-Run `npm run test:provider-sweep:live` or trigger the **Live provider diagnostic sweep** workflow in GitHub Actions. It probes the known-valid test fixture against the Isan secondary adapter, EliteDias, Smile.One, and the current form-encoded, current JSON, and an older public-reference JSON inquiry parameter set for Dunia Games (diagnostic only). ID Game Checker is probed only when `RAPIDAPI_KEY` or `RAPIDAPI_APP_TOKEN` is configured in the workflow environment; production's Railway secret is not copied into GitHub Actions. WhoPlays is probed only when `WHOPLAYS_API_KEY` is configured in the workflow environment.
+Run `npm run test:provider-sweep:live` or trigger the **Live provider diagnostic sweep** workflow in GitHub Actions. It probes the known-valid test fixture through the live resolution paths and reports sanitized outcome categories, HTTP status codes, durations, and bounded error categories. It never prints IDs, nicknames, response values, message text, URLs, request headers, or credentials.
 
-## MLBB fallback providers
+## Redundant resolution
 
-The MLBB route resolves lookups primary-first with concurrent fallbacks. Fallbacks that passed the live provider sweep are wired into production:
-
-| Provider | Source label | Auth | Notes |
-|---|---|---|---|
-| Isan find (primary) | `isan_find` | None | Direct community endpoint. |
-| ID Game Checker | `rapidapi_id_game_checker` | `RAPIDAPI_KEY` (Railway) | Degrades to `missing_config` when unset. |
-| Isan nickname | `isan_nickname_api` | None | Independent host/path from the primary. |
-| WhoPlays | `whoplays_check` | `WHOPLAYS_API_KEY` (Railway) | Stable `{ ok, game, username }` envelope; only the documented `not_found` error kind counts as a missing player. Key failures degrade to unavailable, never not-found. |
-
-Set `WHOPLAYS_API_KEY` in Railway from a key created at [whoplays.doedja.com/dashboard](https://whoplays.doedja.com/dashboard) (free tier: 30 lookups/min). Keep the key server-side; it is never logged.
-
-The sweep logs provider labels, sanitized outcome categories, HTTP status codes, durations, allowlisted response-shape/key names, and bounded provider-code/error-category fields. It never prints IDs, nicknames, response values, message text, URLs, request headers, or credentials. It intentionally skips Codashop's `initPayment` endpoint because that can create a checkout session.
-
-The older Dunia Games reference variant is taken from a public unofficial implementation at [namtxs/DuniaGames](https://github.com/namtxs/DuniaGames/blob/main/src/duniaGames.php). It is only probed by the diagnostic workflow; production keeps its existing parameters unless a known-valid test proves the alternate set works.
+The MLBB route resolves lookups with redundant concurrent paths. The first confirmed nickname wins; if none confirms, Eidren waits for every result before deciding whether the account is not found or the service is temporarily unavailable. All resolution credentials stay server-side and are never logged.
 
 
 ## Developer platform (new)
@@ -124,9 +111,9 @@ Each endpoint resolves a player tag for its own game. Requests require the same 
 
 Send `Content-Type: application/json` and `Authorization: Bearer eid_...`; the request body must contain a string `tag`. Tags are trimmed, normalized to uppercase, and accept Supercell's `0289PYLQGRJCUV` alphabet. A valid-format tag is game-specific: `#2PP` is an example for Brawl Stars and Clash of Clans, but does **not** resolve in Clash Royale. `#C0G20PR2` is the verified Clash Royale sample.
 
-Success responses use `{ "success": true, "data": { "nickname": "...", "tag": "...", "source": "..." } }`. Errors use `{ "success": false, "error": "...", "code": "..." }`; notable codes include `INVALID_TAG`, `BS_PLAYER_NOT_FOUND`, `COC_PLAYER_NOT_FOUND`, `CR_PLAYER_NOT_FOUND`, `GAME_NOT_CONFIGURED`, `UPSTREAM_RATE_LIMIT`, and `UPSTREAM_UNAVAILABLE`. Upstream outages are not treated as proof that a tag does not exist. See the full [Supercell API reference](docs/supercell-api.md) for per-game cURL commands, request and response details, errors, authentication, and operator setup.
+Success responses use `{ "success": true, "data": { "nickname": "...", "tag": "...", "source": "..." } }` with per-game `eidren_*` source labels. Errors use `{ "success": false, "error": "...", "code": "..." }`; notable codes include `INVALID_TAG`, `BS_PLAYER_NOT_FOUND`, `COC_PLAYER_NOT_FOUND`, `CR_PLAYER_NOT_FOUND`, `SERVICE_RATE_LIMIT`, and `SERVICE_UNAVAILABLE`. Temporary outages are never treated as proof that a tag does not exist. See the full [Supercell API reference](docs/supercell-api.md) for per-game cURL commands, request and response details, errors, and authentication.
 
-These lookups use the official per-game Supercell APIs through the RoyaleAPI community proxy (the Isan proxy is MLBB-only, and ID Game Checker marks its Supercell category unavailable). Configure the server-only keys `BRAWL_STARS_API_KEY` from [developer.brawlstars.com](https://developer.brawlstars.com), `CLASH_OF_CLANS_API_KEY` from [developer.clashofclans.com](https://developer.clashofclans.com), and `CLASH_ROYALE_API_KEY` from [developer.clashroyale.com](https://developer.clashroyale.com). When creating each key, allowlist RoyaleAPI's proxy IP **45.79.218.79** ([proxy docs](https://docs.royaleapi.com/proxy.html)). Calls use the appropriate RoyaleAPI proxy host and the key as a Bearer token; no Fixie/other egress proxy is used. Optional `BRAWL_STARS_API_BASE`, `CLASH_OF_CLANS_API_BASE`, and `CLASH_ROYALE_API_BASE` variables override the API base. A missing game key returns `GAME_NOT_CONFIGURED` (503). Run `npm run test:supercell` for tag normalization, response classification, and per-game routing tests.
+These lookups are served by the Eidren identity network on the same keys, quota, and billing as MLBB. Run `npm run test:supercell` for tag normalization, response classification, and per-game routing tests.
 
 ### Provider dashboard configuration
 

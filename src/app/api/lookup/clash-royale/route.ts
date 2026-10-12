@@ -12,6 +12,7 @@ const { POST, GET } = createGameLookupHandler({
   endpoint: "/api/lookup/clash-royale",
   gameLabel: "Clash Royale",
   tagExample: "#C0G20PR2",
+  publicSource: "eidren_clash_royale",
   provider: "clash_royale_official_api",
   logSource: "clash_royale_official_api",
   notFoundCode: "CR_PLAYER_NOT_FOUND",

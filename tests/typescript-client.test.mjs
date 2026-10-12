@@ -86,7 +86,7 @@ test("errors carry status, code, request id, and retry hints", async (t) => {
       if (String(url).endsWith("/brawl-stars")) {
         return response(404, { success: false, error: "No Brawl Stars account was found for that player tag.", code: "BS_PLAYER_NOT_FOUND" }, { "X-Lookup-Request-Id": "req-123" });
       }
-      return response(429, { success: false, error: "Rate limited.", code: "UPSTREAM_RATE_LIMIT" }, { "X-Lookup-Request-Id": "req-456", "Retry-After": "30" });
+      return response(429, { success: false, error: "Rate limited.", code: "SERVICE_RATE_LIMIT" }, { "X-Lookup-Request-Id": "req-456", "Retry-After": "30" });
     },
   });
   const notFound = await client.lookupBrawlStars("#QQQQQQQQ").then(
@@ -105,7 +105,7 @@ test("errors carry status, code, request id, and retry hints", async (t) => {
   );
   assert.ok(limited instanceof EidrenApiError);
   assert.equal(limited.status, 429);
-  assert.equal(limited.code, "UPSTREAM_RATE_LIMIT");
+  assert.equal(limited.code, "SERVICE_RATE_LIMIT");
   assert.equal(limited.retryAfterSeconds, 30);
   assert.equal(limited.retryable, true);
 

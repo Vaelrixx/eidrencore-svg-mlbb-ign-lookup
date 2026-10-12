@@ -69,7 +69,7 @@ async function withErrorHandling(game: SupercellGame, tag: string) {
   }
 }
 
-// 4. Bounded retry for transient failures (rate limits / upstream outages).
+// 4. Bounded retry for transient failures (rate limits / temporary outages).
 async function withRetry(
   game: SupercellGame,
   tag: string,

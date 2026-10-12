@@ -81,7 +81,7 @@ function jsonSuccess(
         playerId,
         zoneId,
         ...(confirmed.country ? { country: confirmed.country } : {}),
-        source: confirmed.source,
+        source: "eidren_mlbb",
       },
     },
     {
@@ -304,7 +304,7 @@ export async function POST(request: NextRequest) {
   if (attempts.every((attempt) => attempt.kind === "not_found")) {
     await recordDeveloperRequest({ ...developerAuth, requestId, status: 404, responseMs: Date.now() - requestStartedAt });
     return loggedError(
-      "No provider found an MLBB account for that Player ID and Zone ID.",
+      "No MLBB account was found for that Player ID and Zone ID.",
       404,
       "PLAYER_NOT_FOUND",
       requestId,
@@ -316,9 +316,9 @@ export async function POST(request: NextRequest) {
   if (attempts.every((attempt) => attempt.kind === "rate_limited")) {
     await recordDeveloperRequest({ ...developerAuth, requestId, status: 429, responseMs: Date.now() - requestStartedAt });
     return loggedError(
-      "All lookup providers are rate-limiting requests. Try again shortly.",
+      "Eidren is rate-limiting requests right now. Try again shortly.",
       429,
-      "UPSTREAM_RATE_LIMIT",
+      "SERVICE_RATE_LIMIT",
       requestId,
       requestStartedAt,
       "rate_limited",
@@ -327,9 +327,9 @@ export async function POST(request: NextRequest) {
 
   await recordDeveloperRequest({ ...developerAuth, requestId, status: 502, responseMs: Date.now() - requestStartedAt });
   return loggedError(
-    "We couldn't verify this ID right now because lookup providers are unavailable. Please retry shortly.",
+    "Eidren couldn't verify this ID right now. Please retry shortly.",
     502,
-    "UPSTREAM_UNAVAILABLE",
+    "SERVICE_UNAVAILABLE",
     requestId,
     requestStartedAt,
     "upstream_error",
@@ -360,7 +360,7 @@ export async function GET(request: NextRequest) {
           method: "POST",
           body: { playerId: "1114917746", zoneId: "13486" },
         },
-        note: "Nickname lookup depends on unofficial third-party providers and their availability.",
+        note: "Nickname lookup is served by the Eidren identity network.",
       },
       { headers: { "Cache-Control": "no-store" } },
     );

@@ -23,7 +23,7 @@ const steps = [
 const faqs = [
   { q: "Do I need an account?", a: "Yes. Every lookup runs on your Eidren account, either from the console playground or with an API key. Sign-up is free and takes a minute." },
   { q: "What counts as a request?", a: "Each lookup call counts once against your monthly allowance, whether it comes from the playground or from your API key." },
-  { q: "Is this official?", a: "No. Eidren is a community tool and is not affiliated with Moonton. Lookups rely on third-party providers, so we clearly separate a confirmed not-found from a temporary outage." },
+  { q: "Is this official?", a: "No. Eidren is an independent identity platform and is not affiliated with Moonton, Supercell, or any game publisher. Our network clearly separates a confirmed not-found from a temporary outage." },
   { q: "Which games are supported?", a: "Mobile Legends, Brawl Stars, Clash of Clans, and Clash Royale are live today. Free Fire, PUBG Mobile and Call of Duty: Mobile are planned and will ship on the same keys and billing." },
 ];
 
@@ -140,7 +140,7 @@ export default async function Home() {
         <div className="x-dev-copy">
           <span className="x-eyebrow">FOR DEVELOPERS</span>
           <h2 id="dev-title">One request. One honest answer.</h2>
-          <p>A confirmed not-found is never mixed up with the provider being unavailable, so your users are never told a real account is invalid.</p>
+          <p>A confirmed not-found is never mixed up with a temporary outage, so your users are never told a real account is invalid.</p>
           <div className="lp-cta"><Link href="/dashboard/docs" className="x-submit lp-cta-main">Read the API reference <ArrowRight size={17} /></Link></div>
         </div>
         <pre className="x-code" aria-label="Example request"><code>{`curl -X POST /api/lookup \\

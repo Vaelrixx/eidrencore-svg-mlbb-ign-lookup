@@ -112,7 +112,7 @@ export function SupercellLookupTool({ game }: { game: GameKey }) {
             </div>
           </div>
           <div className="x-tags"><span>{config.label}</span><span>Tag-based</span></div>
-          {result && <p className="x-card-foot">Nickname returned by the official game provider response.</p>}
+          {result && <p className="x-card-foot">Identity resolved by the Eidren network.</p>}
         </article>
 
         <div className="pg-panel">

@@ -12,6 +12,7 @@ const { POST, GET } = createGameLookupHandler({
   endpoint: "/api/lookup/clash-of-clans",
   gameLabel: "Clash of Clans",
   tagExample: "#2PP",
+  publicSource: "eidren_clash_of_clans",
   provider: "clash_of_clans_official_api",
   logSource: "clash_of_clans_official_api",
   notFoundCode: "COC_PLAYER_NOT_FOUND",
