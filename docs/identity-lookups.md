@@ -12,7 +12,7 @@ Resolve a player's in-game name from an account identifier. All routes require a
 | Genshin Impact | `POST /api/lookup/genshin-impact` | `{ "playerId": "844335555", "server": "asia" }` | `eidren_genshin_impact` |
 | Honor of Kings | `POST /api/lookup/honor-of-kings` | `{ "playerId": "17960996468644334037" }` | `eidren_honor_of_kings` |
 
-The Call of Duty route covers the Garena region. PUBG Mobile is the Global route. Genshin `server` is required and must be one of `asia`, `america`, `europa`, or `china`.
+Genshin `server` is required and must be one of `asia`, `america`, `europa`, or `china`. Genshin lookups run through a two-source identity chain behind the single `eidren_genshin_impact` source label, so UIDs missing from one feed still resolve when the other carries them. The Call of Duty route covers the Garena region. PUBG Mobile is the Global route.
 
 ### IDs are strings
 

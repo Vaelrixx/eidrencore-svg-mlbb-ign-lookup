@@ -67,8 +67,18 @@ rather than a key/gateway outage. The game classifier therefore accepts these va
   alternate ID returns `id_found` with a username, so the HoK route is healthy
   and the original sample ID was dead — the playground sample is now the working
   docs ID. Genshin returned `no_content_5`/empty on all four documented servers
-  for the single published UID, so Genshin samples stay suspect until a second
-  independent UID is probed; the route itself is not proven down.
+  for the single published UID, and user retries across several UIDs kept
+  returning the same empty envelope — the keyed feed's Genshin data is dead,
+  not the samples. Resolution (WI-012): `lookupGenshinWithFallback` chains the
+  keyed primary first, then the keyless showcase fallback
+  (`GET https://enka.network/api/uid/{uid}/?info`, `EidrenIdentityLookup/1.0`
+  User-Agent, 10s timeout, no retry). Success/not-found/rate-limit verdicts
+  are terminal per stage; only degraded primary outcomes fall through.
+  Contract: 200 + `playerInfo.nickname` = success, 404 = not-found,
+  400 = invalid input (never not-found), 429 = rate-limited, 424/5xx =
+  degraded. Public source stays `eidren_genshin_impact` either way. Respect
+  Enka rules: custom User-Agent, no UID enumeration or bulk jobs, low-volume
+  contracted use only.
 - Identity fetches use a 15s timeout with one retry after 800ms for transport
   failures only. The retry does not repeat on explicit not-found, rate limits, or
   degraded provider bodies. Post-#53 production evidence: HoK hit the old 7s timeout

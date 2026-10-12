@@ -1,10 +1,32 @@
 import { createIdGameLookupHandler, type IdGameLookupConfig } from "./id-game-route";
 import { lookupRapidApiGame, type RapidApiGame, type RapidApiGameInput } from "./providers/rapidapi-games.mjs";
+import { lookupEnkaGenshin } from "./providers/enka-genshin.mjs";
 
 const numericId = /^\d{3,24}$/;
 const riotName = /^[\p{L}\p{N} _.'-]{3,16}$/u;
 const riotTag = /^[A-Za-z0-9]{3,5}$/;
 const genshinServer = /^(asia|america|europa|china)$/;
+
+/**
+ * Genshin chain: keyed primary first, then the keyless showcase fallback.
+ * The primary returns empty no_content envelopes for UIDs its data feed does
+ * not carry (WI-011); the fallback resolves those same UIDs from live
+ * showcase data. Not-found and rate-limit verdicts are terminal; only
+ * degraded/unavailable primary outcomes fall through. The public source stays
+ * white-labeled either way.
+ */
+async function lookupGenshinWithFallback(input: RapidApiGameInput) {
+  const primary = await lookupRapidApiGame("genshin-impact", input);
+  if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") {
+    return primary;
+  }
+  const playerId = "playerId" in input ? input.playerId : "";
+  const fallback = await lookupEnkaGenshin(playerId);
+  if (fallback.kind === "success" || fallback.kind === "not_found" || fallback.kind === "rate_limited") {
+    return fallback;
+  }
+  return primary;
+}
 
 const configs: Record<string, { providerGame: RapidApiGame; config: Omit<IdGameLookupConfig, "lookup"> }> = {
   "pubg-mobile": {
@@ -50,7 +72,7 @@ const configs: Record<string, { providerGame: RapidApiGame; config: Omit<IdGameL
       gameLabel: "Genshin Impact",
       publicSource: "eidren_genshin_impact",
       notFoundCode: "GENSHIN_PLAYER_NOT_FOUND",
-      internalProvider: "rapidapi_id_game_checker_genshin_impact",
+      internalProvider: "eidren_genshin_chain",
       fields: [
         { key: "playerId", label: "UID", example: "844335555", minLength: 3, maxLength: 24, pattern: numericId },
         { key: "server", label: "Server", example: "asia", minLength: 4, maxLength: 7, pattern: genshinServer },
@@ -74,7 +96,10 @@ export function createRapidApiGameHandler(game: keyof typeof configs) {
   const entry = configs[game];
   const config: IdGameLookupConfig = {
     ...entry.config,
-    lookup: (input) => lookupRapidApiGame(entry.providerGame, input as RapidApiGameInput),
+    lookup: (input) =>
+      entry.providerGame === "genshin-impact"
+        ? lookupGenshinWithFallback(input as RapidApiGameInput)
+        : lookupRapidApiGame(entry.providerGame, input as RapidApiGameInput),
   };
   return createIdGameLookupHandler(config);
 }
