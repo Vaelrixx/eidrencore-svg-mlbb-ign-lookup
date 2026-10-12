@@ -36,6 +36,26 @@ Contract notes:
 - Missing keyed-provider keys degrade to `missing_config` without fetching.
 - Customer-facing source is always `eidren_mlbb` regardless of adapter.
 
+## Identity lookups (`/api/lookup/{pubg-mobile,call-of-duty-mobile,valorant,genshin-impact,honor-of-kings}`)
+
+Single RapidAPI adapter per game through `providers/rapidapi-games.mjs`, classified by
+`classifyRapidApiGameResponse`. Customer-facing sources are `eidren_*` per game.
+HoK/Genshin went 502 on HTTP 200 `id_game_checker_schema` bodies in production on
+2026-10-12 while PUBG/CODM succeeded, which pointed at per-game envelope variants
+rather than a key/gateway outage. The game classifier therefore accepts these variants:
+
+- Missing accounts: an error flag plus a normalized not-found message resolves as
+  `not_found` regardless of the embedded provider status; an error flag with an
+  embedded 404 also resolves as `not_found` even when the message text is unfamiliar.
+- Degraded upstreams (`no_content_0`, temporary/maintenance/timeout/rate wording)
+  stay `unavailable` with `provider_error`, never `not_found`.
+- Success extraction accepts nested `profile`/`player`/`user`/`account` objects and
+  alternate nickname keys (`displayName`, `nickName`, `accountName`, `characterName`,
+  and similar) under the existing placeholder guard.
+- Unrecognized or degraded failures attach a PII-free `providerResponseShape` label
+  (envelope keys plus allowlisted `data` keys only). Unknown keys collapse to
+  `data:object:unlisted_keys`; values are never logged.
+
 ## Supercell lookups (`/api/lookup/{brawl-stars,clash-of-clans,clash-royale}`)
 
 Single-adapter per game through the RoyaleAPI community proxy

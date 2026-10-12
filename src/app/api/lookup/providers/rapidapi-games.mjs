@@ -1,5 +1,4 @@
-import { confirmedNickname } from "../nickname-validation.mjs";
-import { classifyRapidApiResponse } from "./rapidapi.mjs";
+import { classifyRapidApiGameResponse } from "./rapidapi.mjs";
 
 const RAPIDAPI_HOST = "id-game-checker.p.rapidapi.com";
 const GENSHIN_SERVERS = new Set(["asia", "america", "europa", "china"]);
@@ -27,11 +26,7 @@ function routePath(game, input) {
 }
 
 function classifyGameResponse(httpStatus, payload) {
-  const attempt = classifyRapidApiResponse(httpStatus, payload);
-  if (attempt.kind !== "success") return attempt;
-  const nickname = confirmedNickname(payload);
-  if (!nickname) return { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: httpStatus } };
-  return { ...attempt, nickname, source: attempt.source };
+  return classifyRapidApiGameResponse(httpStatus, payload);
 }
 
 export async function lookupRapidApiGame(game, input, options = {}) {

@@ -64,11 +64,16 @@ export function confirmedNickname(payload) {
 
   const data = record(root.data);
   const result = record(root.result);
+  const profile = record(data?.profile) ?? record(result?.profile) ?? record(root.profile);
+  const player = record(data?.player) ?? record(result?.player) ?? record(root.player);
+  const user = record(data?.user) ?? record(result?.user) ?? record(root.user);
+  const account = record(data?.account) ?? record(result?.account) ?? record(root.account);
   const nested = record(data?.data);
 
   // A payload carrying an explicit error/invalid flag is never a success.
   const rootError = typeof root.error === "string" ? root.error.trim() : "";
   const dataError = typeof data?.error === "string" ? data.error.trim() : "";
+  const nestedError = typeof nested?.error === "string" ? nested.error.trim() : "";
   if (
     root.success === false ||
     root.error === true ||
@@ -76,17 +81,34 @@ export function confirmedNickname(payload) {
     root.status === false ||
     root.status === "error" ||
     root.valid === false ||
+    root.ok === false ||
     data?.success === false ||
     data?.error === true ||
     Boolean(dataError) ||
     data?.status === false ||
-    data?.valid === false
+    data?.status === "error" ||
+    data?.valid === false ||
+    data?.ok === false ||
+    result?.success === false ||
+    result?.error === true ||
+    result?.valid === false ||
+    result?.ok === false ||
+    profile?.valid === false ||
+    player?.valid === false ||
+    user?.valid === false ||
+    account?.valid === false ||
+    nested?.success === false ||
+    nested?.error === true ||
+    Boolean(nestedError) ||
+    nested?.valid === false
   ) return "";
 
-  const candidates = [root, data, result, nested];
+  const candidates = [data, result, nested, profile, player, user, account, root];
   for (const candidate of candidates) {
     const value = stringField(candidate, [
       "username", "nickname", "name", "ign", "gameName", "playerName", "roleName",
+      "displayName", "display_name", "nickName", "nick_name", "userName", "accountName",
+      "characterName", "summonerName", "tagLine", "riotId",
     ]);
     if (!isUsableNickname(value)) continue;
     return cleanNickname(value);

@@ -16,7 +16,7 @@ export type RapidApiGameAttempt =
   | { kind: "success"; nickname: string; source: string }
   | { kind: "not_found" }
   | { kind: "rate_limited"; diagnostic?: { reason: string; statusCode?: number } }
-  | { kind: "unavailable"; diagnostic?: { reason: string; statusCode?: number; responseKind?: string } };
+  | { kind: "unavailable"; diagnostic?: { reason: string; statusCode?: number; responseKind?: string; responseShape?: string } };
 
 export const RAPIDAPI_GAME_ROUTES: Readonly<Record<RapidApiGame, { slug: string; fields: readonly string[] }>>;
 export function rapidApiGamePath(game: RapidApiGame, input: RapidApiGameInput): string | null;

@@ -106,6 +106,161 @@ export function classifyRapidApiResponse(httpStatus, payload) {
   };
 }
 
+const NOT_FOUND_MESSAGE_PATTERN = /not[\s_-]*found|id[\s_-]*not[\s_-]*found|does not exist|invalid (player|user|game|uid|character)?[\s_-]*id|cannot find|can't find|no such (account|player|user|id)|account not (found|exist)|player (not found|does not exist|doesn't exist)|user (not found|does not exist|doesn't exist)|user ?id (invalid|not valid|error)|nickname (not found|empty|unavailable)/i;
+
+const DEGRADED_MESSAGE_PATTERN = /no[\s_-]*content|temporar|try again|maintenance|upstream|timeout|timed out|rate[\s_-]*limit|too many|service unavailable|internal error|server error|bad gateway|gateway/i;
+
+const DATA_SHAPE_PATTERNS = [
+  /^data:object:(avatar|id|uid|userId|playerId|username|nickname|name|ign|gameName|playerName|roleName)(,(avatar|id|uid|userId|playerId|username|nickname|name|ign|gameName|playerName|roleName|game|server|region|zone|avatarUrl|profilePicture|level|rank|title))*$/,
+  /^data:(missing|array|string|number|boolean|null|empty)$/,
+  /^data:object:unlisted_keys$/,
+];
+
+function normalizeProviderText(value) {
+  if (typeof value !== "string") return "";
+  return value.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function collectProviderMessages(payload) {
+  const root = record(payload);
+  const data = record(root?.data);
+  const result = record(root?.result);
+  const messages = [];
+  for (const candidate of [root, data, result]) {
+    for (const key of ["msg", "message", "reason", "errorMessage", "error_message", "detail", "details", "description"]) {
+      const value = candidate?.[key];
+      if (typeof value === "string" && value.trim()) messages.push(value);
+    }
+  }
+  return messages;
+}
+
+function providerErrorFlag(payload) {
+  const root = record(payload);
+  const data = record(root?.data);
+  const result = record(root?.result);
+  return (
+    root?.error === true ||
+    data?.error === true ||
+    result?.error === true ||
+    root?.success === false ||
+    data?.success === false ||
+    result?.success === false ||
+    root?.valid === false ||
+    data?.valid === false ||
+    result?.valid === false ||
+    root?.ok === false ||
+    data?.ok === false
+  );
+}
+
+function dataShapeLabel(payload) {
+  const root = record(payload);
+  if (!root) return "root:non_object";
+  const data = root.data;
+  if (data === undefined) return "data:missing";
+  if (data === null) return "data:null";
+  if (Array.isArray(data)) return "data:array";
+  if (typeof data !== "object") return `data:${typeof data}`;
+  const keys = Object.keys(data).sort();
+  if (!keys.length) return "data:empty";
+  const allowlisted = new Set([
+    "avatar", "avatarUrl", "game", "gameName", "id", "ign", "level",
+    "name", "nickname", "playerId", "playerName", "profilePicture", "rank",
+    "region", "roleName", "server", "title", "uid", "userId", "username", "zone",
+  ]);
+  const unknown = keys.some((key) => !allowlisted.has(key));
+  if (unknown) return "data:object:unlisted_keys";
+  return `data:object:${keys.join(",")}`;
+}
+
+/**
+ * Classify structure only. Labels carry no IDs, names, URLs, or payload text.
+ */
+export function classifyGameResponseShape(payload) {
+  const root = record(payload);
+  if (!payload || typeof payload !== "object") return "empty_or_non_json";
+  if (Array.isArray(payload)) return "envelope:array";
+  const envelope = ["error", "status", "msg", "message", "success", "valid", "ok", "data", "result", "code", "reason"]
+    .filter((key) => key in root)
+    .sort()
+    .join(",");
+  const shape = dataShapeLabel(payload);
+  if (DATA_SHAPE_PATTERNS.every((pattern) => !pattern.test(shape))) return "envelope:unrecognized";
+  return envelope ? `envelope:${envelope}|${shape}` : `envelope:other|${shape}`;
+}
+
+function classifyIdGameCheckerEnvelope(httpStatus, payload) {
+  const root = record(payload);
+  const nested = record(root?.data);
+  const messages = collectProviderMessages(payload);
+  const normalized = normalizeProviderText(messages.join(" | "));
+  const providerStatus = Number(root?.status ?? nested?.status);
+  const errorFlag = providerErrorFlag(payload);
+  const responseKindLabel = responseKind(payload);
+
+  if (httpStatus === 429 || /rate[\s_-]*limit|too many/.test(normalized)) {
+    return {
+      kind: "rate_limited",
+      diagnostic: {
+        reason: "http_error",
+        statusCode: Number.isInteger(httpStatus) ? httpStatus : 429,
+        responseKind: responseKindLabel,
+      },
+    };
+  }
+
+  if (errorFlag && NOT_FOUND_MESSAGE_PATTERN.test(normalized)) {
+    return { kind: "not_found" };
+  }
+
+  if (
+    httpStatus === 204 ||
+    providerStatus === 204 ||
+    (errorFlag && DEGRADED_MESSAGE_PATTERN.test(normalized))
+  ) {
+    return {
+      kind: "unavailable",
+      diagnostic: {
+        reason: "provider_error",
+        statusCode: Number.isInteger(httpStatus) ? httpStatus : 502,
+        responseKind: responseKindLabel,
+        responseShape: classifyGameResponseShape(payload),
+      },
+    };
+  }
+
+  if (!Number.isInteger(httpStatus) || httpStatus < 200 || httpStatus >= 300) {
+    return {
+      kind: "unavailable",
+      diagnostic: diagnosticForStatus(httpStatus, payload),
+    };
+  }
+
+  const nickname = confirmedNickname(payload);
+  if (nickname && !errorFlag) {
+    return { kind: "success", nickname, source: "rapidapi_id_game_checker" };
+  }
+
+  if (errorFlag && providerStatus === 404) {
+    return { kind: "not_found" };
+  }
+
+  return {
+    kind: "unavailable",
+    diagnostic: {
+      reason: "unrecognized_response",
+      statusCode: httpStatus,
+      responseKind: responseKindLabel,
+      responseShape: classifyGameResponseShape(payload),
+    },
+  };
+}
+
+export function classifyRapidApiGameResponse(httpStatus, payload) {
+  return classifyIdGameCheckerEnvelope(httpStatus, payload);
+}
+
 export async function lookupRapidApi(playerId, zoneId) {
   const apiKey = process.env.RAPIDAPI_KEY?.trim() || process.env.RAPIDAPI_APP_TOKEN?.trim();
   if (!apiKey) {
