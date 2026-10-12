@@ -864,6 +864,10 @@ body {
 .pg-game-tab:hover { color: #dfe4ff; border-color: rgba(255,255,255,.3); }
 .pg-game-tab.is-active { border-color: rgba(34,211,238,.4); background: linear-gradient(110deg, rgba(124,140,255,.25), rgba(34,211,238,.1)); color: #e8edf9; }
 .pg-game-tab:focus-visible { outline: 2px solid #7c8cff; outline-offset: 2px; }
+.pg-sample { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin: 14px 0 4px; padding: 10px 14px; border-radius: 14px; border: 1px dashed rgba(34,211,238,.45); background: rgba(34,211,238,.08); color: #a5f3fc; font-size: 13px; font-weight: 700; cursor: pointer; }
+.pg-sample:hover:not(:disabled) { background: rgba(34,211,238,.16); border-style: solid; }
+.pg-sample:disabled { opacity: .55; cursor: not-allowed; }
+.pg-sample:focus-visible { outline: 2px solid #22d3ee; outline-offset: 2px; }
 .pg-planned { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
 .pg-planned-item { display: flex; flex-direction: column; gap: 3px; padding: 14px 16px; border-radius: 14px; border: 1px dashed rgba(255,255,255,.2); opacity: .75; }
 .pg-planned-item small { color: #9fb0cc; font-size: 12px; }

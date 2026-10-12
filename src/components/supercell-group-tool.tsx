@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Check, LoaderCircle, Search, ShieldCheck, Swords, Trophy, Users } from "lucide-react";
+import { Check, LoaderCircle, Search, ShieldCheck, Swords, Trophy, Users, Zap } from "lucide-react";
+import {
+  RANKINGS_SAMPLE_LOCATION,
+  SUPERCELL_GROUP_SAMPLE,
+  SUPERCELL_HISTORY_SAMPLE,
+} from "@/lib/playground-samples";
 
 type GameKey = "brawl-stars" | "clash-of-clans" | "clash-royale";
 type ToolKey = "group" | "history" | "rankings";
@@ -46,9 +51,13 @@ export function SupercellGroupTool({ game }: { game: GameKey }) {
 
   const endpoint = endpointFor(game, tool);
   const groupLabel = GROUP_LABEL[game];
+  const sampleInput = tool === "rankings"
+    ? RANKINGS_SAMPLE_LOCATION
+    : tool === "group"
+      ? SUPERCELL_GROUP_SAMPLE[game]
+      : SUPERCELL_HISTORY_SAMPLE[game];
 
-  async function run(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function runRequest(body: { tag: string } | { locationId: string }) {
     setError("");
     setRaw("");
     setStatus(null);
@@ -56,7 +65,6 @@ export function SupercellGroupTool({ game }: { game: GameKey }) {
     setLoading(true);
     const started = performance.now();
     try {
-      const body = tool === "rankings" ? { locationId: locationId.trim() || "global" } : { tag: tag.trim() };
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -80,6 +88,23 @@ export function SupercellGroupTool({ game }: { game: GameKey }) {
     }
   }
 
+  async function run(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const body = tool === "rankings" ? { locationId: locationId.trim() || "global" } : { tag: tag.trim() };
+    await runRequest(body);
+  }
+
+  async function trySample() {
+    if (tool === "rankings") {
+      setLocationId(RANKINGS_SAMPLE_LOCATION);
+      await runRequest({ locationId: RANKINGS_SAMPLE_LOCATION });
+      return;
+    }
+    const sampleTag = tool === "group" ? SUPERCELL_GROUP_SAMPLE[game] : SUPERCELL_HISTORY_SAMPLE[game];
+    setTag(sampleTag);
+    await runRequest({ tag: sampleTag });
+  }
+
   const requestBody = tool === "rankings"
     ? JSON.stringify({ locationId: locationId.trim() || "global" })
     : JSON.stringify({ tag: tag.trim() || (tool === "group" ? GROUP_PLACEHOLDER[game] : PLAYER_PLACEHOLDER[game]) });
@@ -92,6 +117,9 @@ export function SupercellGroupTool({ game }: { game: GameKey }) {
             <span className="pg-badge"><Users size={15} /> {groupLabel}s & battles</span>
             <span className="pg-endpoint">POST {endpoint}</span>
           </div>
+          <button className="pg-sample" type="button" onClick={trySample} disabled={loading}>
+            <Zap size={14} /> Try sample {tool === "rankings" ? "location" : "tag"} {sampleInput}
+          </button>
           <div className="pg-game-tabs" role="tablist" aria-label="Tool">
             <button type="button" role="tab" aria-selected={tool === "group"} className={tool === "group" ? "pg-game-tab is-active" : "pg-game-tab"} onClick={() => setTool("group")}>
               <Users size={13} /> {groupLabel}

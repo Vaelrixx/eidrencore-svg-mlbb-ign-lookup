@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, Gamepad2, LoaderCircle, Search, ShieldCheck, Swords } from "lucide-react";
+import { Check, Copy, Gamepad2, LoaderCircle, Search, ShieldCheck, Swords, Zap } from "lucide-react";
+import { MLBB_SAMPLE } from "@/lib/playground-samples";
 
 type LookupResult = { nickname: string; playerId: string; zoneId: string };
 type ApiResponse = { success: boolean; data?: LookupResult; error?: string };
@@ -17,8 +18,7 @@ export function PlayerLookupTool() {
   const [status, setStatus] = useState<number | null>(null);
   const [ms, setMs] = useState<number | null>(null);
 
-  async function lookup(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function runLookup(nextPlayerId: string, nextZoneId: string) {
     setError("");
     setResult(null);
     setRaw("");
@@ -30,7 +30,7 @@ export function PlayerLookupTool() {
       const response = await fetch("/api/lookup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playerId: playerId.trim(), zoneId: zoneId.trim() }),
+        body: JSON.stringify({ playerId: nextPlayerId, zoneId: nextZoneId }),
       });
       const body = (await response.json()) as ApiResponse;
       setStatus(response.status);
@@ -52,6 +52,17 @@ export function PlayerLookupTool() {
     }
   }
 
+  async function lookup(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await runLookup(playerId.trim(), zoneId.trim());
+  }
+
+  async function trySample() {
+    setPlayerId(MLBB_SAMPLE.playerId);
+    setZoneId(MLBB_SAMPLE.zoneId);
+    await runLookup(MLBB_SAMPLE.playerId, MLBB_SAMPLE.zoneId);
+  }
+
   async function copyResult() {
     if (!result) return;
     try {
@@ -71,6 +82,9 @@ export function PlayerLookupTool() {
       <div className="pg-tool-col">
         <form className="x-form" onSubmit={lookup}>
           <div className="pg-form-head"><span className="pg-badge"><Gamepad2 size={15} /> Mobile Legends</span><span className="pg-endpoint">POST /api/lookup</span></div>
+          <button className="pg-sample" type="button" onClick={trySample} disabled={loading}>
+            <Zap size={14} /> Try sample ID {MLBB_SAMPLE.playerId} ({MLBB_SAMPLE.zoneId})
+          </button>
           <div className="x-form-row">
             <div className="x-field">
               <label htmlFor="player-id">PLAYER ID</label>

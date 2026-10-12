@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, Gamepad2, LoaderCircle, Search, ShieldCheck } from "lucide-react";
+import { Check, Copy, Gamepad2, LoaderCircle, Search, ShieldCheck, Zap } from "lucide-react";
+import { SUPERCELL_PLAYER_SAMPLE } from "@/lib/playground-samples";
 
 type GameKey = "brawl-stars" | "clash-of-clans" | "clash-royale";
 
@@ -16,6 +17,7 @@ type ApiResponse = { success: boolean; data?: LookupResult; error?: string };
 
 export function SupercellLookupTool({ game }: { game: GameKey }) {
   const config = GAMES[game];
+  const sampleTag = SUPERCELL_PLAYER_SAMPLE[game];
   const [tag, setTag] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<LookupResult | null>(null);
@@ -25,8 +27,7 @@ export function SupercellLookupTool({ game }: { game: GameKey }) {
   const [status, setStatus] = useState<number | null>(null);
   const [ms, setMs] = useState<number | null>(null);
 
-  async function lookup(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function runLookup(nextTag: string) {
     setError("");
     setResult(null);
     setRaw("");
@@ -38,7 +39,7 @@ export function SupercellLookupTool({ game }: { game: GameKey }) {
       const response = await fetch(config.endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tag: tag.trim() }),
+        body: JSON.stringify({ tag: nextTag }),
       });
       const body = (await response.json()) as ApiResponse;
       setStatus(response.status);
@@ -60,6 +61,16 @@ export function SupercellLookupTool({ game }: { game: GameKey }) {
     }
   }
 
+  async function lookup(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await runLookup(tag.trim());
+  }
+
+  async function trySample() {
+    setTag(sampleTag);
+    await runLookup(sampleTag);
+  }
+
   async function copyResult() {
     if (!result) return;
     try {
@@ -79,6 +90,9 @@ export function SupercellLookupTool({ game }: { game: GameKey }) {
       <div className="pg-tool-col">
         <form className="x-form" onSubmit={lookup}>
           <div className="pg-form-head"><span className="pg-badge"><Gamepad2 size={15} /> {config.label}</span><span className="pg-endpoint">POST {config.endpoint}</span></div>
+          <button className="pg-sample" type="button" onClick={trySample} disabled={loading}>
+            <Zap size={14} /> Try sample tag {sampleTag}
+          </button>
           <div className="x-form-row">
             <div className="x-field">
               <label htmlFor={`tag-${game}`}>PLAYER TAG</label>
