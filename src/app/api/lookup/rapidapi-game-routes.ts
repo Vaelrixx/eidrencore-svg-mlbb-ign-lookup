@@ -90,16 +90,50 @@ const configs: Record<string, { providerGame: RapidApiGame; config: Omit<IdGameL
       fields: [{ key: "playerId", label: "Player ID", example: "17960996468644334037", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
+  // Free Fire key-ready (case 20261013-ffown): primary answers once a direct
+  // provider key (or a live keyless fallback) is wired into the chain below.
+  // Until then the route validates input and returns honest 502 degraded,
+  // never a false not-found. Samples are the provider's documented examples.
+  "free-fire": {
+    providerGame: "free-fire",
+    config: {
+      endpoint: "/api/lookup/free-fire",
+      gameLabel: "Free Fire",
+      publicSource: "eidren_free_fire",
+      notFoundCode: "FREE_FIRE_PLAYER_NOT_FOUND",
+      internalProvider: "eidren_free_fire_chain",
+      fields: [{ key: "playerId", label: "UID", example: "1958604115", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
+  "free-fire-global": {
+    providerGame: "free-fire-global",
+    config: {
+      endpoint: "/api/lookup/free-fire-global",
+      gameLabel: "Free Fire Global",
+      publicSource: "eidren_free_fire_global",
+      notFoundCode: "FREE_FIRE_GLOBAL_PLAYER_NOT_FOUND",
+      internalProvider: "eidren_free_fire_global_chain",
+      fields: [{ key: "playerId", label: "UID", example: "12341234", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
 };
 
 export function createRapidApiGameHandler(game: keyof typeof configs) {
   const entry = configs[game];
   const config: IdGameLookupConfig = {
     ...entry.config,
-    lookup: (input) =>
-      entry.providerGame === "genshin-impact"
-        ? lookupGenshinWithFallback(input as RapidApiGameInput)
-        : lookupRapidApiGame(entry.providerGame, input as RapidApiGameInput),
+    lookup: async (input) => {
+      // Free Fire chain slot: direct key first when provisioned, own proxy /
+      // keyless fallback second. No fallback is wired yet, so the primary
+      // attempt is returned as-is (honest degraded, never false not-found).
+      if (entry.providerGame === "free-fire" || entry.providerGame === "free-fire-global") {
+        return lookupRapidApiGame(entry.providerGame, input as RapidApiGameInput);
+      }
+      if (entry.providerGame === "genshin-impact") {
+        return lookupGenshinWithFallback(input as RapidApiGameInput);
+      }
+      return lookupRapidApiGame(entry.providerGame, input as RapidApiGameInput);
+    },
   };
   return createIdGameLookupHandler(config);
 }

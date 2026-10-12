@@ -5,7 +5,9 @@ export type RapidApiGame =
   | "cod-mobile-garena"
   | "valorant"
   | "genshin-impact"
-  | "honor-of-kings";
+  | "honor-of-kings"
+  | "free-fire"
+  | "free-fire-global";
 
 export type RapidApiGameInput =
   | { playerId: string }

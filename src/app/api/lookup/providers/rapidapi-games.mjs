@@ -14,6 +14,10 @@ export const RAPIDAPI_GAME_ROUTES = Object.freeze({
   valorant: Object.freeze({ slug: "valorant", fields: ["name", "tag"] }),
   "genshin-impact": Object.freeze({ slug: "genshin", fields: ["playerId", "server"] }),
   "honor-of-kings": Object.freeze({ slug: "honor-of-kings", fields: ["playerId"] }),
+  // Free Fire key-ready (case 20261013-ffown): slugs docs-verified on the
+  // provider's own docs; primary ships when a direct key lands in Railway.
+  "free-fire": Object.freeze({ slug: "free-fire", fields: ["playerId"] }),
+  "free-fire-global": Object.freeze({ slug: "ff-global", fields: ["playerId"] }),
 });
 
 function routePath(game, input) {

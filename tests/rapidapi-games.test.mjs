@@ -39,7 +39,6 @@ test("encodes every variable path segment", () => {
 test("rejects unsupported games and incomplete inputs before any fetch", async () => {
   let calls = 0;
   const fetchImpl = async () => { calls += 1; throw new Error("unexpected fetch"); };
-  assert.equal(rapidApiGamePath("free-fire", { playerId: "1958604115" }), null);
   assert.equal(rapidApiGamePath("unknown", { playerId: "1234" }), null);
   assert.equal(rapidApiGamePath("genshin-impact", { playerId: "844335555" }), null);
   assert.equal(rapidApiGamePath("genshin-impact", { playerId: "844335555", server: "mars" }), null);
@@ -135,4 +134,22 @@ test("maps rate limits and provider/network errors to sanitized attempts", async
     fetchImpl: async () => { throw new Error("transport details"); },
   });
   assert.deepEqual(timeout, { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } });
+});
+
+test("builds Free Fire and Free Fire Global paths in documented field order", () => {
+  assert.equal(rapidApiGamePath("free-fire", { playerId: "1958604115" }), "/free-fire/1958604115");
+  assert.equal(rapidApiGamePath("free-fire-global", { playerId: "12341234" }), "/ff-global/12341234");
+});
+
+test("normalizes the documented Free Fire success example", async () => {
+  const calls = [];
+  const result = await lookupRapidApiGame("free-fire", { playerId: "1958604115" }, {
+    apiKey: "test-key",
+    fetchImpl: async (url, options) => {
+      calls.push({ url: String(url), options });
+      return new Response(JSON.stringify({ success: true, data: { game: "Free Fire", userId: "1958604115", username: "FfPlayer" } }), { status: 200, headers: { "Content-Type": "application/json" } });
+    },
+  });
+  assert.deepEqual(result, { kind: "success", nickname: "FfPlayer", source: "rapidapi_id_game_checker" });
+  assert.equal(calls.at(-1).url, "https://id-game-checker.p.rapidapi.com/free-fire/1958604115");
 });

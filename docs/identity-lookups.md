@@ -11,8 +11,12 @@ Resolve a player's in-game name from an account identifier. All routes require a
 | VALORANT | `POST /api/lookup/valorant` | `{ "name": "ucup", "tag": "123" }` | `eidren_valorant` |
 | Genshin Impact | `POST /api/lookup/genshin-impact` | `{ "playerId": "844335555", "server": "asia" }` | `eidren_genshin_impact` |
 | Honor of Kings | `POST /api/lookup/honor-of-kings` | `{ "playerId": "17960996468644334037" }` | `eidren_honor_of_kings` |
+| Free Fire | `POST /api/lookup/free-fire` | `{ "playerId": "1958604115" }` | `eidren_free_fire` |
+| Free Fire Global | `POST /api/lookup/free-fire-global` | `{ "playerId": "12341234" }` | `eidren_free_fire_global` |
 
 Genshin `server` is required and must be one of `asia`, `america`, `europa`, or `china`. Genshin lookups run through a two-source identity chain behind the single `eidren_genshin_impact` source label, so UIDs missing from one feed still resolve when the other carries them. The Call of Duty route covers the Garena region. PUBG Mobile is the Global route.
+
+Free Fire routes are key-ready: the endpoints validate input and return honest degraded responses until a provider key or fallback is provisioned. Request samples use the provider's documented examples. The routes share the standard response envelope, so no client changes are needed when the upstream is connected.
 
 ### IDs are strings
 
