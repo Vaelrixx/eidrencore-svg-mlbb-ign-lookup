@@ -6,6 +6,8 @@ export type RapidApiGame =
   | "valorant"
   | "genshin-impact"
   | "honor-of-kings"
+  | "arena-of-valor"
+  | "pubg-lite"
   | "free-fire"
   | "free-fire-global";
 

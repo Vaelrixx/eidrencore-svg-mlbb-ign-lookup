@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check, Gamepad2, LoaderCircle, Search, ShieldCheck, Zap } from "lucide-react";
 
-type IdentityGame = "pubg-mobile" | "call-of-duty-mobile" | "valorant" | "genshin-impact" | "honor-of-kings" | "free-fire" | "free-fire-global";
+type IdentityGame = "pubg-mobile" | "call-of-duty-mobile" | "valorant" | "genshin-impact" | "honor-of-kings" | "arena-of-valor" | "pubg-lite" | "free-fire" | "free-fire-global";
 type FieldSpec = { key: string; label: string; placeholder: string; inputMode?: "numeric" | "text"; maxLength: number; options?: readonly string[] };
 type GameSpec = { label: string; endpoint: string; fields: FieldSpec[]; sample: Record<string, string> };
 
@@ -43,6 +43,18 @@ const GAME_CONFIG: Record<IdentityGame, GameSpec> = {
     endpoint: "/api/lookup/honor-of-kings",
     fields: [{ key: "playerId", label: "PLAYER ID", placeholder: "17960996468644334037", inputMode: "numeric", maxLength: 24 }],
     sample: { playerId: "17960996468644334037" },
+  },
+  "arena-of-valor": {
+    label: "Arena of Valor",
+    endpoint: "/api/lookup/arena-of-valor",
+    fields: [{ key: "playerId", label: "PLAYER ID", placeholder: "195293573153949", inputMode: "numeric", maxLength: 24 }],
+    sample: { playerId: "195293573153949" },
+  },
+  "pubg-lite": {
+    label: "PUBG Mobile Lite",
+    endpoint: "/api/lookup/pubg-lite",
+    fields: [{ key: "playerId", label: "CHARACTER ID", placeholder: "7228395004", inputMode: "numeric", maxLength: 24 }],
+    sample: { playerId: "7228395004" },
   },
   "free-fire": {
     label: "Free Fire",

@@ -21,6 +21,8 @@ const LOG_SOURCES = new Set([
   "eidren_valorant",
   "eidren_genshin_impact",
   "eidren_honor_of_kings",
+  "eidren_arena_of_valor",
+  "eidren_pubg_lite",
   "eidren_free_fire",
   "eidren_free_fire_global",
 ]);
