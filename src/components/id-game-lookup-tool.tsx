@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check, Gamepad2, LoaderCircle, Search, ShieldCheck, Zap } from "lucide-react";
 
-type IdentityGame = "pubg-mobile" | "call-of-duty-mobile" | "valorant" | "genshin-impact" | "honor-of-kings";
+type IdentityGame = "pubg-mobile" | "call-of-duty-mobile" | "valorant" | "genshin-impact" | "honor-of-kings" | "free-fire" | "free-fire-global";
 type FieldSpec = { key: string; label: string; placeholder: string; inputMode?: "numeric" | "text"; maxLength: number; options?: readonly string[] };
 type GameSpec = { label: string; endpoint: string; fields: FieldSpec[]; sample: Record<string, string> };
 
@@ -43,6 +43,18 @@ const GAME_CONFIG: Record<IdentityGame, GameSpec> = {
     endpoint: "/api/lookup/honor-of-kings",
     fields: [{ key: "playerId", label: "PLAYER ID", placeholder: "17960996468644334037", inputMode: "numeric", maxLength: 24 }],
     sample: { playerId: "17960996468644334037" },
+  },
+  "free-fire": {
+    label: "Free Fire",
+    endpoint: "/api/lookup/free-fire",
+    fields: [{ key: "playerId", label: "UID", placeholder: "1958604115", inputMode: "numeric", maxLength: 24 }],
+    sample: { playerId: "1958604115" },
+  },
+  "free-fire-global": {
+    label: "Free Fire Global",
+    endpoint: "/api/lookup/free-fire-global",
+    fields: [{ key: "playerId", label: "UID", placeholder: "12341234", inputMode: "numeric", maxLength: 24 }],
+    sample: { playerId: "12341234" },
   },
 };
 
