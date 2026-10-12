@@ -21,9 +21,6 @@ import { confirmedNickname } from "../nickname-validation.mjs";
 
 const TAG_PATTERN = /^#?[0289PYLQGRJCUV]{3,20}$/i;
 const REQUEST_TIMEOUT_MS = 7000;
-// RoyaleAPI community proxy IP that must be allowlisted on each Supercell key.
-// Source: https://docs.royaleapi.com/proxy.html
-const ROYALEAPI_PROXY_IP = "45.79.218.79";
 
 /**
  * Normalize a Supercell player tag: strip whitespace, force a leading `#`,
