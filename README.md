@@ -1,6 +1,6 @@
 # Eidren — MLBB IGN Lookup
 
-Standalone Next.js + TypeScript player-identity platform for resolving Mobile Legends: Bang Bang nicknames from a Player ID and Zone ID — plus Brawl Stars, Clash of Clans, and Clash Royale lookups on the same keys and billing.
+Standalone Next.js + TypeScript player-identity platform for resolving Mobile Legends, PUBG Mobile Global, Call of Duty: Mobile (Garena), VALORANT, Genshin Impact, Honor of Kings, Brawl Stars, Clash of Clans, and Clash Royale identities on the same keys and billing.
 
 The service owns input validation, identity resolution, response normalization, and deployment. Every lookup is served by the Eidren identity network with built-in redundancy: if one resolution path degrades, others take over automatically.
 
@@ -84,6 +84,10 @@ Run `npm run test:provider-sweep:live` or trigger the **Live provider diagnostic
 ## Redundant resolution
 
 The MLBB route resolves lookups with redundant concurrent paths. The first confirmed nickname wins; if none confirms, Eidren waits for every result before deciding whether the account is not found or the service is temporarily unavailable. All resolution credentials stay server-side and are never logged.
+
+## Identity lookup routes
+
+The five additional game lookups are documented in [`docs/identity-lookups.md`](docs/identity-lookups.md). They use the same authentication, API-key quota, request logging, and white-labeled error contract as the existing routes. The dashboard playground provides a game tab and documented sample inputs for each route. Call of Duty: Mobile support is specific to the Garena route; PUBG Mobile support is Global. Numeric-looking player IDs are sent and handled as strings to preserve large values exactly.
 
 
 ## Developer platform (new)

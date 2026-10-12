@@ -658,7 +658,7 @@ body {
 .x-field { flex: 2 1 190px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .x-field-zone { flex: 1 1 120px; }
 .x-field label { font-family: "JetBrains Mono", monospace; font-size: 11.5px; letter-spacing: .1em; color: #b7c2da; }
-.x-field input { width: 100%; min-height: 54px; margin: 0; padding: 0 16px; border-radius: 14px; font-family: "JetBrains Mono", monospace; font-size: 16px; background: rgba(7,9,18,.62); border: 1px solid rgba(255,255,255,.2); }
+.x-field input, .x-field select { width: 100%; min-height: 54px; margin: 0; padding: 0 16px; border-radius: 14px; font-family: "JetBrains Mono", monospace; font-size: 16px; background: rgba(7,9,18,.62); border: 1px solid rgba(255,255,255,.2); }
 .x-submit {
   display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; width: 100%; padding: 0 22px; border: 1px solid rgba(255,255,255,.35); border-radius: 16px; cursor: pointer; text-decoration: none;
   font-family: Outfit, Manrope, sans-serif; font-size: 17px; font-weight: 700; color: #0a0817;

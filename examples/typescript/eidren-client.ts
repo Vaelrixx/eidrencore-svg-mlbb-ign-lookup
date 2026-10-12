@@ -1,9 +1,9 @@
 /**
  * Minimal typed client for the Eidren player-lookup API.
  *
- * Covers all four live games: Mobile Legends plus Brawl Stars, Clash of
- * Clans, and Clash Royale — including clan/club, battle history, and
- * rankings endpoints. Server-side only — never ship your API key in
+ * Covers Mobile Legends, five additional identity lookups, and the three
+ * Supercell games — including clan/club, battle history, and rankings
+ * endpoints. Server-side only — never ship your API key in
  * browser code.
  *
  * Requires Node 18+ (global fetch). No dependencies.
@@ -21,6 +21,26 @@ export type MlbbLookupResult = {
   country?: string;
   source: string;
 };
+
+export type IdentityLookupResult = {
+  nickname: string;
+  playerId?: string;
+  name?: string;
+  tag?: string;
+  server?: GenshinServer;
+  source: string;
+};
+
+export type GenshinServer = "asia" | "america" | "europa" | "china";
+export type IdentityGame = "pubg-mobile" | "call-of-duty-mobile" | "valorant" | "genshin-impact" | "honor-of-kings";
+export type IdentityLookupInputByGame = {
+  "pubg-mobile": { playerId: string };
+  "call-of-duty-mobile": { playerId: string };
+  valorant: { name: string; tag: string };
+  "genshin-impact": { playerId: string; server: GenshinServer };
+  "honor-of-kings": { playerId: string };
+};
+export type IdentityLookupInput = IdentityLookupInputByGame[IdentityGame];
 
 export type SupercellLookupResult = {
   nickname: string;
@@ -60,6 +80,11 @@ export type LookupErrorCode =
   | "INVALID_JSON"
   | "INVALID_LOCATION"
   | "PLAYER_NOT_FOUND"
+  | "PUBG_PLAYER_NOT_FOUND"
+  | "CODM_PLAYER_NOT_FOUND"
+  | "VALORANT_PLAYER_NOT_FOUND"
+  | "GENSHIN_PLAYER_NOT_FOUND"
+  | "HONOR_OF_KINGS_PLAYER_NOT_FOUND"
   | "BS_PLAYER_NOT_FOUND"
   | "COC_PLAYER_NOT_FOUND"
   | "CR_PLAYER_NOT_FOUND"
@@ -117,6 +142,14 @@ const GAME_ENDPOINTS: Record<SupercellGame, string> = {
   "brawl-stars": "/api/lookup/brawl-stars",
   "clash-of-clans": "/api/lookup/clash-of-clans",
   "clash-royale": "/api/lookup/clash-royale",
+};
+
+const IDENTITY_ENDPOINTS: Record<IdentityGame, string> = {
+  "pubg-mobile": "/api/lookup/pubg-mobile",
+  "call-of-duty-mobile": "/api/lookup/call-of-duty-mobile",
+  "valorant": "/api/lookup/valorant",
+  "genshin-impact": "/api/lookup/genshin-impact",
+  "honor-of-kings": "/api/lookup/honor-of-kings",
 };
 
 function retryAfterSeconds(headers: Headers): number | null {
@@ -194,6 +227,11 @@ export function createEidrenClient(apiKey: string, options: EidrenClientOptions 
     if (!endpoint) throw new Error(`Unknown Supercell game: ${game as string}.`);
     return post<RankingsLookupResult>(apiKey, `${endpoint}/rankings`, { locationId }, baseUrl, fetchImpl);
   };
+  const lookupIdentity = <Game extends IdentityGame>(game: Game, input: IdentityLookupInputByGame[Game]) => {
+    const endpoint = IDENTITY_ENDPOINTS[game];
+    if (!endpoint) throw new Error(`Unknown identity game: ${game as string}.`);
+    return post<IdentityLookupResult>(apiKey, endpoint, input, baseUrl, fetchImpl);
+  };
 
   return {
     /** Mobile Legends: resolve a nickname from Player ID + Zone ID. */
@@ -205,6 +243,31 @@ export function createEidrenClient(apiKey: string, options: EidrenClientOptions 
         baseUrl,
         fetchImpl,
       );
+    },
+
+    /** PUBG Mobile Global: resolve a nickname from a character ID. */
+    lookupPubgMobile(playerId: string): Promise<IdentityLookupResult> {
+      return lookupIdentity("pubg-mobile", { playerId });
+    },
+
+    /** Call of Duty: Mobile Garena route: resolve a nickname from a UID. */
+    lookupCallOfDutyMobile(playerId: string): Promise<IdentityLookupResult> {
+      return lookupIdentity("call-of-duty-mobile", { playerId });
+    },
+
+    /** VALORANT: resolve a Riot ID from its name and tagline. */
+    lookupValorant(name: string, tag: string): Promise<IdentityLookupResult> {
+      return lookupIdentity("valorant", { name, tag });
+    },
+
+    /** Genshin Impact: resolve a nickname from a UID and required server region. */
+    lookupGenshinImpact(playerId: string, server: GenshinServer): Promise<IdentityLookupResult> {
+      return lookupIdentity("genshin-impact", { playerId, server });
+    },
+
+    /** Honor of Kings: IDs are strings so 20-digit values are never rounded. */
+    lookupHonorOfKings(playerId: string): Promise<IdentityLookupResult> {
+      return lookupIdentity("honor-of-kings", { playerId });
     },
 
     /** Brawl Stars: resolve a nickname from a player tag (e.g. "#2PP"). */
