@@ -2,7 +2,8 @@
  * Minimal typed client for the Eidren player-lookup API.
  *
  * Covers all four live games: Mobile Legends plus Brawl Stars, Clash of
- * Clans, and Clash Royale. Server-side only — never ship your API key in
+ * Clans, and Clash Royale — including clan/club, battle history, and
+ * rankings endpoints. Server-side only — never ship your API key in
  * browser code.
  *
  * Requires Node 18+ (global fetch). No dependencies.
@@ -27,6 +28,29 @@ export type SupercellLookupResult = {
   source: string;
 };
 
+export type ClanLookupResult = {
+  name: string;
+  tag: string;
+  group: "clan" | "club";
+  details: Record<string, string | number | null>;
+  source: string;
+};
+
+export type HistoryLookupResult = {
+  tag: string;
+  battles?: Array<Record<string, string | number | string[] | null>>;
+  wars?: Array<Record<string, string | number | null>>;
+  count: number;
+  source: string;
+};
+
+export type RankingsLookupResult = {
+  locationId: string;
+  entries: Array<Record<string, string | number | null>>;
+  count: number;
+  source: string;
+};
+
 export type LookupErrorCode =
   | "AUTH_REQUIRED"
   | "INVALID_API_KEY"
@@ -34,10 +58,15 @@ export type LookupErrorCode =
   | "INVALID_ID"
   | "INVALID_TAG"
   | "INVALID_JSON"
+  | "INVALID_LOCATION"
   | "PLAYER_NOT_FOUND"
   | "BS_PLAYER_NOT_FOUND"
   | "COC_PLAYER_NOT_FOUND"
   | "CR_PLAYER_NOT_FOUND"
+  | "BS_CLUB_NOT_FOUND"
+  | "COC_CLAN_NOT_FOUND"
+  | "CR_CLAN_NOT_FOUND"
+  | "RANKINGS_NOT_FOUND"
   | "RATE_LIMITED"
   | "PLAYGROUND_LIMIT"
   | "API_QUOTA_EXCEEDED"
@@ -148,6 +177,23 @@ export function createEidrenClient(apiKey: string, options: EidrenClientOptions 
     if (!endpoint) throw new Error(`Unknown Supercell game: ${game as string}.`);
     return post<SupercellLookupResult>(apiKey, endpoint, { tag }, baseUrl, fetchImpl);
   };
+  const lookupGroup = (game: SupercellGame, tag: string) => {
+    const suffix = game === "brawl-stars" ? "club" : "clan";
+    const endpoint = GAME_ENDPOINTS[game];
+    if (!endpoint) throw new Error(`Unknown Supercell game: ${game as string}.`);
+    return post<ClanLookupResult>(apiKey, `${endpoint}/${suffix}`, { tag }, baseUrl, fetchImpl);
+  };
+  const lookupHistory = (game: SupercellGame, tag: string) => {
+    const suffix = game === "clash-of-clans" ? "warlog" : "battles";
+    const endpoint = GAME_ENDPOINTS[game];
+    if (!endpoint) throw new Error(`Unknown Supercell game: ${game as string}.`);
+    return post<HistoryLookupResult>(apiKey, `${endpoint}/${suffix}`, { tag }, baseUrl, fetchImpl);
+  };
+  const lookupRankings = (game: SupercellGame, locationId = "global") => {
+    const endpoint = GAME_ENDPOINTS[game];
+    if (!endpoint) throw new Error(`Unknown Supercell game: ${game as string}.`);
+    return post<RankingsLookupResult>(apiKey, `${endpoint}/rankings`, { locationId }, baseUrl, fetchImpl);
+  };
 
   return {
     /** Mobile Legends: resolve a nickname from Player ID + Zone ID. */
@@ -179,6 +225,66 @@ export function createEidrenClient(apiKey: string, options: EidrenClientOptions 
     /** Any Supercell game by slug — useful for game pickers. */
     lookupSupercell(game: SupercellGame, tag: string): Promise<SupercellLookupResult> {
       return lookupSupercell(game, tag);
+    },
+
+    /** Brawl Stars: resolve a club name and roster summary from a club tag. */
+    lookupBrawlStarsClub(tag: string): Promise<ClanLookupResult> {
+      return lookupGroup("brawl-stars", tag);
+    },
+
+    /** Clash of Clans: resolve a clan name and roster summary from a clan tag. */
+    lookupClashOfClansClan(tag: string): Promise<ClanLookupResult> {
+      return lookupGroup("clash-of-clans", tag);
+    },
+
+    /** Clash Royale: resolve a clan name and roster summary from a clan tag. */
+    lookupClashRoyaleClan(tag: string): Promise<ClanLookupResult> {
+      return lookupGroup("clash-royale", tag);
+    },
+
+    /** Any Supercell game's clan/club by slug. */
+    lookupGroup(game: SupercellGame, tag: string): Promise<ClanLookupResult> {
+      return lookupGroup(game, tag);
+    },
+
+    /** Brawl Stars: recent battles for a player tag (max 25). */
+    lookupBrawlStarsBattles(tag: string): Promise<HistoryLookupResult> {
+      return lookupHistory("brawl-stars", tag);
+    },
+
+    /** Clash of Clans: recent clan wars for a clan tag (max 25). */
+    lookupClashOfClansWarlog(tag: string): Promise<HistoryLookupResult> {
+      return lookupHistory("clash-of-clans", tag);
+    },
+
+    /** Clash Royale: recent battles for a player tag (max 25). */
+    lookupClashRoyaleBattles(tag: string): Promise<HistoryLookupResult> {
+      return lookupHistory("clash-royale", tag);
+    },
+
+    /** Any Supercell game's battle/war history by slug. */
+    lookupHistory(game: SupercellGame, tag: string): Promise<HistoryLookupResult> {
+      return lookupHistory(game, tag);
+    },
+
+    /** Brawl Stars: top players for a location ("global" or country code). */
+    lookupBrawlStarsRankings(locationId = "global"): Promise<RankingsLookupResult> {
+      return lookupRankings("brawl-stars", locationId);
+    },
+
+    /** Clash of Clans: top players for a location ("global" or numeric ID). */
+    lookupClashOfClansRankings(locationId = "global"): Promise<RankingsLookupResult> {
+      return lookupRankings("clash-of-clans", locationId);
+    },
+
+    /** Clash Royale: top players for a location ("global" or numeric ID). */
+    lookupClashRoyaleRankings(locationId = "global"): Promise<RankingsLookupResult> {
+      return lookupRankings("clash-royale", locationId);
+    },
+
+    /** Any Supercell game's rankings by slug. */
+    lookupRankings(game: SupercellGame, locationId = "global"): Promise<RankingsLookupResult> {
+      return lookupRankings(game, locationId);
     },
   };
 }

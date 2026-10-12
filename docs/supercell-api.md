@@ -1,15 +1,25 @@
 # Supercell lookup API reference
 
-Eidren exposes one authenticated lookup endpoint per game:
+Eidren exposes authenticated lookup endpoints per game — player identity,
+clan/club identity, battle history, and location rankings:
 
-| Game | Endpoint | Example player tag |
-| --- | --- | --- |
-| Brawl Stars | `POST /api/lookup/brawl-stars` | `#2PP` |
-| Clash of Clans | `POST /api/lookup/clash-of-clans` | `#2PP` |
-| Clash Royale | `POST /api/lookup/clash-royale` | `#C0G20PR2` |
+| Game | Player | Clan / club | Battles / wars | Rankings |
+| --- | --- | --- | --- | --- |
+| Brawl Stars | `POST /api/lookup/brawl-stars` | `POST /api/lookup/brawl-stars/club` | `POST /api/lookup/brawl-stars/battles` | `POST /api/lookup/brawl-stars/rankings` |
+| Clash of Clans | `POST /api/lookup/clash-of-clans` | `POST /api/lookup/clash-of-clans/clan` | `POST /api/lookup/clash-of-clans/warlog` | `POST /api/lookup/clash-of-clans/rankings` |
+| Clash Royale | `POST /api/lookup/clash-royale` | `POST /api/lookup/clash-royale/clan` | `POST /api/lookup/clash-royale/battles` | `POST /api/lookup/clash-royale/rankings` |
 
-These endpoints resolve a Supercell player tag to the player's in-game nickname. They use the same Eidren authentication, plan quota, and IP rate limits as the MLBB lookup API. Eidren is an independent identity network and is not affiliated with Supercell or any game publisher.
-These endpoints resolve a Supercell player tag to the player's in-game nickname. They use the same Eidren authentication, plan quota, and IP rate limits as the MLBB lookup API. Eidren is an independent identity network and is not affiliated with Supercell or any game publisher.
+Example tags: `#2PP` (Brawl Stars and Clash of Clans players), `#C0G20PR2`
+(Clash Royale player). Clan tags follow the same format.
+
+Player endpoints resolve a Supercell player tag to the player's in-game
+nickname. Clan/club endpoints resolve a group tag to the group's name and
+roster summary. Battle endpoints return up to 25 recent battles (or clan
+wars for Clash of Clans). Rankings endpoints return up to 25 leaderboard
+entries for a location. All endpoints use the same Eidren authentication,
+plan quota, and IP rate limits as the MLBB lookup API. Eidren is an
+independent identity network and is not affiliated with Supercell or any
+game publisher.
 
 ## Authentication
 
@@ -78,6 +88,54 @@ A successful lookup returns HTTP `200` and a normalized response envelope. The `
 
 The source labels are `eidren_brawl_stars`, `eidren_clash_of_clans`, and `eidren_clash_royale`. Treat `nickname` and `tag` as strings. Do not assume a successful nickname is globally unique.
 
+## Clan, battle, and rankings responses
+
+Clan/club endpoints accept `{ "tag": "#..." }` and return the group's name
+plus a roster summary:
+
+```json
+{
+  "success": true,
+  "data": {
+    "name": "Example Clan",
+    "tag": "#2PP",
+    "group": "clan",
+    "details": { "name": "Example Clan", "memberCount": 30 },
+    "source": "clash_royale_official_api"
+  }
+}
+```
+
+Battle endpoints accept `{ "tag": "#..." }` and return up to 25 recent
+battles (Clash of Clans returns clan `wars` for a clan tag instead):
+
+```json
+{
+  "success": true,
+  "data": {
+    "tag": "#C0G20PR2",
+    "battles": [{ "type": "PvP", "teamCrowns": 3, "opponentCrowns": 1 }],
+    "count": 1,
+    "source": "clash_royale_official_api"
+  }
+}
+```
+
+Rankings endpoints accept `{ "locationId": "global" }` (`locationId` defaults
+to `"global"` when omitted) and return up to 25 leaderboard entries:
+
+```json
+{
+  "success": true,
+  "data": {
+    "locationId": "global",
+    "entries": [{ "rank": 1, "name": "Top", "tag": "#AAA" }],
+    "count": 1,
+    "source": "clash_royale_official_api"
+  }
+}
+```
+
 ## Errors
 
 Errors use a JSON envelope of the form:
@@ -97,9 +155,12 @@ The `X-Lookup-Request-Id` response header is provided for request correlation. A
 | `400` | `INVALID_JSON` | The request body is not valid JSON. | Correct the JSON and retry. |
 | `400` | `INVALID_INPUT` | The JSON body is not an object. | Send a JSON object with a string `tag`. |
 | `400` | `INVALID_TAG` | The `tag` is missing, not a string, or does not match the accepted format/alphabet. | Send a valid tag string and check for unsupported characters. |
+| `400` | `INVALID_LOCATION` | The `locationId` is not `global` or a numeric location ID. | Send `global` or a documented location ID. |
 | `401` | `AUTH_REQUIRED` | No valid API key or signed-in session was supplied. | Add a valid bearer token. |
 | `401` | `INVALID_API_KEY` | The API key is invalid or revoked. | Create a replacement key and revoke the exposed/old key. |
 | `404` | `BS_PLAYER_NOT_FOUND`, `COC_PLAYER_NOT_FOUND`, or `CR_PLAYER_NOT_FOUND` | Eidren confirmed that no account exists for that player tag. | Confirm the game and tag; don't reuse another game's example blindly. |
+| `404` | `BS_CLUB_NOT_FOUND`, `COC_CLAN_NOT_FOUND`, or `CR_CLAN_NOT_FOUND` | Eidren confirmed that no clan/club exists for that tag. | Confirm the game and tag. |
+| `404` | `RANKINGS_NOT_FOUND` | Eidren found no rankings for that location. | Confirm the location ID. |
 | `429` | `API_QUOTA_EXCEEDED` | The account's monthly API quota is exhausted. | Check the dashboard usage page or plan. |
 | `429` | `PLAYGROUND_LIMIT` | The signed-in playground allowance is exhausted. | Wait for its reset or use an API key within plan quota. |
 | `429` | `RATE_LIMITED` | The shared per-client request rate limit was reached. | Honor `Retry-After` and retry with backoff. |

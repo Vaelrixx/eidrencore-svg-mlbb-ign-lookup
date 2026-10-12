@@ -70,6 +70,48 @@ test("game picker rejects unknown slugs before fetching", async (t) => {
   assert.equal(fetchCalled, false);
 });
 
+test("clan, history, and rankings helpers post to their own endpoints", async (t) => {
+  const { createEidrenClient } = await loadClient(t);
+  const seen = [];
+  const client = createEidrenClient("eid_unit-test-key", {
+    baseUrl: "https://example.test",
+    fetchImpl: async (url, init) => {
+      seen.push({ url: String(url), body: JSON.parse(init.body) });
+      const path = String(url);
+      if (path.endsWith("/club") || path.endsWith("/clan")) {
+        return response(200, { success: true, data: { name: "Test Group", tag: "#2PP", group: "clan", details: {}, source: "test" } });
+      }
+      if (path.endsWith("/battles")) {
+        return response(200, { success: true, data: { tag: "#2PP", battles: [], count: 0, source: "test" } });
+      }
+      if (path.endsWith("/warlog")) {
+        return response(200, { success: true, data: { tag: "#2PP", wars: [], count: 0, source: "test" } });
+      }
+      return response(200, { success: true, data: { locationId: "global", entries: [], count: 0, source: "test" } });
+    },
+  });
+  await client.lookupBrawlStarsClub("#2PP");
+  await client.lookupClashOfClansClan("#2PP");
+  await client.lookupClashRoyaleClan("#C0G20PR2");
+  await client.lookupBrawlStarsBattles("#2PP");
+  await client.lookupClashOfClansWarlog("#2PP");
+  await client.lookupClashRoyaleBattles("#C0G20PR2");
+  await client.lookupClashRoyaleRankings();
+  await client.lookupRankings("brawl-stars", "global");
+  assert.deepEqual(seen.map((s) => s.url), [
+    "https://example.test/api/lookup/brawl-stars/club",
+    "https://example.test/api/lookup/clash-of-clans/clan",
+    "https://example.test/api/lookup/clash-royale/clan",
+    "https://example.test/api/lookup/brawl-stars/battles",
+    "https://example.test/api/lookup/clash-of-clans/warlog",
+    "https://example.test/api/lookup/clash-royale/battles",
+    "https://example.test/api/lookup/clash-royale/rankings",
+    "https://example.test/api/lookup/brawl-stars/rankings",
+  ]);
+  assert.deepEqual(seen[0].body, { tag: "#2PP" });
+  assert.deepEqual(seen[6].body, { locationId: "global" });
+});
+
 test("named helpers work when destructured from the client", async (t) => {
   const { createEidrenClient } = await loadClient(t);
   const client = createEidrenClient("eid_unit-test-key", {

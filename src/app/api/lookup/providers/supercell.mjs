@@ -94,6 +94,44 @@ function configFor(game, env = process.env) {
   return table[game] || null;
 }
 
+/** Resolve a game's proxy config without performing network I/O. */
+export function supercellConfigFor(game, env = process.env) {
+  return configFor(game, env);
+}
+
+/**
+ * GET a path on a game's official API through the community proxy.
+ *
+ * Returns a tagged result so clan/battle/ranking adapters can classify the
+ * upstream response themselves: `{ ok: true, status, payload }` on any
+ * completed HTTP response, `{ ok: false, attempt }` on missing config or
+ * network failure. Never throws for upstream conditions.
+ */
+export async function fetchSupercellPath(game, path, {
+  fetchImpl = fetch,
+  env = process.env,
+} = {}) {
+  const config = configFor(game, env);
+  if (!config) {
+    return { ok: false, attempt: { kind: "unavailable", diagnostic: { reason: "provider_error" } } };
+  }
+  if (!config.key) {
+    return { ok: false, attempt: { kind: "unavailable", diagnostic: { reason: "missing_config" } } };
+  }
+  try {
+    const upstream = await fetchImpl(`${config.base}${path}`, {
+      method: "GET",
+      headers: { Accept: "application/json", Authorization: `Bearer ${config.key}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    const payload = await upstream.json().catch(() => null);
+    return { ok: true, status: upstream.status, payload, source: config.source };
+  } catch {
+    return { ok: false, attempt: { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } } };
+  }
+}
+
 /**
  * Look up a Supercell player by tag against the official per-game API.
  * Returns missing_config when the game's key is not set, so routes degrade
@@ -103,25 +141,10 @@ export async function lookupSupercellPlayer(game, tag, {
   fetchImpl = fetch,
   env = process.env,
 } = {}) {
-  const config = configFor(game, env);
-  if (!config) return { kind: "unavailable", diagnostic: { reason: "provider_error" } };
-  if (!config.key) {
-    return { kind: "unavailable", diagnostic: { reason: "missing_config" } };
-  }
-
   const normalized = normalizeSupercellTag(tag);
   if (!normalized) return { kind: "unavailable", diagnostic: { reason: "provider_error" } };
 
-  try {
-    const upstream = await fetchImpl(`${config.base}/v1/players/${encodeURIComponent(normalized)}`, {
-      method: "GET",
-      headers: { Accept: "application/json", Authorization: `Bearer ${config.key}` },
-      cache: "no-store",
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
-    const payload = await upstream.json().catch(() => null);
-    return classifySupercellResponse(upstream.status, payload, config.source);
-  } catch {
-    return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
-  }
+  const fetched = await fetchSupercellPath(game, `/v1/players/${encodeURIComponent(normalized)}`, { fetchImpl, env });
+  if (!fetched.ok) return fetched.attempt;
+  return classifySupercellResponse(fetched.status, fetched.payload, fetched.source);
 }

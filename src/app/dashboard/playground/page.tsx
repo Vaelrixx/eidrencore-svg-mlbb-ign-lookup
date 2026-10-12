@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ConsoleFrame } from "@/components/console-frame";
 import { PlayerLookupTool } from "@/components/player-lookup-tool";
 import { SupercellLookupTool } from "@/components/supercell-lookup-tool";
+import { SupercellGroupTool } from "@/components/supercell-group-tool";
 import { platformTools } from "@/lib/tools";
 
 type GameKey = "mlbb" | "brawl-stars" | "clash-of-clans" | "clash-royale";
@@ -58,6 +59,12 @@ function PlaygroundContent() {
       </div>
       {game === "mlbb" ? <PlayerLookupTool /> : <SupercellLookupTool game={game} />}
     </section>
+    {game !== "mlbb" && (
+      <section className="console-panel">
+        <div className="console-panel-heading"><div><h2>{game === "brawl-stars" ? "Clubs, battles & rankings" : "Clans, battles & rankings"}</h2><p>Group identity, recent history, and leaderboards for the selected game.</p></div></div>
+        <SupercellGroupTool game={game} />
+      </section>
+    )}
     <section className="console-panel">
       <div className="console-panel-heading"><div><h2>More tools</h2><p>These games are planned. They will appear here as they ship.</p></div></div>
       <div className="pg-planned">{planned.map((t) => <div key={t.id} className="pg-planned-item"><b>{t.game}</b><small>{t.name} · Planned</small></div>)}</div>
