@@ -23,6 +23,11 @@ export const RAPIDAPI_GAME_ROUTES = Object.freeze({
   // fallback found; honest degraded when the keyed feed misses.
   "teen-patti-gold": Object.freeze({ slug: "teen-patti-gold", fields: ["playerId"] }),
   jawaker: Object.freeze({ slug: "jawaker", fields: ["playerId"] }),
+  // Live/social + board verticals (docs-verified real samples: Bigo
+  // 901234567, Higgs 55666). Primary-only: no keyless fallback found;
+  // honest degraded when the keyed feed misses.
+  "bigo-live": Object.freeze({ slug: "bigo-live", fields: ["playerId"] }),
+  "higgs-domino": Object.freeze({ slug: "higgs-domino", fields: ["playerId"] }),
   // FC Mobile has no RapidAPI slug on the current key; the route entry keeps
   // the handler map total while the lookup itself runs on the keyless leg.
   "fc-mobile": Object.freeze({ slug: "fc-mobile", fields: ["playerId"] }),

@@ -3,6 +3,7 @@ import { lookupRapidApiGame, type RapidApiGame, type RapidApiGameInput } from ".
 import { lookupEnkaGenshin } from "./providers/enka-genshin.mjs";
 import { lookupGoPayGameFallback } from "./providers/gopay-game-fallback.mjs";
 import { lookupFcMobile } from "./providers/gopay-fc-mobile.mjs";
+import { lookupGoPayFreeFire } from "./providers/gopay-free-fire.mjs";
 
 const numericId = /^\d{3,24}$/;
 const riotName = /^[\p{L}\p{N} _.'-]{3,16}$/u;
@@ -46,6 +47,27 @@ async function lookupWithGoPayFallback(
   }
   const playerId = "playerId" in input ? input.playerId : "";
   const fallback = await lookupGoPayGameFallback(gopayCode, playerId);
+  if (fallback.kind === "success" || fallback.kind === "not_found" || fallback.kind === "rate_limited") {
+    return fallback;
+  }
+  return primary;
+}
+
+/**
+ * Free Fire chain: keyed primary first, then the keyless GoPay FREEFIRE
+ * fallback (live-verified 2026-10-13: docs sample resolves, Unknown User 404
+ * gates not-found). Same terminal-verdict discipline as the other chains.
+ */
+async function lookupFreeFireWithFallback(
+  game: RapidApiGame,
+  input: RapidApiGameInput,
+) {
+  const primary = await lookupRapidApiGame(game, input);
+  if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") {
+    return primary;
+  }
+  const playerId = "playerId" in input ? input.playerId : "";
+  const fallback = await lookupGoPayFreeFire(playerId);
   if (fallback.kind === "success" || fallback.kind === "not_found" || fallback.kind === "rate_limited") {
     return fallback;
   }
@@ -179,10 +201,9 @@ const configs: Record<string, { providerGame: RapidApiGame; config: Omit<IdGameL
       fields: [{ key: "playerId", label: "UID", example: "1856150661662899105", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
-  // Free Fire key-ready (case 20261013-ffown): primary answers once a direct
-  // provider key (or a live keyless fallback) is wired into the chain below.
-  // Until then the route validates input and returns honest 502 degraded,
-  // never a false not-found. Samples are the provider's documented examples.
+  // Free Fire chain (case 20261013-ffown + Lane A fallback): keyed primary
+  // first, then the live-verified keyless GoPay FREEFIRE fallback. Samples
+  // are the provider's documented examples.
   "free-fire": {
     providerGame: "free-fire",
     config: {
@@ -205,6 +226,31 @@ const configs: Record<string, { providerGame: RapidApiGame; config: Omit<IdGameL
       fields: [{ key: "playerId", label: "UID", example: "12341234", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
+  // Live/social + board verticals (primary-only: no keyless fallback found;
+  // honest degraded when the keyed feed misses). Samples are the provider's
+  // documented examples: Bigo 901234567, Higgs 55666.
+  "bigo-live": {
+    providerGame: "bigo-live",
+    config: {
+      endpoint: "/api/lookup/bigo-live",
+      gameLabel: "Bigo Live",
+      publicSource: "eidren_bigo_live",
+      notFoundCode: "BIGO_LIVE_USER_NOT_FOUND",
+      internalProvider: "rapidapi_id_game_checker_bigo_live",
+      fields: [{ key: "playerId", label: "BIGO ID", example: "901234567", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
+  "higgs-domino": {
+    providerGame: "higgs-domino",
+    config: {
+      endpoint: "/api/lookup/higgs-domino",
+      gameLabel: "Higgs Domino",
+      publicSource: "eidren_higgs_domino",
+      notFoundCode: "HIGGS_DOMINO_PLAYER_NOT_FOUND",
+      internalProvider: "rapidapi_id_game_checker_higgs_domino",
+      fields: [{ key: "playerId", label: "Player ID", example: "55666", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
 };
 
 export function createRapidApiGameHandler(game: keyof typeof configs) {
@@ -212,11 +258,10 @@ export function createRapidApiGameHandler(game: keyof typeof configs) {
   const config: IdGameLookupConfig = {
     ...entry.config,
     lookup: async (input) => {
-      // Free Fire chain slot: direct key first when provisioned, own proxy /
-      // keyless fallback second. No fallback is wired yet, so the primary
-      // attempt is returned as-is (honest degraded, never false not-found).
+      // Free Fire chain: keyed primary first, then the live-verified keyless
+      // GoPay FREEFIRE fallback. Terminal on success/not_found/rate_limit.
       if (entry.providerGame === "free-fire" || entry.providerGame === "free-fire-global") {
-        return lookupRapidApiGame(entry.providerGame, input as RapidApiGameInput);
+        return lookupFreeFireWithFallback(entry.providerGame, input as RapidApiGameInput);
       }
       if (entry.providerGame === "genshin-impact") {
         return lookupGenshinWithFallback(input as RapidApiGameInput);

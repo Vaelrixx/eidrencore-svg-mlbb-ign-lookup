@@ -1,0 +1,61 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  classifyFreeFireResponse,
+  lookupGoPayFreeFire,
+} from "../src/app/api/lookup/providers/gopay-free-fire.mjs";
+
+// Live-verified 2026-10-13 (re-verified at build time): docs sample resolves.
+const valid = {
+  message: "Success",
+  data: { countryOrigin: "ID", username: "FFPlayer" },
+};
+// Live-verified: bogus UID -> explicit unknown-user 404.
+const missing = {
+  statusCode: 404,
+  message: "Unknown User",
+  error: "Not Found",
+};
+
+test("success schema resolves a nickname", () => {
+  assert.deepEqual(classifyFreeFireResponse(200, valid), {
+    kind: "success",
+    nickname: "FFPlayer",
+    source: "gopay_games_validation",
+  });
+});
+
+test("only the explicit unknown-user 404 is not-found", () => {
+  assert.deepEqual(classifyFreeFireResponse(404, missing), { kind: "not_found" });
+  assert.equal(classifyFreeFireResponse(404, { ...missing, message: "Invalid User Account" }).kind, "unavailable");
+  assert.equal(classifyFreeFireResponse(404, null).kind, "unavailable");
+});
+
+test("rate limits and junk degrade without false verdicts", () => {
+  assert.equal(classifyFreeFireResponse(429, { message: "slow" }).kind, "rate_limited");
+  assert.equal(classifyFreeFireResponse(200, { message: "Success", data: { username: "N/A" } }).kind, "unavailable");
+});
+
+test("lookup sends FREEFIRE code with string IDs and no credentials", async () => {
+  let requestBody;
+  let requestHeaders;
+  const result = await lookupGoPayFreeFire("1958604115", {
+    fetchImpl: async (_url, init) => {
+      requestBody = JSON.parse(init.body);
+      requestHeaders = init.headers;
+      return new Response(JSON.stringify(valid), { status: 200 });
+    },
+  });
+  assert.deepEqual(requestBody, { code: "FREEFIRE", data: { userId: "1958604115", zoneId: "" } });
+  assert.equal("Authorization" in requestHeaders, false);
+  assert.equal(result.kind, "success");
+});
+
+test("invalid inputs and network failures degrade without leaking details", async () => {
+  assert.deepEqual((await lookupGoPayFreeFire("abc", { fetchImpl: async () => { throw new Error("x"); } })).kind, "unavailable");
+  const net = await lookupGoPayFreeFire("1958604115", {
+    fetchImpl: async () => { throw new Error("private socket detail"); },
+  });
+  assert.deepEqual(net, { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } });
+  assert.equal(JSON.stringify(net).includes("private socket"), false);
+});

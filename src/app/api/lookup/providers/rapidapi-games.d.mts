@@ -11,6 +11,8 @@ export type RapidApiGame =
   | "teen-patti-gold"
   | "jawaker"
   | "fc-mobile"
+  | "bigo-live"
+  | "higgs-domino"
   | "free-fire"
   | "free-fire-global";
 

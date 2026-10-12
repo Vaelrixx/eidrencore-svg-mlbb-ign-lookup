@@ -16,7 +16,9 @@ Resolve a player's in-game name from an account identifier. All routes require a
 
 Genshin `server` is required and must be one of `asia`, `america`, `europa`, or `china`. Genshin lookups run through a two-source identity chain behind the single `eidren_genshin_impact` source label, so UIDs missing from one feed still resolve when the other carries them. The Call of Duty route covers the Garena region. PUBG Mobile is the Global route.
 
-Free Fire routes are key-ready: the endpoints validate input and return honest degraded responses until a provider key or fallback is provisioned. Request samples use the provider's documented examples. The routes share the standard response envelope, so no client changes are needed when the upstream is connected.
+Free Fire routes run a two-source chain behind their single source labels (keyed primary, then the live-verified keyless secondary), so UIDs missing from one feed still resolve when the other carries them. Bigo Live and Higgs Domino run primary-only on the keyed route (no keyless fallback found).
+
+Free Fire routes were previously key-ready: the endpoints validate input and return honest degraded responses until a provider key or fallback is provisioned. Request samples use the provider's documented examples. The routes share the standard response envelope, so no client changes are needed when the upstream is connected.
 
 ### IDs are strings
 
@@ -96,4 +98,6 @@ A sample account may stop resolving as game data changes. The service reports an
 | Teen Patti Gold | `POST /api/lookup/teen-patti-gold` | `{ "playerId": "100439992784" }` | `eidren_teen_patti_gold` |
 | Jawaker | `POST /api/lookup/jawaker` | `{ "playerId": "1473084005" }` | `eidren_jawaker` |
 | FC Mobile | `POST /api/lookup/fc-mobile` | `{ "playerId": "1856150661662899105" }` | `eidren_fc_mobile` |
+| Bigo Live | `POST /api/lookup/bigo-live` | `{ "playerId": "901234567" }` | `eidren_bigo_live` |
+| Higgs Domino | `POST /api/lookup/higgs-domino` | `{ "playerId": "55666" }` | `eidren_higgs_domino` |
 Arena of Valor and PUBG Mobile Lite each run through a two-source chain behind their single source label: the keyed route first, then a keyless secondary when the primary is degraded. PUBG Lite's secondary covers the shared PUBG-family pool, so Lite-pool-only IDs degrade honestly when neither source carries them. Teen Patti Gold and Jawaker run primary-only on the keyed route (no keyless fallback found); FC Mobile runs on the keyless secondary as its primary leg since no keyed slug exists on the current key.
