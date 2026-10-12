@@ -63,9 +63,12 @@ rather than a key/gateway outage. The game classifier therefore accepts these va
   `no_content_5` (Genshin), and an empty `data.username`. HoK `data` also carries
   an `is_ban` flag. These classify as `provider_error`/unavailable — the same
   degraded treatment as MLBB `no_content_0` — and never as not-found or
-  unrecognized. Whether `no_content_N` means dead sample IDs or degraded routes
-  for all IDs is still open; it needs a plausibly-valid ID per game (preferably
-  the provider's own documented examples) through a contracted probe.
+  unrecognized. Final probe (2026-10-13, E-003) settled HoK: the provider-docs
+  alternate ID returns `id_found` with a username, so the HoK route is healthy
+  and the original sample ID was dead — the playground sample is now the working
+  docs ID. Genshin returned `no_content_5`/empty on all four documented servers
+  for the single published UID, so Genshin samples stay suspect until a second
+  independent UID is probed; the route itself is not proven down.
 - Identity fetches use a 15s timeout with one retry after 800ms for transport
   failures only. The retry does not repeat on explicit not-found, rate limits, or
   degraded provider bodies. Post-#53 production evidence: HoK hit the old 7s timeout

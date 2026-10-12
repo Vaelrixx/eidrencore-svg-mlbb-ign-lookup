@@ -77,10 +77,10 @@ test("shape labels expose structure without player values", () => {
     error: false,
     status: 200,
     msg: "id_found",
-    data: { id: "17960996468644334000", username: "SECRET_PLAYER" },
+    data: { id: "17960996468644334037", username: "SECRET_PLAYER" },
   });
   assert.match(label, /^envelope:/);
-  assert.equal(label.includes("17960996468644334000"), false);
+  assert.equal(label.includes("17960996468644334037"), false);
   assert.equal(label.includes("SECRET_PLAYER"), false);
   assert.equal(label.includes("username"), true);
 });
@@ -99,7 +99,7 @@ test("unlisted data keys collapse to a bounded unknown shape label", () => {
 
 test("shape telemetry passes through the games adapter without leaking values", async () => {
   const secretNickname = "SECRET_PLAYER_VALUE";
-  const result = await lookupRapidApiGame("honor-of-kings", { playerId: "17960996468644334000" }, {
+  const result = await lookupRapidApiGame("honor-of-kings", { playerId: "17960996468644334037" }, {
     apiKey: "test-key",
     fetchImpl: async () => new Response(JSON.stringify({
       error: false,
@@ -129,7 +129,7 @@ test("shape telemetry passes through the games adapter without leaking values", 
 test("transient transport failures retry once before reporting unavailable", async () => {
   let calls = 0;
   let sleptMs = 0;
-  const result = await lookupRapidApiGame("honor-of-kings", { playerId: "17960996468644334000" }, {
+  const result = await lookupRapidApiGame("honor-of-kings", { playerId: "17960996468644334037" }, {
     apiKey: "test-key",
     sleepImpl: async (ms) => { sleptMs += ms; },
     fetchImpl: async () => {
@@ -251,4 +251,18 @@ test("no-content message with a usable nickname still succeeds", () => {
   });
   assert.equal(result.kind, "success");
   assert.equal(result.nickname, "RealPlayer");
+});
+
+test("live HoK id_found envelope with ban flag resolves to success", () => {
+  // Live shape from E-003 hok-alt-sample (probe deploy c1bc0efc): embedded
+  // status 200, msg id_found, non-empty username alongside is_ban:false.
+  const result = classifyRapidApiGameResponse(200, {
+    error: false,
+    status: 200,
+    msg: "id_found",
+    data: { id: "REDACTED_ID", is_ban: false, username: "0123456789" },
+  });
+  assert.equal(result.kind, "success");
+  assert.equal(result.nickname, "0123456789");
+  assert.equal(result.source, "rapidapi_id_game_checker");
 });

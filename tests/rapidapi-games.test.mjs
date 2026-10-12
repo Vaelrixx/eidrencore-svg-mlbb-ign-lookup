@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { lookupRapidApiGame, rapidApiGamePath } from "../src/app/api/lookup/providers/rapidapi-games.mjs";
 
-const largeHonorOfKingsId = "17960996468644334000";
+const largeHonorOfKingsId = "17960996468644334037";
 const fixtures = [
   ["pubg-mobile", { playerId: "5204837417" }, "/pubgm-global/5204837417"],
   ["cod-mobile-garena", { playerId: "8370310025568788000" }, "/cod-mobile/8370310025568788000"],

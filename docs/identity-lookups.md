@@ -10,7 +10,7 @@ Resolve a player's in-game name from an account identifier. All routes require a
 | Call of Duty: Mobile (Garena) | `POST /api/lookup/call-of-duty-mobile` | `{ "playerId": "8370310025568788000" }` | `eidren_call_of_duty_mobile` |
 | VALORANT | `POST /api/lookup/valorant` | `{ "name": "ucup", "tag": "123" }` | `eidren_valorant` |
 | Genshin Impact | `POST /api/lookup/genshin-impact` | `{ "playerId": "844335555", "server": "asia" }` | `eidren_genshin_impact` |
-| Honor of Kings | `POST /api/lookup/honor-of-kings` | `{ "playerId": "17960996468644334000" }` | `eidren_honor_of_kings` |
+| Honor of Kings | `POST /api/lookup/honor-of-kings` | `{ "playerId": "17960996468644334037" }` | `eidren_honor_of_kings` |
 
 The Call of Duty route covers the Garena region. PUBG Mobile is the Global route. Genshin `server` is required and must be one of `asia`, `america`, `europa`, or `china`.
 
@@ -23,7 +23,7 @@ Send every numeric-looking player ID as a JSON string. The API rejects numeric J
 ```js
 const baseUrl = process.env.EIDREN_BASE_URL;
 const apiKey = process.env.EIDREN_API_KEY;
-const playerId = "17960996468644334000"; // Keep it a string.
+const playerId = "17960996468644334037"; // Keep it a string.
 
 const response = await fetch(`${baseUrl}/api/lookup/honor-of-kings`, {
   method: "POST",
@@ -62,7 +62,7 @@ import { createEidrenClient } from "./eidren-client";
 const eidren = createEidrenClient(process.env.EIDREN_API_KEY!);
 const pubg = await eidren.lookupPubgMobile("5204837417");
 const genshin = await eidren.lookupGenshinImpact("844335555", "asia");
-const honorOfKings = await eidren.lookupHonorOfKings("17960996468644334000");
+const honorOfKings = await eidren.lookupHonorOfKings("17960996468644334037");
 
 console.log(pubg.nickname, genshin.nickname, honorOfKings.nickname);
 ```
@@ -78,7 +78,7 @@ A successful lookup returns the resolved name and echoes the submitted fields as
   "success": true,
   "data": {
     "nickname": "ExamplePlayer",
-    "playerId": "17960996468644334000",
+    "playerId": "17960996468644334037",
     "source": "eidren_honor_of_kings"
   }
 }

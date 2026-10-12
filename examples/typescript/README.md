@@ -31,7 +31,7 @@ EIDREN_API_KEY=eid_... node /tmp/eidren-examples/supercell-lookups.js
 - `POST /api/lookup/call-of-duty-mobile` — body `{ "playerId": "8370310025568788000" }` (Garena route)
 - `POST /api/lookup/valorant` — body `{ "name": "ucup", "tag": "123" }` (Riot ID name and tagline)
 - `POST /api/lookup/genshin-impact` — body `{ "playerId": "844335555", "server": "asia" }`
-- `POST /api/lookup/honor-of-kings` — body `{ "playerId": "17960996468644334000" }`
+- `POST /api/lookup/honor-of-kings` — body `{ "playerId": "17960996468644334037" }`
 
 All endpoints take `Authorization: Bearer eid_...` and return `{ "success": true, "data": { "nickname", ... } }` or `{ "success": false, "error", "code" }` with an `X-Lookup-Request-Id` header. Send numeric-looking IDs as JSON strings; never convert them to JavaScript `number`. This is required for 19–20 digit IDs such as Honor of Kings. Genshin server is required and accepts `asia`, `america`, `europa`, or `china`. The IDs and Riot ID above are published examples; whether a sample account remains resolvable can change. Tags use Supercell's `0289PYLQGRJCUV` alphabet and are case-insensitive.
 
