@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { isIP } from "node:net";
 
 /**
  * Brute-force guard for authentication endpoints.
@@ -34,14 +35,15 @@ function authHeaders(key) {
 
 function clientAddress(request) {
   const realIp = request?.headers?.get?.("x-real-ip")?.trim();
-  if (realIp && !realIp.includes(",") && realIp.length <= 128) return realIp;
+  // Only trust single IP literals; hostnames or lists are caller-controlled.
+  if (realIp && isIP(realIp)) return realIp;
   // Railway's ingress appends the connecting client address to X-Forwarded-For.
   // Use the final entry rather than a caller-controlled leftmost value.
   const forwarded = request?.headers?.get?.("x-forwarded-for");
   if (!forwarded) return null;
   const entries = forwarded.split(",").map((entry) => entry.trim()).filter(Boolean);
   const address = entries.at(-1);
-  return address && address.length <= 128 ? address : null;
+  return address && isIP(address) ? address : null;
 }
 
 function clientHash(scope, address, secret) {
