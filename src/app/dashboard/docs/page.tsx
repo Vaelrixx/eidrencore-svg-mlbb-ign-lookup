@@ -7,7 +7,16 @@ import { ConsoleFrame } from "@/components/console-frame";
 
 const baseUrl = "https://nexus-mlbb-ign-lookup-production.up.railway.app";
 const curlExample = "curl -X POST \"" + baseUrl + "/api/lookup\" -H \"Content-Type: application/json\" -H \"Authorization: Bearer eid_YOUR_API_KEY\" -d '{\"playerId\":\"123456789\",\"zoneId\":\"1234\"}'";
-const supercellCurlExample = "curl -X POST \"" + baseUrl + "/api/lookup/brawl-stars\" -H \"Content-Type: application/json\" -H \"Authorization: Bearer eid_YOUR_API_KEY\" -d '{\"tag\":\"#2PP\"}'";
+const supercellCurlExample = [
+  "# Brawl Stars",
+  `curl -X POST "${baseUrl}/api/lookup/brawl-stars" -H "Content-Type: application/json" -H "Authorization: Bearer eid_YOUR_API_KEY" -d '{"tag":"#2PP"}'`,
+  "",
+  "# Clash of Clans",
+  `curl -X POST "${baseUrl}/api/lookup/clash-of-clans" -H "Content-Type: application/json" -H "Authorization: Bearer eid_YOUR_API_KEY" -d '{"tag":"#2PP"}'`,
+  "",
+  "# Clash Royale",
+  `curl -X POST "${baseUrl}/api/lookup/clash-royale" -H "Content-Type: application/json" -H "Authorization: Bearer eid_YOUR_API_KEY" -d '{"tag":"#C0G20PR2"}'`,
+].join("\n");
 const supercellTsExample = [
   "import { createEidrenClient, EidrenApiError } from \"./eidren-client\";",
   "",

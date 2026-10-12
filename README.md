@@ -101,13 +101,19 @@ The developer console lives at `/login` and `/dashboard`. It supports email/pass
 
 ### Supercell games (Brawl Stars, Clash of Clans, Clash Royale)
 
-These lookups use the official per-game Supercell APIs through the RoyaleAPI community proxy (the Isan proxy is MLBB-only, and ID Game Checker marks its Supercell category unavailable). Keys are free:
+Each endpoint resolves a player tag for its own game. Requests require the same Eidren bearer API key, account quota, and rate-limit handling as `/api/lookup`:
 
-- `BRAWL_STARS_API_KEY`: from [developer.brawlstars.com](https://developer.brawlstars.com). Endpoint: `POST /api/lookup/brawl-stars` with `{ "tag": "#2PP" }`.
-- `CLASH_OF_CLANS_API_KEY`: from [developer.clashofclans.com](https://developer.clashofclans.com). Endpoint: `POST /api/lookup/clash-of-clans` with `{ "tag": "#2PP" }`.
-- `CLASH_ROYALE_API_KEY`: from [developer.clashroyale.com](https://developer.clashroyale.com). Endpoint: `POST /api/lookup/clash-royale` with `{ "tag": "#2PP" }`.
+| Game | Endpoint | Example body |
+|---|---|---|
+| Brawl Stars | `POST /api/lookup/brawl-stars` | `{ "tag": "#2PP" }` |
+| Clash of Clans | `POST /api/lookup/clash-of-clans` | `{ "tag": "#2PP" }` |
+| Clash Royale | `POST /api/lookup/clash-royale` | `{ "tag": "#C0G20PR2" }` |
 
-Community proxy note: calls go to `bsproxy.royaleapi.dev` (Brawl Stars), `cocproxy.royaleapi.dev` (Clash of Clans), and `proxy.royaleapi.dev` (Clash Royale) with your key as a Bearer token — no Fixie/other egress proxy is used. When creating each key, allowlist the RoyaleAPI proxy IP **45.79.218.79** ([proxy docs](https://docs.royaleapi.com/proxy.html)). To bypass the proxy and call the official hosts directly, set `BRAWL_STARS_API_BASE` / `CLASH_OF_CLANS_API_BASE` / `CLASH_ROYALE_API_BASE`. Until a game's key is set, its endpoint returns `GAME_NOT_CONFIGURED` (503) instead of failing obscurely. Tags use Supercell&apos;s `0289PYLQGRJCUV` alphabet and are case-insensitive. `npm run test:supercell` covers tag normalization, response classification, and per-game routing.
+Send `Content-Type: application/json` and `Authorization: Bearer eid_...`; the request body must contain a string `tag`. Tags are trimmed, normalized to uppercase, and accept Supercell's `0289PYLQGRJCUV` alphabet. A valid-format tag is game-specific: `#2PP` is an example for Brawl Stars and Clash of Clans, but does **not** resolve in Clash Royale. `#C0G20PR2` is the verified Clash Royale sample.
+
+Success responses use `{ "success": true, "data": { "nickname": "...", "tag": "...", "source": "..." } }`. Errors use `{ "success": false, "error": "...", "code": "..." }`; notable codes include `INVALID_TAG`, `BS_PLAYER_NOT_FOUND`, `COC_PLAYER_NOT_FOUND`, `CR_PLAYER_NOT_FOUND`, `GAME_NOT_CONFIGURED`, `UPSTREAM_RATE_LIMIT`, and `UPSTREAM_UNAVAILABLE`. Upstream outages are not treated as proof that a tag does not exist. See the full [Supercell API reference](docs/supercell-api.md) for per-game cURL commands, request and response details, errors, authentication, and operator setup.
+
+These lookups use the official per-game Supercell APIs through the RoyaleAPI community proxy (the Isan proxy is MLBB-only, and ID Game Checker marks its Supercell category unavailable). Configure the server-only keys `BRAWL_STARS_API_KEY` from [developer.brawlstars.com](https://developer.brawlstars.com), `CLASH_OF_CLANS_API_KEY` from [developer.clashofclans.com](https://developer.clashofclans.com), and `CLASH_ROYALE_API_KEY` from [developer.clashroyale.com](https://developer.clashroyale.com). When creating each key, allowlist RoyaleAPI's proxy IP **45.79.218.79** ([proxy docs](https://docs.royaleapi.com/proxy.html)). Calls use the appropriate RoyaleAPI proxy host and the key as a Bearer token; no Fixie/other egress proxy is used. Optional `BRAWL_STARS_API_BASE`, `CLASH_OF_CLANS_API_BASE`, and `CLASH_ROYALE_API_BASE` variables override the API base. A missing game key returns `GAME_NOT_CONFIGURED` (503). Run `npm run test:supercell` for tag normalization, response classification, and per-game routing tests.
 
 ### Provider dashboard configuration
 
