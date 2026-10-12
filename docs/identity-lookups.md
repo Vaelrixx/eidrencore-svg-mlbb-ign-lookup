@@ -93,4 +93,7 @@ Genshin responses also echo the selected `server` value. A missing identity retu
 A sample account may stop resolving as game data changes. The service reports an account as missing only when it receives an explicit missing-account result; degraded or unfamiliar upstream responses are treated as unavailable instead, so a provider-side outage never becomes a false missing-account verdict.
 | Arena of Valor | `POST /api/lookup/arena-of-valor` | `{ "playerId": "195293573153949" }` | `eidren_arena_of_valor` |
 | PUBG Mobile Lite | `POST /api/lookup/pubg-lite` | `{ "playerId": "7228395004" }` | `eidren_pubg_lite` |
-Arena of Valor and PUBG Mobile Lite each run through a two-source chain behind their single source label: the keyed route first, then a keyless secondary when the primary is degraded. PUBG Lite's secondary covers the shared PUBG-family pool, so Lite-pool-only IDs degrade honestly when neither source carries them.
+| Teen Patti Gold | `POST /api/lookup/teen-patti-gold` | `{ "playerId": "100439992784" }` | `eidren_teen_patti_gold` |
+| Jawaker | `POST /api/lookup/jawaker` | `{ "playerId": "1473084005" }` | `eidren_jawaker` |
+| FC Mobile | `POST /api/lookup/fc-mobile` | `{ "playerId": "1856150661662899105" }` | `eidren_fc_mobile` |
+Arena of Valor and PUBG Mobile Lite each run through a two-source chain behind their single source label: the keyed route first, then a keyless secondary when the primary is degraded. PUBG Lite's secondary covers the shared PUBG-family pool, so Lite-pool-only IDs degrade honestly when neither source carries them. Teen Patti Gold and Jawaker run primary-only on the keyed route (no keyless fallback found); FC Mobile runs on the keyless secondary as its primary leg since no keyed slug exists on the current key.

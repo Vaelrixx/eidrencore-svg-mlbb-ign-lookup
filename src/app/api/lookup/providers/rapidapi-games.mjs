@@ -18,6 +18,14 @@ export const RAPIDAPI_GAME_ROUTES = Object.freeze({
   // sample 195293573153949, PUBG Lite sample 7228395004.
   "arena-of-valor": Object.freeze({ slug: "arena-of-valor", fields: ["playerId"] }),
   "pubg-lite": Object.freeze({ slug: "pubgm-lite", fields: ["playerId"] }),
+  // Card vertical: Teen Patti Gold sample 100439992784, Jawaker sample
+  // 1473084005 (both docs-verified real IDs). Primary-only: no keyless
+  // fallback found; honest degraded when the keyed feed misses.
+  "teen-patti-gold": Object.freeze({ slug: "teen-patti-gold", fields: ["playerId"] }),
+  jawaker: Object.freeze({ slug: "jawaker", fields: ["playerId"] }),
+  // FC Mobile has no RapidAPI slug on the current key; the route entry keeps
+  // the handler map total while the lookup itself runs on the keyless leg.
+  "fc-mobile": Object.freeze({ slug: "fc-mobile", fields: ["playerId"] }),
   // Free Fire key-ready (case 20261013-ffown): slugs docs-verified on the
   // provider's own docs; primary ships when a direct key lands in Railway.
   "free-fire": Object.freeze({ slug: "free-fire", fields: ["playerId"] }),
