@@ -8,7 +8,7 @@ type GameKey = "brawl-stars" | "clash-of-clans" | "clash-royale";
 const GAMES: Record<GameKey, { label: string; endpoint: string; placeholder: string }> = {
   "brawl-stars": { label: "Brawl Stars", endpoint: "/api/lookup/brawl-stars", placeholder: "#2PP" },
   "clash-of-clans": { label: "Clash of Clans", endpoint: "/api/lookup/clash-of-clans", placeholder: "#2PP" },
-  "clash-royale": { label: "Clash Royale", endpoint: "/api/lookup/clash-royale", placeholder: "#2PP" },
+  "clash-royale": { label: "Clash Royale", endpoint: "/api/lookup/clash-royale", placeholder: "#C0G20PR2" },
 };
 
 type LookupResult = { nickname: string; tag: string };
