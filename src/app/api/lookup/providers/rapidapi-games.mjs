@@ -14,6 +14,10 @@ export const RAPIDAPI_GAME_ROUTES = Object.freeze({
   valorant: Object.freeze({ slug: "valorant", fields: ["name", "tag"] }),
   "genshin-impact": Object.freeze({ slug: "genshin", fields: ["playerId", "server"] }),
   "honor-of-kings": Object.freeze({ slug: "honor-of-kings", fields: ["playerId"] }),
+  // Lane A expansion (docs-verified slugs + real samples): Arena of Valor
+  // sample 195293573153949, PUBG Lite sample 7228395004.
+  "arena-of-valor": Object.freeze({ slug: "arena-of-valor", fields: ["playerId"] }),
+  "pubg-lite": Object.freeze({ slug: "pubgm-lite", fields: ["playerId"] }),
   // Free Fire key-ready (case 20261013-ffown): slugs docs-verified on the
   // provider's own docs; primary ships when a direct key lands in Railway.
   "free-fire": Object.freeze({ slug: "free-fire", fields: ["playerId"] }),

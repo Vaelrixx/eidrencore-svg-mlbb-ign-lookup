@@ -8,7 +8,7 @@ import { IdGameLookupTool } from "@/components/id-game-lookup-tool";
 import { SupercellLookupTool } from "@/components/supercell-lookup-tool";
 import { SupercellGroupTool } from "@/components/supercell-group-tool";
 import { platformTools } from "@/lib/tools";
-type GameKey = "mlbb" | "brawl-stars" | "clash-of-clans" | "clash-royale" | "pubg-mobile" | "call-of-duty-mobile" | "valorant" | "genshin-impact" | "honor-of-kings" | "free-fire" | "free-fire-global";
+type GameKey = "mlbb" | "brawl-stars" | "clash-of-clans" | "clash-royale" | "pubg-mobile" | "call-of-duty-mobile" | "valorant" | "genshin-impact" | "honor-of-kings" | "arena-of-valor" | "pubg-lite" | "free-fire" | "free-fire-global";
 const GAME_TABS: { key: GameKey; label: string }[] = [
   { key: "mlbb", label: "Mobile Legends" },
   { key: "pubg-mobile", label: "PUBG Mobile" },
@@ -16,6 +16,8 @@ const GAME_TABS: { key: GameKey; label: string }[] = [
   { key: "valorant", label: "VALORANT" },
   { key: "genshin-impact", label: "Genshin Impact" },
   { key: "honor-of-kings", label: "Honor of Kings" },
+  { key: "arena-of-valor", label: "Arena of Valor" },
+  { key: "pubg-lite", label: "PUBG Lite" },
   { key: "free-fire", label: "Free Fire" },
   { key: "free-fire-global", label: "Free Fire Global" },
   { key: "brawl-stars", label: "Brawl Stars" },

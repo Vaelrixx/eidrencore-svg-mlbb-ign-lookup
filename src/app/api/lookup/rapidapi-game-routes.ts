@@ -1,6 +1,7 @@
 import { createIdGameLookupHandler, type IdGameLookupConfig } from "./id-game-route";
 import { lookupRapidApiGame, type RapidApiGame, type RapidApiGameInput } from "./providers/rapidapi-games.mjs";
 import { lookupEnkaGenshin } from "./providers/enka-genshin.mjs";
+import { lookupGoPayGameFallback } from "./providers/gopay-game-fallback.mjs";
 
 const numericId = /^\d{3,24}$/;
 const riotName = /^[\p{L}\p{N} _.'-]{3,16}$/u;
@@ -22,6 +23,28 @@ async function lookupGenshinWithFallback(input: RapidApiGameInput) {
   }
   const playerId = "playerId" in input ? input.playerId : "";
   const fallback = await lookupEnkaGenshin(playerId);
+  if (fallback.kind === "success" || fallback.kind === "not_found" || fallback.kind === "rate_limited") {
+    return fallback;
+  }
+  return primary;
+}
+
+/**
+ * Keyed primary first, then the keyless GoPay fallback. Not-found and
+ * rate-limit verdicts are terminal on either leg; only degraded/unavailable
+ * primary outcomes fall through. The public source stays white-labeled.
+ */
+async function lookupWithGoPayFallback(
+  game: RapidApiGame,
+  input: RapidApiGameInput,
+  gopayCode: string,
+) {
+  const primary = await lookupRapidApiGame(game, input);
+  if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") {
+    return primary;
+  }
+  const playerId = "playerId" in input ? input.playerId : "";
+  const fallback = await lookupGoPayGameFallback(gopayCode, playerId);
   if (fallback.kind === "success" || fallback.kind === "not_found" || fallback.kind === "rate_limited") {
     return fallback;
   }
@@ -90,6 +113,31 @@ const configs: Record<string, { providerGame: RapidApiGame; config: Omit<IdGameL
       fields: [{ key: "playerId", label: "Player ID", example: "17960996468644334037", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
+  // Lane A expansion: Arena of Valor ships with a live-verified keyless GoPay
+  // (AOV) fallback; PUBG Lite ships with partial PUBG_ID fallback coverage
+  // (Lite-pool IDs degrade honestly when neither leg carries them).
+  "arena-of-valor": {
+    providerGame: "arena-of-valor",
+    config: {
+      endpoint: "/api/lookup/arena-of-valor",
+      gameLabel: "Arena of Valor",
+      publicSource: "eidren_arena_of_valor",
+      notFoundCode: "ARENA_OF_VALOR_PLAYER_NOT_FOUND",
+      internalProvider: "eidren_arena_of_valor_chain",
+      fields: [{ key: "playerId", label: "Player ID", example: "195293573153949", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
+  "pubg-lite": {
+    providerGame: "pubg-lite",
+    config: {
+      endpoint: "/api/lookup/pubg-lite",
+      gameLabel: "PUBG Mobile Lite",
+      publicSource: "eidren_pubg_lite",
+      notFoundCode: "PUBG_LITE_PLAYER_NOT_FOUND",
+      internalProvider: "eidren_pubg_lite_chain",
+      fields: [{ key: "playerId", label: "Character ID", example: "7228395004", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
   // Free Fire key-ready (case 20261013-ffown): primary answers once a direct
   // provider key (or a live keyless fallback) is wired into the chain below.
   // Until then the route validates input and returns honest 502 degraded,
@@ -131,6 +179,12 @@ export function createRapidApiGameHandler(game: keyof typeof configs) {
       }
       if (entry.providerGame === "genshin-impact") {
         return lookupGenshinWithFallback(input as RapidApiGameInput);
+      }
+      if (entry.providerGame === "arena-of-valor") {
+        return lookupWithGoPayFallback("arena-of-valor", input as RapidApiGameInput, "AOV");
+      }
+      if (entry.providerGame === "pubg-lite") {
+        return lookupWithGoPayFallback("pubg-lite", input as RapidApiGameInput, "PUBG_ID");
       }
       return lookupRapidApiGame(entry.providerGame, input as RapidApiGameInput);
     },

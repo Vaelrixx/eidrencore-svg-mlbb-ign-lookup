@@ -153,3 +153,35 @@ test("normalizes the documented Free Fire success example", async () => {
   assert.deepEqual(result, { kind: "success", nickname: "FfPlayer", source: "rapidapi_id_game_checker" });
   assert.equal(calls.at(-1).url, "https://id-game-checker.p.rapidapi.com/free-fire/1958604115");
 });
+
+test("builds Arena of Valor and PUBG Lite paths in documented field order", () => {
+  assert.equal(rapidApiGamePath("arena-of-valor", { playerId: "195293573153949" }), "/arena-of-valor/195293573153949");
+  assert.equal(rapidApiGamePath("pubg-lite", { playerId: "7228395004" }), "/pubgm-lite/7228395004");
+});
+
+test("normalizes the documented Arena of Valor and PUBG Lite success examples", async () => {
+  const fixtures = [
+    {
+      game: "arena-of-valor",
+      input: { playerId: "195293573153949" },
+      body: { success: true, data: { game: "Arena of Valor", userId: "195293573153949", username: "AovPlayer" } },
+      expectedUrl: "https://id-game-checker.p.rapidapi.com/arena-of-valor/195293573153949",
+    },
+    {
+      game: "pubg-lite",
+      input: { playerId: "7228395004" },
+      body: { success: true, data: { game: "PUBG Mobile Lite", userId: "7228395004", username: "LitePlayer" } },
+      expectedUrl: "https://id-game-checker.p.rapidapi.com/pubgm-lite/7228395004",
+    },
+  ];
+  for (const fixture of fixtures) {
+    const result = await lookupRapidApiGame(fixture.game, fixture.input, {
+      apiKey: "test-key",
+      fetchImpl: async (url) => {
+        assert.equal(String(url), fixture.expectedUrl);
+        return new Response(JSON.stringify(fixture.body), { status: 200 });
+      },
+    });
+    assert.deepEqual(result, { kind: "success", nickname: fixture.body.data.username, source: "rapidapi_id_game_checker" });
+  }
+});
