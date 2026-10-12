@@ -4,15 +4,10 @@ import {
   classifySupercellResponse,
   lookupSupercellPlayer,
   normalizeSupercellTag,
-  ROYALEAPI_PROXY_IP,
 } from "../src/app/api/lookup/providers/supercell.mjs";
 import { lookupBrawlStars } from "../src/app/api/lookup/providers/brawl-stars.mjs";
 import { lookupClashOfClans } from "../src/app/api/lookup/providers/clash-of-clans.mjs";
 import { lookupClashRoyale } from "../src/app/api/lookup/providers/clash-royale.mjs";
-
-test("the RoyaleAPI proxy IP is noted for key allowlisting", () => {
-  assert.equal(ROYALEAPI_PROXY_IP, "45.79.218.79");
-});
 
 test("player tags normalize to uppercase with a leading hash", () => {
   assert.equal(normalizeSupercellTag("#2pp"), "#2PP");

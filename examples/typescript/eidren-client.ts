@@ -43,8 +43,7 @@ export type LookupErrorCode =
   | "API_QUOTA_EXCEEDED"
   | "QUOTA_UNAVAILABLE"
   | "SERVICE_RATE_LIMIT"
-  | "SERVICE_UNAVAILABLE"
-  | "GAME_NOT_CONFIGURED";
+  | "SERVICE_UNAVAILABLE";
 
 export class EidrenApiError extends Error {
   readonly status: number;

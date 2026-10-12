@@ -260,12 +260,13 @@ export function createGameLookupHandler(config: GameLookupConfig) {
     }
 
     if (attempt.diagnostic?.reason === "missing_config") {
-      await recordDeveloperRequest({ ...developerAuth, endpoint: config.endpoint, requestId, status: 503, responseMs: Date.now() - requestStartedAt });
+      // Operator signal stays in server logs; customers see a generic outage.
+      await recordDeveloperRequest({ ...developerAuth, endpoint: config.endpoint, requestId, status: 502, responseMs: Date.now() - requestStartedAt });
       return loggedError(
         config,
-        `The ${config.gameLabel} lookup is not configured yet. Please try again later.`,
-        503,
-        "GAME_NOT_CONFIGURED",
+        `Eidren couldn't verify this ${config.gameLabel} tag right now. Please retry shortly.`,
+        502,
+        "SERVICE_UNAVAILABLE",
         requestId,
         requestStartedAt,
         "upstream_error",
