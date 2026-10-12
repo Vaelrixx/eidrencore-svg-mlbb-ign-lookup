@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check, Gamepad2, LoaderCircle, Search, ShieldCheck, Zap } from "lucide-react";
 
-type IdentityGame = "pubg-mobile" | "call-of-duty-mobile" | "valorant" | "genshin-impact" | "honor-of-kings" | "arena-of-valor" | "pubg-lite" | "teen-patti-gold" | "jawaker" | "fc-mobile" | "free-fire" | "free-fire-global";
+type IdentityGame = "pubg-mobile" | "call-of-duty-mobile" | "valorant" | "genshin-impact" | "honor-of-kings" | "arena-of-valor" | "pubg-lite" | "teen-patti-gold" | "jawaker" | "fc-mobile" | "bigo-live" | "higgs-domino" | "free-fire" | "free-fire-global";
 type FieldSpec = { key: string; label: string; placeholder: string; inputMode?: "numeric" | "text"; maxLength: number; options?: readonly string[] };
 type GameSpec = { label: string; endpoint: string; fields: FieldSpec[]; sample: Record<string, string> };
 
@@ -67,6 +67,18 @@ const GAME_CONFIG: Record<IdentityGame, GameSpec> = {
     endpoint: "/api/lookup/jawaker",
     fields: [{ key: "playerId", label: "PLAYER ID", placeholder: "1473084005", inputMode: "numeric", maxLength: 24 }],
     sample: { playerId: "1473084005" },
+  },
+  "bigo-live": {
+    label: "Bigo Live",
+    endpoint: "/api/lookup/bigo-live",
+    fields: [{ key: "playerId", label: "BIGO ID", placeholder: "901234567", inputMode: "numeric", maxLength: 24 }],
+    sample: { playerId: "901234567" },
+  },
+  "higgs-domino": {
+    label: "Higgs Domino",
+    endpoint: "/api/lookup/higgs-domino",
+    fields: [{ key: "playerId", label: "PLAYER ID", placeholder: "55666", inputMode: "numeric", maxLength: 24 }],
+    sample: { playerId: "55666" },
   },
   "fc-mobile": {
     label: "FC Mobile",

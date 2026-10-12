@@ -217,3 +217,35 @@ test("normalizes the documented Teen Patti Gold and Jawaker success examples", a
     assert.deepEqual(result, { kind: "success", nickname: fixture.body.data.username, source: "rapidapi_id_game_checker" });
   }
 });
+
+test("builds Bigo Live and Higgs Domino paths in documented field order", () => {
+  assert.equal(rapidApiGamePath("bigo-live", { playerId: "901234567" }), "/bigo-live/901234567");
+  assert.equal(rapidApiGamePath("higgs-domino", { playerId: "55666" }), "/higgs-domino/55666");
+});
+
+test("normalizes the documented Bigo Live and Higgs Domino success examples", async () => {
+  const fixtures = [
+    {
+      game: "bigo-live",
+      input: { playerId: "901234567" },
+      body: { success: true, data: { game: "Bigo Live", userId: "901234567", username: "BigoHost" } },
+      expectedUrl: "https://id-game-checker.p.rapidapi.com/bigo-live/901234567",
+    },
+    {
+      game: "higgs-domino",
+      input: { playerId: "55666" },
+      body: { success: true, data: { game: "Higgs Domino", userId: "55666", username: "DominoPlayer" } },
+      expectedUrl: "https://id-game-checker.p.rapidapi.com/higgs-domino/55666",
+    },
+  ];
+  for (const fixture of fixtures) {
+    const result = await lookupRapidApiGame(fixture.game, fixture.input, {
+      apiKey: "test-key",
+      fetchImpl: async (url) => {
+        assert.equal(String(url), fixture.expectedUrl);
+        return new Response(JSON.stringify(fixture.body), { status: 200 });
+      },
+    });
+    assert.deepEqual(result, { kind: "success", nickname: fixture.body.data.username, source: "rapidapi_id_game_checker" });
+  }
+});

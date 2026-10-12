@@ -8,7 +8,7 @@ import { IdGameLookupTool } from "@/components/id-game-lookup-tool";
 import { SupercellLookupTool } from "@/components/supercell-lookup-tool";
 import { SupercellGroupTool } from "@/components/supercell-group-tool";
 import { platformTools } from "@/lib/tools";
-type GameKey = "mlbb" | "brawl-stars" | "clash-of-clans" | "clash-royale" | "pubg-mobile" | "call-of-duty-mobile" | "valorant" | "genshin-impact" | "honor-of-kings" | "arena-of-valor" | "pubg-lite" | "teen-patti-gold" | "jawaker" | "fc-mobile" | "free-fire" | "free-fire-global";
+type GameKey = "mlbb" | "brawl-stars" | "clash-of-clans" | "clash-royale" | "pubg-mobile" | "call-of-duty-mobile" | "valorant" | "genshin-impact" | "honor-of-kings" | "arena-of-valor" | "pubg-lite" | "teen-patti-gold" | "jawaker" | "fc-mobile" | "bigo-live" | "higgs-domino" | "free-fire" | "free-fire-global";
 const GAME_TABS: { key: GameKey; label: string }[] = [
   { key: "mlbb", label: "Mobile Legends" },
   { key: "pubg-mobile", label: "PUBG Mobile" },
@@ -21,6 +21,8 @@ const GAME_TABS: { key: GameKey; label: string }[] = [
   { key: "teen-patti-gold", label: "Teen Patti Gold" },
   { key: "jawaker", label: "Jawaker" },
   { key: "fc-mobile", label: "FC Mobile" },
+  { key: "bigo-live", label: "Bigo Live" },
+  { key: "higgs-domino", label: "Higgs Domino" },
   { key: "free-fire", label: "Free Fire" },
   { key: "free-fire-global", label: "Free Fire Global" },
   { key: "brawl-stars", label: "Brawl Stars" },

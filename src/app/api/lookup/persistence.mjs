@@ -26,6 +26,8 @@ const LOG_SOURCES = new Set([
   "eidren_teen_patti_gold",
   "eidren_jawaker",
   "eidren_fc_mobile",
+  "eidren_bigo_live",
+  "eidren_higgs_domino",
   "eidren_free_fire",
   "eidren_free_fire_global",
 ]);
