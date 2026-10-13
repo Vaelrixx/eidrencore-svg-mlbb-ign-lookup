@@ -14,7 +14,7 @@
     "test:persistence": "node --test tests/persistence.test.mjs tests/persistence-latency.test.mjs",
     "test:provider-sweep:live": "node --test tests/provider-diagnostics-live.test.mjs tests/rapidapi-live-contract.test.mjs tests/whoplays-live-contract.test.mjs tests/gopay-games-live-contract.test.mjs",
     "test:billing": "node --test tests/razorpay-subscriptions.test.mjs",
-    "test:auth": "node --test tests/auth-hardening.test.mjs",
+    "test:auth": "node --test tests/auth-hardening.test.mjs tests/content-security-policy.test.mjs",
     "test:supercell": "node --test tests/supercell-providers.test.mjs tests/supercell-expansion.test.mjs",
     "test:ts-client": "node --test tests/typescript-client.test.mjs"
   },
