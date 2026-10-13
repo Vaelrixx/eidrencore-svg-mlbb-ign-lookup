@@ -20,6 +20,8 @@ const LOG_SOURCES = new Set([
   "eidren_call_of_duty_mobile",
   "eidren_valorant",
   "eidren_genshin_impact",
+  "eidren_honkai_star_rail",
+  "eidren_zenless_zone_zero",
   "eidren_honor_of_kings",
   "eidren_arena_of_valor",
   "eidren_pubg_lite",

@@ -1,7 +1,7 @@
 /**
  * Minimal typed client for the Eidren player-lookup API.
  *
- * Covers Mobile Legends, five additional identity lookups, and the three
+ * Covers Mobile Legends, identity lookup routes, and the three
  * Supercell games — including clan/club, battle history, and rankings
  * endpoints. Server-side only — never ship your API key in
  * browser code.
@@ -32,12 +32,14 @@ export type IdentityLookupResult = {
 };
 
 export type GenshinServer = "asia" | "america" | "europa" | "china";
-export type IdentityGame = "pubg-mobile" | "call-of-duty-mobile" | "valorant" | "genshin-impact" | "honor-of-kings";
+export type IdentityGame = "pubg-mobile" | "call-of-duty-mobile" | "valorant" | "genshin-impact" | "honkai-star-rail" | "zenless-zone-zero" | "honor-of-kings";
 export type IdentityLookupInputByGame = {
   "pubg-mobile": { playerId: string };
   "call-of-duty-mobile": { playerId: string };
   valorant: { name: string; tag: string };
   "genshin-impact": { playerId: string; server: GenshinServer };
+  "honkai-star-rail": { playerId: string };
+  "zenless-zone-zero": { playerId: string };
   "honor-of-kings": { playerId: string };
 };
 export type IdentityLookupInput = IdentityLookupInputByGame[IdentityGame];
@@ -149,6 +151,8 @@ const IDENTITY_ENDPOINTS: Record<IdentityGame, string> = {
   "call-of-duty-mobile": "/api/lookup/call-of-duty-mobile",
   "valorant": "/api/lookup/valorant",
   "genshin-impact": "/api/lookup/genshin-impact",
+  "honkai-star-rail": "/api/lookup/honkai-star-rail",
+  "zenless-zone-zero": "/api/lookup/zenless-zone-zero",
   "honor-of-kings": "/api/lookup/honor-of-kings",
 };
 
@@ -263,6 +267,16 @@ export function createEidrenClient(apiKey: string, options: EidrenClientOptions 
     /** Genshin Impact: resolve a nickname from a UID and required server region. */
     lookupGenshinImpact(playerId: string, server: GenshinServer): Promise<IdentityLookupResult> {
       return lookupIdentity("genshin-impact", { playerId, server });
+    },
+
+    /** Honkai: Star Rail: resolve a nickname from a string UID. */
+    lookupHonkaiStarRail(playerId: string): Promise<IdentityLookupResult> {
+      return lookupIdentity("honkai-star-rail", { playerId });
+    },
+
+    /** Zenless Zone Zero: resolve a nickname from a string UID. */
+    lookupZenlessZoneZero(playerId: string): Promise<IdentityLookupResult> {
+      return lookupIdentity("zenless-zone-zero", { playerId });
     },
 
     /** Honor of Kings: IDs are strings so 20-digit values are never rounded. */

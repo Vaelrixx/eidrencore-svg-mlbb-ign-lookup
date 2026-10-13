@@ -1,6 +1,7 @@
 import { createIdGameLookupHandler, type IdGameLookupConfig } from "./id-game-route";
 import { lookupRapidApiGame, type RapidApiGame, type RapidApiGameInput } from "./providers/rapidapi-games.mjs";
 import { lookupEnkaGenshin } from "./providers/enka-genshin.mjs";
+import { lookupEnkaIdentity, type EnkaIdentityGame } from "./providers/enka-identity.mjs";
 import { lookupGoPayGameFallback } from "./providers/gopay-game-fallback.mjs";
 import { lookupFcMobile } from "./providers/gopay-fc-mobile.mjs";
 import { lookupGoPayFreeFire } from "./providers/gopay-free-fire.mjs";
@@ -95,7 +96,7 @@ async function lookupJawakerWithFallback(
   return primary;
 }
 
-const configs: Record<string, { providerGame: RapidApiGame; config: Omit<IdGameLookupConfig, "lookup"> }> = {
+const configs: Record<string, { providerGame?: RapidApiGame; config: Omit<IdGameLookupConfig, "lookup"> }> = {
   "pubg-mobile": {
     providerGame: "pubg-mobile",
     config: {
@@ -144,6 +145,26 @@ const configs: Record<string, { providerGame: RapidApiGame; config: Omit<IdGameL
         { key: "playerId", label: "UID", example: "844335555", minLength: 3, maxLength: 24, pattern: numericId },
         { key: "server", label: "Server", example: "asia", minLength: 4, maxLength: 7, pattern: genshinServer },
       ],
+    },
+  },
+  "honkai-star-rail": {
+    config: {
+      endpoint: "/api/lookup/honkai-star-rail",
+      gameLabel: "Honkai: Star Rail",
+      publicSource: "eidren_honkai_star_rail",
+      notFoundCode: "HONKAI_STAR_RAIL_PLAYER_NOT_FOUND",
+      internalProvider: "eidren_honkai_star_rail_chain",
+      fields: [{ key: "playerId", label: "UID", example: "800333000", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
+  "zenless-zone-zero": {
+    config: {
+      endpoint: "/api/lookup/zenless-zone-zero",
+      gameLabel: "Zenless Zone Zero",
+      publicSource: "eidren_zenless_zone_zero",
+      notFoundCode: "ZENLESS_ZONE_ZERO_PLAYER_NOT_FOUND",
+      internalProvider: "eidren_zenless_zone_zero_chain",
+      fields: [{ key: "playerId", label: "UID", example: "1317572318", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
   "honor-of-kings": {
@@ -280,28 +301,34 @@ export function createRapidApiGameHandler(game: keyof typeof configs) {
   const config: IdGameLookupConfig = {
     ...entry.config,
     lookup: async (input) => {
+      if (game === "honkai-star-rail" || game === "zenless-zone-zero") {
+        const enkaGame: EnkaIdentityGame = game === "honkai-star-rail" ? "hsr" : "zzz";
+        return lookupEnkaIdentity(enkaGame, (input as { playerId: string }).playerId);
+      }
+      const providerGame = entry.providerGame;
+      if (!providerGame) return { kind: "unavailable", diagnostic: { reason: "missing_route_config" } };
       // Free Fire chain: keyed primary first, then the live-verified keyless
       // GoPay FREEFIRE fallback. Terminal on success/not_found/rate_limit.
-      if (entry.providerGame === "free-fire" || entry.providerGame === "free-fire-global") {
-        return lookupFreeFireWithFallback(entry.providerGame, input as RapidApiGameInput);
+      if (providerGame === "free-fire" || providerGame === "free-fire-global") {
+        return lookupFreeFireWithFallback(providerGame, input as RapidApiGameInput);
       }
-      if (entry.providerGame === "genshin-impact") {
+      if (providerGame === "genshin-impact") {
         return lookupGenshinWithFallback(input as RapidApiGameInput);
       }
-      if (entry.providerGame === "arena-of-valor") {
+      if (providerGame === "arena-of-valor") {
         return lookupWithGoPayFallback("arena-of-valor", input as RapidApiGameInput, "AOV");
       }
-      if (entry.providerGame === "pubg-lite") {
+      if (providerGame === "pubg-lite") {
         return lookupWithGoPayFallback("pubg-lite", input as RapidApiGameInput, "PUBG_ID");
       }
-      if (entry.providerGame === "jawaker") {
+      if (providerGame === "jawaker") {
         return lookupJawakerWithFallback(input as RapidApiGameInput);
       }
-      if (entry.providerGame === "fc-mobile") {
+      if (providerGame === "fc-mobile") {
         const playerId = "playerId" in input ? (input as { playerId: string }).playerId : "";
         return lookupFcMobile(playerId);
       }
-      return lookupRapidApiGame(entry.providerGame, input as RapidApiGameInput);
+      return lookupRapidApiGame(providerGame, input as RapidApiGameInput);
     },
   };
   return createIdGameLookupHandler(config);

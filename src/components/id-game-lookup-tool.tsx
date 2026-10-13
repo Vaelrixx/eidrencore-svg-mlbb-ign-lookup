@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check, Gamepad2, LoaderCircle, Search, ShieldCheck, Zap } from "lucide-react";
 
-type IdentityGame = "pubg-mobile" | "call-of-duty-mobile" | "valorant" | "genshin-impact" | "honor-of-kings" | "arena-of-valor" | "pubg-lite" | "teen-patti-gold" | "jawaker" | "fc-mobile" | "bigo-live" | "higgs-domino" | "free-fire" | "free-fire-global";
+type IdentityGame = "pubg-mobile" | "call-of-duty-mobile" | "valorant" | "genshin-impact" | "honkai-star-rail" | "zenless-zone-zero" | "honor-of-kings" | "arena-of-valor" | "pubg-lite" | "teen-patti-gold" | "jawaker" | "fc-mobile" | "bigo-live" | "higgs-domino" | "free-fire" | "free-fire-global";
 type FieldSpec = { key: string; label: string; placeholder: string; inputMode?: "numeric" | "text"; maxLength: number; options?: readonly string[] };
 type GameSpec = { label: string; endpoint: string; fields: FieldSpec[]; sample: Record<string, string> };
 
@@ -37,6 +37,18 @@ const GAME_CONFIG: Record<IdentityGame, GameSpec> = {
       { key: "server", label: "SERVER", placeholder: "asia", maxLength: 7, options: ["asia", "america", "europa", "china"] },
     ],
     sample: { playerId: "844335555", server: "asia" },
+  },
+  "honkai-star-rail": {
+    label: "Honkai: Star Rail",
+    endpoint: "/api/lookup/honkai-star-rail",
+    fields: [{ key: "playerId", label: "UID", placeholder: "800333000", inputMode: "numeric", maxLength: 24 }],
+    sample: { playerId: "800333000" },
+  },
+  "zenless-zone-zero": {
+    label: "Zenless Zone Zero",
+    endpoint: "/api/lookup/zenless-zone-zero",
+    fields: [{ key: "playerId", label: "UID", placeholder: "1317572318", inputMode: "numeric", maxLength: 24 }],
+    sample: { playerId: "1317572318" },
   },
   "honor-of-kings": {
     label: "Honor of Kings",

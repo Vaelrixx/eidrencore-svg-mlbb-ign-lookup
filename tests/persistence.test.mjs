@@ -94,12 +94,14 @@ test("lookup log persists only bounded status, latency and source", async () => 
   assert.equal(JSON.stringify(captured.body).includes("SECRET"), false);
 });
 
-test("all five Eidren identity-game source labels persist without fallback", async () => {
+test("Eidren identity-game source labels persist without fallback", async () => {
   const sources = [
     "eidren_pubg_mobile",
     "eidren_call_of_duty_mobile",
     "eidren_valorant",
     "eidren_genshin_impact",
+    "eidren_honkai_star_rail",
+    "eidren_zenless_zone_zero",
     "eidren_honor_of_kings",
   ];
   for (const source of sources) {
