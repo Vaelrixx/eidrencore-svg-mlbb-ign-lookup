@@ -8,13 +8,15 @@ import { IdGameLookupTool } from "@/components/id-game-lookup-tool";
 import { SupercellLookupTool } from "@/components/supercell-lookup-tool";
 import { SupercellGroupTool } from "@/components/supercell-group-tool";
 import { platformTools } from "@/lib/tools";
-type GameKey = "mlbb" | "brawl-stars" | "clash-of-clans" | "clash-royale" | "pubg-mobile" | "call-of-duty-mobile" | "valorant" | "genshin-impact" | "honor-of-kings" | "arena-of-valor" | "pubg-lite" | "teen-patti-gold" | "jawaker" | "fc-mobile" | "bigo-live" | "higgs-domino" | "free-fire" | "free-fire-global";
+type GameKey = "mlbb" | "brawl-stars" | "clash-of-clans" | "clash-royale" | "pubg-mobile" | "call-of-duty-mobile" | "valorant" | "genshin-impact" | "honkai-star-rail" | "zenless-zone-zero" | "honor-of-kings" | "arena-of-valor" | "pubg-lite" | "teen-patti-gold" | "jawaker" | "fc-mobile" | "bigo-live" | "higgs-domino" | "free-fire" | "free-fire-global";
 const GAME_TABS: { key: GameKey; label: string }[] = [
   { key: "mlbb", label: "Mobile Legends" },
   { key: "pubg-mobile", label: "PUBG Mobile" },
   { key: "call-of-duty-mobile", label: "Call of Duty Mobile" },
   { key: "valorant", label: "VALORANT" },
   { key: "genshin-impact", label: "Genshin Impact" },
+  { key: "honkai-star-rail", label: "Honkai: Star Rail" },
+  { key: "zenless-zone-zero", label: "Zenless Zone Zero" },
   { key: "honor-of-kings", label: "Honor of Kings" },
   { key: "arena-of-valor", label: "Arena of Valor" },
   { key: "pubg-lite", label: "PUBG Lite" },

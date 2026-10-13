@@ -10,11 +10,15 @@ Resolve a player's in-game name from an account identifier. All routes require a
 | Call of Duty: Mobile (Garena) | `POST /api/lookup/call-of-duty-mobile` | `{ "playerId": "8370310025568788000" }` | `eidren_call_of_duty_mobile` |
 | VALORANT | `POST /api/lookup/valorant` | `{ "name": "ucup", "tag": "123" }` | `eidren_valorant` |
 | Genshin Impact | `POST /api/lookup/genshin-impact` | `{ "playerId": "844335555", "server": "asia" }` | `eidren_genshin_impact` |
+| Honkai: Star Rail | `POST /api/lookup/honkai-star-rail` | `{ "playerId": "800333000" }` | `eidren_honkai_star_rail` |
+| Zenless Zone Zero | `POST /api/lookup/zenless-zone-zero` | `{ "playerId": "1317572318" }` | `eidren_zenless_zone_zero` |
 | Honor of Kings | `POST /api/lookup/honor-of-kings` | `{ "playerId": "17960996468644334037" }` | `eidren_honor_of_kings` |
 | Free Fire | `POST /api/lookup/free-fire` | `{ "playerId": "1958604115" }` | `eidren_free_fire` |
 | Free Fire Global | `POST /api/lookup/free-fire-global` | `{ "playerId": "12341234" }` | `eidren_free_fire_global` |
 
 Genshin `server` is required and must be one of `asia`, `america`, `europa`, or `china`. Genshin lookups run through a two-source identity chain behind the single `eidren_genshin_impact` source label, so UIDs missing from one feed still resolve when the other carries them. The Call of Duty route covers the Garena region. PUBG Mobile is the Global route.
+
+Honkai: Star Rail and Zenless Zone Zero accept numeric UIDs as strings and use their game-specific profile lookup paths. Their endpoints do not require a server field. Responses accept only the observed nickname field for the requested game; an upstream response counts as not-found only on explicit HTTP 404. Other unfamiliar or failed responses return the standard service-unavailable envelope.
 
 Free Fire routes run a two-source chain behind their single source labels (keyed primary, then the live-verified keyless secondary), so UIDs missing from one feed still resolve when the other carries them. Bigo Live and Higgs Domino run primary-only on the keyed route (no keyless fallback found). Jawaker runs a two-source chain behind its single source label (keyed primary, then the official webshop player check).
 
