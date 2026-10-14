@@ -37,6 +37,20 @@ test("embedded 404 with an unfamiliar message stays unavailable", () => {
   assert.equal(result.diagnostic.reason, "unrecognized_response");
 });
 
+test("empty or unavailable nickname wording alone does not confirm a missing player", () => {
+  for (const msg of ["nickname empty", "nickname unavailable"]) {
+    const result = classifyRapidApiGameResponse(200, {
+      error: true,
+      status: 404,
+      msg,
+      data: {},
+    });
+
+    assert.equal(result.kind, "unavailable");
+    assert.equal(result.diagnostic.providerStatusCode, 404);
+  }
+});
+
 test("degraded upstream envelopes stay unavailable and keep their provider reason", () => {
   const degraded = classifyRapidApiGameResponse(200, {
     error: true,

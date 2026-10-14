@@ -108,7 +108,7 @@ export function classifyRapidApiResponse(httpStatus, payload) {
 
 // Generic "can't find username" text can also mean upstream rate limiting;
 // require an explicit identity-specific signal before returning not-found.
-const NOT_FOUND_MESSAGE_PATTERN = /\b(?:id|uid|(?:player|user|account)\s+id)\s+(?:was\s+)?(?:not found|does not exist|doesn't exist|is invalid|invalid)\b|\b(?:player|user|account|character)\s+(?:was\s+)?(?:not found|does not exist|doesn't exist|is invalid|invalid)\b|\b(?:invalid|unknown)\s+(?:(?:player|user|account|character|uid)\s+)?id\b|\bno such\s+(?:account|player|user|id)\b|\bnickname\s+(?:not found|empty|unavailable)\b/i;
+const NOT_FOUND_MESSAGE_PATTERN = /\b(?:id|uid|(?:player|user|account)\s+id)\s+(?:was\s+)?(?:not found|does not exist|doesn't exist|is invalid|invalid)\b|\b(?:player|user|account|character)\s+(?:was\s+)?(?:not found|does not exist|doesn't exist|is invalid|invalid)\b|\b(?:invalid|unknown)\s+(?:(?:player|user|account|character|uid)\s+)?id\b|\bno such\s+(?:account|player|user|id)\b|\bnickname\s+not found\b/i;
 
 const DEGRADED_MESSAGE_PATTERN = /no[\s_-]*content|temporar|try again|maintenance|upstream|timeout|timed out|rate[\s_-]*limit|too many|service unavailable|internal error|server error|bad gateway|gateway/i;
 

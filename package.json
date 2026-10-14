@@ -9,7 +9,7 @@
     "lint": "eslint",
     "test:lookup": "node --test tests/nickname-validation.test.mjs",
     "test:provider-adapters": "node --test tests/rapidapi-provider.test.mjs tests/rapidapi-games.test.mjs tests/rapidapi-game-variants.test.mjs tests/whoplays-provider.test.mjs tests/gopay-games-provider.test.mjs tests/gopay-game-fallback.test.mjs tests/gopay-fc-mobile.test.mjs tests/gopay-free-fire.test.mjs tests/jawaker-verify-user.test.mjs tests/enka-genshin.test.mjs tests/enka-identity.test.mjs tests/provider-reliability.test.mjs tests/provider-outcome-normalization.test.mjs",
-    "test:lookup-safety": "node --test tests/limited-json.test.mjs tests/rapidapi-games.test.mjs tests/observability.test.mjs",
+    "test:lookup-safety": "node --test tests/limited-json.test.mjs tests/rapidapi-games.test.mjs tests/rapidapi-game-variants.test.mjs tests/observability.test.mjs",
     "test:lookup:live": "node --test tests/live-fallback-takeover.test.mjs",
     "test:observability": "node --test tests/observability.test.mjs",
     "test:persistence": "node --test tests/persistence.test.mjs tests/persistence-latency.test.mjs",
