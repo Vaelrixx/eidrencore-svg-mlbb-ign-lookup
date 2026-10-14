@@ -27,6 +27,7 @@ jobs:
         run: |
           npm run test:lookup
           npm run test:provider-adapters
+          npm run test:lookup-safety
           npm run test:observability
           npm run test:persistence
           npm run test:billing

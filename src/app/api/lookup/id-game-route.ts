@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { RapidApiGameAttempt } from "./providers/rapidapi-games.mjs";
 import { logLookupSummary, observeProvider } from "./observability.mjs";
 import { enforceLookupRateLimit, enforcePlaygroundLimit, persistLookupLog } from "./persistence.mjs";
+import { parseBoundedJson, RequestBodyTooLargeError } from "./limited-json.mjs";
 import { getUserFromRequest, getUserFromSession, requireUser } from "@/lib/platform";
 import { recordDeveloperRequest } from "@/lib/developer-events";
 
@@ -71,8 +72,11 @@ export function createIdGameLookupHandler(config: IdGameLookupConfig) {
 
     let rawBody: unknown;
     try {
-      rawBody = await request.json();
-    } catch {
+      rawBody = await parseBoundedJson(request, 4096);
+    } catch (error) {
+      if (error instanceof RequestBodyTooLargeError) {
+        return loggedError(config, "Request body is too large.", 413, "PAYLOAD_TOO_LARGE", requestId, requestStartedAt, "invalid_input");
+      }
       return loggedError(config, "Request body must be valid JSON.", 400, "INVALID_JSON", requestId, requestStartedAt, "invalid_input");
     }
     if (!rawBody || typeof rawBody !== "object" || Array.isArray(rawBody)) {

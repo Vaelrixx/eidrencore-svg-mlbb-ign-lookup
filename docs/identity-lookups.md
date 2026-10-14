@@ -94,7 +94,7 @@ A successful lookup returns the resolved name and echoes the submitted fields as
 }
 ```
 
-Genshin responses also echo the selected `server` value. A missing identity returns HTTP `404` with a game-specific `*_PLAYER_NOT_FOUND` code. Invalid data returns `400 INVALID_INPUT`; authentication failures return `401`; quota limits return `429`; and upstream outages return `502 SERVICE_UNAVAILABLE`. Temporary service throttling returns `429 SERVICE_RATE_LIMIT`. Error responses include an `X-Lookup-Request-Id` header.
+Genshin responses also echo the selected `server` value. A missing identity returns HTTP `404` with a game-specific `*_PLAYER_NOT_FOUND` code. Invalid data returns `400 INVALID_INPUT`; request bodies larger than 4 KiB return `413 PAYLOAD_TOO_LARGE`; authentication failures return `401`; quota limits return `429`; and upstream outages return `502 SERVICE_UNAVAILABLE`. Temporary service throttling returns `429 SERVICE_RATE_LIMIT`. Error responses include an `X-Lookup-Request-Id` header.
 
 A sample account may stop resolving as game data changes. The service reports an account as missing only when it receives an explicit missing-account result; degraded or unfamiliar upstream responses are treated as unavailable instead, so a provider-side outage never becomes a false missing-account verdict.
 | Arena of Valor | `POST /api/lookup/arena-of-valor` | `{ "playerId": "195293573153949" }` | `eidren_arena_of_valor` |

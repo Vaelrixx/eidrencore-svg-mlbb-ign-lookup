@@ -24,11 +24,17 @@ test("error variants with not-found wording resolve as 404 regardless of embedde
   }
 });
 
-test("embedded 404 with an error flag is not-found even when the message is unfamiliar", () => {
-  assert.deepEqual(
-    classifyRapidApiGameResponse(200, { error: true, status: 404, msg: "hok_lookup_failed", data: {} }),
-    { kind: "not_found" },
-  );
+test("embedded 404 with an unfamiliar message stays unavailable", () => {
+  const result = classifyRapidApiGameResponse(200, {
+    error: true,
+    status: 404,
+    msg: "hok_lookup_failed",
+    data: {},
+  });
+
+  assert.equal(result.kind, "unavailable");
+  assert.equal(result.diagnostic.providerStatusCode, 404);
+  assert.equal(result.diagnostic.reason, "unrecognized_response");
 });
 
 test("degraded upstream envelopes stay unavailable and keep their provider reason", () => {
