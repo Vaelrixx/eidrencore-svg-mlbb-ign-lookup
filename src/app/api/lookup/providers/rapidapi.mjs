@@ -106,7 +106,9 @@ export function classifyRapidApiResponse(httpStatus, payload) {
   };
 }
 
-const NOT_FOUND_MESSAGE_PATTERN = /not[\s_-]*found|id[\s_-]*not[\s_-]*found|does not exist|invalid (player|user|game|uid|character)?[\s_-]*id|cannot find|can't find|no such (account|player|user|id)|account not (found|exist)|player (not found|does not exist|doesn't exist)|user (not found|does not exist|doesn't exist)|user ?id (invalid|not valid|error)|nickname (not found|empty|unavailable)/i;
+// Generic "can't find username" text can also mean upstream rate limiting;
+// require an explicit identity-specific signal before returning not-found.
+const NOT_FOUND_MESSAGE_PATTERN = /\b(?:id|uid|(?:player|user|account)\s+id)\s+(?:was\s+)?(?:not found|does not exist|doesn't exist|is invalid|invalid)\b|\b(?:player|user|account|character)\s+(?:was\s+)?(?:not found|does not exist|doesn't exist|is invalid|invalid)\b|\b(?:invalid|unknown)\s+(?:(?:player|user|account|character|uid)\s+)?id\b|\bno such\s+(?:account|player|user|id)\b|\bnickname\s+not found\b/i;
 
 const DEGRADED_MESSAGE_PATTERN = /no[\s_-]*content|temporar|try again|maintenance|upstream|timeout|timed out|rate[\s_-]*limit|too many|service unavailable|internal error|server error|bad gateway|gateway/i;
 
@@ -252,6 +254,9 @@ function classifyIdGameCheckerEnvelope(httpStatus, payload) {
   const messages = collectProviderMessages(payload);
   const normalized = normalizeProviderText(messages.join(" | "));
   const providerStatus = Number(root?.status ?? nested?.status);
+  const providerStatusDiagnostic = Number.isInteger(providerStatus) && providerStatus >= 100 && providerStatus <= 599
+    ? { providerStatusCode: providerStatus }
+    : {};
   const errorFlag = providerErrorFlag(payload);
   const responseKindLabel = responseKind(payload);
   const messageCode = messageCodeLabel(payload);
@@ -263,6 +268,7 @@ function classifyIdGameCheckerEnvelope(httpStatus, payload) {
         reason: "http_error",
         statusCode: Number.isInteger(httpStatus) ? httpStatus : 429,
         responseKind: responseKindLabel,
+        ...providerStatusDiagnostic,
       },
     };
   }
@@ -289,6 +295,7 @@ function classifyIdGameCheckerEnvelope(httpStatus, payload) {
         responseKind: responseKindLabel,
         responseShape: classifyGameResponseShape(payload),
         messageCode,
+        ...providerStatusDiagnostic,
       },
     };
   }
@@ -296,17 +303,13 @@ function classifyIdGameCheckerEnvelope(httpStatus, payload) {
   if (!Number.isInteger(httpStatus) || httpStatus < 200 || httpStatus >= 300) {
     return {
       kind: "unavailable",
-      diagnostic: diagnosticForStatus(httpStatus, payload),
+      diagnostic: { ...diagnosticForStatus(httpStatus, payload), ...providerStatusDiagnostic },
     };
   }
 
   const nickname = confirmedNickname(payload);
   if (nickname && !errorFlag) {
     return { kind: "success", nickname, source: "rapidapi_id_game_checker" };
-  }
-
-  if (errorFlag && providerStatus === 404) {
-    return { kind: "not_found" };
   }
 
   return {
@@ -317,6 +320,7 @@ function classifyIdGameCheckerEnvelope(httpStatus, payload) {
       responseKind: responseKindLabel,
       responseShape: classifyGameResponseShape(payload),
       messageCode,
+      ...providerStatusDiagnostic,
     },
   };
 }

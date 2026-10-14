@@ -75,6 +75,9 @@ export async function observeProvider({ requestId, provider, lookup, logger = un
     ...(Number.isInteger(result?.diagnostic?.statusCode) && result.diagnostic.statusCode >= 100 && result.diagnostic.statusCode <= 599
       ? { upstreamStatus: result.diagnostic.statusCode }
       : {}),
+    ...(Number.isInteger(result?.diagnostic?.providerStatusCode) && result.diagnostic.providerStatusCode >= 100 && result.diagnostic.providerStatusCode <= 599
+      ? { providerReportedStatus: result.diagnostic.providerStatusCode }
+      : {}),
     ...(RESPONSE_KINDS.has(result?.diagnostic?.responseKind)
       ? { providerResponseKind: result.diagnostic.responseKind }
       : {}),

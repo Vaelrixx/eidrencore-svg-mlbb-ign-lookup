@@ -249,3 +249,28 @@ test("normalizes the documented Bigo Live and Higgs Domino success examples", as
     assert.deepEqual(result, { kind: "success", nickname: fixture.body.data.username, source: "rapidapi_id_game_checker" });
   }
 });
+
+test("keeps the documented ambiguous can't-find message unavailable, not confirmed not-found", async () => {
+  const playerId = "100439992784";
+  const result = await lookupRapidApiGame("teen-patti-gold", { playerId }, {
+    apiKey: "test-key",
+    fetchImpl: async () => new Response(JSON.stringify({
+      error: true,
+      status: 404,
+      msg: `Can't find a username for "User ID: ${playerId}".`,
+    }), { status: 200, headers: { "Content-Type": "application/json" } }),
+  });
+
+  assert.deepEqual(result, {
+    kind: "unavailable",
+    diagnostic: {
+      reason: "unrecognized_response",
+      statusCode: 200,
+      responseKind: "id_game_checker_schema",
+      responseShape: "envelope:error,msg,status|data:missing",
+      messageCode: "unlisted",
+      providerStatusCode: 404,
+    },
+  });
+  assert.equal(JSON.stringify(result).includes(playerId), false);
+});

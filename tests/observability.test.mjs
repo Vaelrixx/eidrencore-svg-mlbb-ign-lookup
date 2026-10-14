@@ -130,3 +130,38 @@ test("provider response kind telemetry logs only an allowlisted schema label", a
   assert.equal(lines[0].includes("SECRET_GATEWAY_MESSAGE"), false);
   assert.equal(lines[0].includes("rawPayload"), false);
 });
+
+test("provider-reported status is a separate bounded telemetry field", async () => {
+  const lines = [];
+  await observeProvider({
+    requestId: "req-test-7",
+    provider: "rapidapi_id_game_checker",
+    lookup: async () => ({
+      kind: "unavailable",
+      diagnostic: {
+        reason: "unrecognized_response",
+        statusCode: 200,
+        providerStatusCode: 404,
+        rawPayload: "SECRET_PLAYER_ID_AND_UPSTREAM_MESSAGE",
+      },
+    }),
+    logger: (line) => lines.push(line),
+  });
+
+  const event = JSON.parse(lines[0]);
+  assert.equal(event.upstreamStatus, 200);
+  assert.equal(event.providerReportedStatus, 404);
+  assert.equal(lines[0].includes("SECRET_PLAYER_ID_AND_UPSTREAM_MESSAGE"), false);
+});
+
+test("provider-reported status rejects values outside the HTTP status range", async () => {
+  const lines = [];
+  await observeProvider({
+    requestId: "req-test-8",
+    provider: "rapidapi_id_game_checker",
+    lookup: async () => ({ kind: "unavailable", diagnostic: { reason: "provider_error", providerStatusCode: 999 } }),
+    logger: (line) => lines.push(line),
+  });
+
+  assert.equal(Object.hasOwn(JSON.parse(lines[0]), "providerReportedStatus"), false);
+});

@@ -24,8 +24,8 @@ export type RapidApiGameInput =
 export type RapidApiGameAttempt =
   | { kind: "success"; nickname: string; source: string }
   | { kind: "not_found" }
-  | { kind: "rate_limited"; diagnostic?: { reason: string; statusCode?: number } }
-  | { kind: "unavailable"; diagnostic?: { reason: string; statusCode?: number; responseKind?: string; responseShape?: string; messageCode?: string } };
+  | { kind: "rate_limited"; diagnostic?: { reason: string; statusCode?: number; providerStatusCode?: number } }
+  | { kind: "unavailable"; diagnostic?: { reason: string; statusCode?: number; providerStatusCode?: number; responseKind?: string; responseShape?: string; messageCode?: string } };
 
 export const RAPIDAPI_GAME_ROUTES: Readonly<Record<RapidApiGame, { slug: string; fields: readonly string[] }>>;
 export function rapidApiGamePath(game: RapidApiGame, input: RapidApiGameInput): string | null;
