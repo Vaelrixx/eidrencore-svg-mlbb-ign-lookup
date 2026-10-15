@@ -106,6 +106,25 @@ test("unrecognized responses are logged as a bounded failure category", async ()
   assert.equal(event.upstreamStatus, 200);
 });
 
+test("identity echo telemetry is allowlisted and excludes the compared player ID", async () => {
+  const lines = [];
+  const playerId = "SECRET_PLAYER_ID";
+  await observeProvider({
+    requestId: "req-identity-echo",
+    provider: "rapidapi_id_game_checker_cod_mobile",
+    lookup: async () => ({
+      kind: "unavailable",
+      diagnostic: { reason: "identity_echo", comparedValue: playerId },
+    }),
+    logger: (line) => lines.push(line),
+  });
+
+  const event = JSON.parse(lines[0]);
+  assert.equal(event.failureReason, "identity_echo");
+  assert.equal(lines[0].includes(playerId), false);
+  assert.equal(lines[0].includes("comparedValue"), false);
+});
+
 
 test("provider response kind telemetry logs only an allowlisted schema label", async () => {
   const lines = [];
