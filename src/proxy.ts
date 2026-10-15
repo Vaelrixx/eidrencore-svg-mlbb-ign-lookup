@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { createContentSecurityPolicy } from "@/lib/security/content-security-policy.mjs";
+import { shouldBlockPageOnBackend } from "@/lib/deployment-routing.mjs";
 
 type CookieOptions = {
   domain?: string;
@@ -16,6 +17,14 @@ type CookieOptions = {
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
 export async function proxy(request: NextRequest) {
+  // Railway is the API backend only. Human-facing pages are served by the
+  // Vercel UI deployment; answer 404 here so the UI is never served twice.
+  if (shouldBlockPageOnBackend(request.nextUrl.pathname)) {
+    return new NextResponse("Not found. This backend serves API routes only; use the Eidren web app.", {
+      status: 404,
+      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+    });
+  }
   const nonce = randomBytes(24).toString("base64url");
   const contentSecurityPolicy = createContentSecurityPolicy(nonce);
   const requestHeaders = new Headers(request.headers);
