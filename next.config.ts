@@ -1,7 +1,16 @@
 import type { NextConfig } from "next";
+import { createRailwayFrontendRewrites } from "./src/lib/deployment-routing.mjs";
+
+const railwayFrontendRewrites = createRailwayFrontendRewrites({
+  backendOrigin: process.env.RAILWAY_BACKEND_ORIGIN,
+  isVercel: process.env.VERCEL === "1" || Boolean(process.env.VERCEL_ENV),
+});
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  async rewrites() {
+    return railwayFrontendRewrites;
+  },
   async headers() {
     return [
       {

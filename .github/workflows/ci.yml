@@ -26,6 +26,7 @@ jobs:
       - name: Unit tests
         run: |
           npm run test:lookup
+          npm run test:deployment-routing
           npm run test:provider-adapters
           npm run test:lookup-safety
           npm run test:observability

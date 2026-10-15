@@ -89,6 +89,8 @@ The MLBB route resolves lookups with redundant concurrent paths. The first confi
 
 The five additional game lookups are documented in [`docs/identity-lookups.md`](docs/identity-lookups.md). They use the same authentication, API-key quota, request logging, and white-labeled error contract as the existing routes. The dashboard playground provides a game tab and documented sample inputs for each route. Call of Duty: Mobile support is specific to the Garena route; PUBG Mobile support is Global. Numeric-looking player IDs are sent and handled as strings to preserve large values exactly.
 
+See [`docs/vercel-railway-hosting.md`](docs/vercel-railway-hosting.md) for the Vercel frontend / Railway-only API deployment boundary, environment configuration, and auth cutover requirements.
+
 
 ## Developer platform (new)
 
