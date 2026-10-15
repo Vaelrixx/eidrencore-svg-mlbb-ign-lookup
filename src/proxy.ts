@@ -2,7 +2,9 @@ import { randomBytes } from "node:crypto";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { createContentSecurityPolicy } from "@/lib/security/content-security-policy.mjs";
+import { isSameOriginRequest, requiresSameOriginProtection } from "@/lib/security/csrf.mjs";
 import { shouldBlockPageOnBackend } from "@/lib/deployment-routing.mjs";
+import { getPublicAppOrigin } from "@/lib/app-origin";
 
 type CookieOptions = {
   domain?: string;
@@ -24,6 +26,19 @@ export async function proxy(request: NextRequest) {
       status: 404,
       headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
     });
+  }
+  if (requiresSameOriginProtection(request.method, request.nextUrl.pathname, request.headers.get("authorization") || "")) {
+    let trustedOrigin = request.nextUrl.origin;
+    if (process.env.APP_URL?.trim()) {
+      try {
+        trustedOrigin = getPublicAppOrigin(request.url);
+      } catch {
+        return NextResponse.json({ error: "Request origin could not be verified." }, { status: 403, headers: { "Cache-Control": "no-store" } });
+      }
+    }
+    if (!isSameOriginRequest(request.headers.get("origin"), request.headers.get("referer"), trustedOrigin)) {
+      return NextResponse.json({ error: "Cross-origin request rejected." }, { status: 403, headers: { "Cache-Control": "no-store" } });
+    }
   }
   const nonce = randomBytes(24).toString("base64url");
   const contentSecurityPolicy = createContentSecurityPolicy(nonce);

@@ -24,8 +24,8 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Resolve dependencies without running install scripts
-        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Install locked dependencies without running install scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
 
       - name: Run audit and publish a concise advisory summary
         shell: bash

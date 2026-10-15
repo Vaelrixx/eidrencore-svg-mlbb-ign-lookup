@@ -35,14 +35,24 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const { admin, role, ownerUserId } = await workspaceAccess(id, user.id);
   if (!role) return NextResponse.json({ error: "Workspace not found or access denied." }, { status: 404 });
   if (!["owner", "admin"].includes(role)) return NextResponse.json({ error: "Only workspace owners and admins can create keys." }, { status: 403 });
-  const { count } = await admin.from("api_keys").select("id", { count: "exact", head: true }).eq("workspace_id", id).is("revoked_at", null);
-  if ((count || 0) >= 10) return NextResponse.json({ error: "A workspace can have up to 10 active API keys." }, { status: 409 });
   const { data: subscription } = await admin.from("developer_workspace_subscriptions").select("plan_slug,status,current_period_end").eq("workspace_id", id).maybeSingle();
   const paidIsCurrent = subscription?.status === "active" && !!subscription.current_period_end && Date.parse(subscription.current_period_end) > Date.now();
   const planSlug = paidIsCurrent ? subscription.plan_slug : "free";
   const { data: plan } = await admin.from("developer_plans").select("monthly_limit").eq("slug", planSlug).maybeSingle();
   const generated = newApiKey();
-  const { data, error } = await admin.from("api_keys").insert({ user_id: ownerUserId || user.id, workspace_id: id, name, key_hash: hashApiKey(generated.value), key_prefix: generated.prefix, plan_slug: planSlug }).select("id,name,key_prefix,plan_slug,created_at,user_id").single();
+  const { data: rows, error } = await admin.rpc("create_developer_api_key", {
+    p_actor_user_id: user.id,
+    p_user_id: ownerUserId || user.id,
+    p_workspace_id: id,
+    p_name: name,
+    p_key_hash: hashApiKey(generated.value),
+    p_key_prefix: generated.prefix,
+    p_plan_slug: planSlug,
+  });
+  const data = Array.isArray(rows) ? rows[0] : rows;
+  if (error?.message?.includes("active_api_key_limit_reached")) {
+    return NextResponse.json({ error: "A workspace can have up to 10 active API keys." }, { status: 409 });
+  }
   if (error || !data) return NextResponse.json({ error: "Could not create workspace API key." }, { status: 500 });
   await writeAuditLog({ userId: user.id, workspaceId: id, action: "api.key.created", resourceType: "api_key", resourceId: data.id, metadata: { name, prefix: data.key_prefix, plan: data.plan_slug } });
   await emitDeveloperEvent({ userId: user.id, workspaceId: id, type: "api.key.created", data: { key_id: data.id, name: data.name, key_prefix: data.key_prefix, plan: data.plan_slug, workspace_id: id } });

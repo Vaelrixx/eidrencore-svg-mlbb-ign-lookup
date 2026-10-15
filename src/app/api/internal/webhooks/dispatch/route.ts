@@ -1,7 +1,9 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { decryptWebhookSecret, isSafeWebhookUrl } from "@/lib/developer-events";
+import { decryptWebhookSecret } from "@/lib/developer-events";
+import { postHttpsJsonPinned } from "@/lib/security/pinned-https.mjs";
+import { resolveSafeWebhookTarget } from "@/lib/security/webhook-url.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -67,7 +69,8 @@ export async function POST(request: Request) {
       retryable = !!endpointError;
     } else {
       try {
-        if (!(await isSafeWebhookUrl(endpoint.url))) {
+        const safeTarget = await resolveSafeWebhookTarget(endpoint.url);
+        if (!safeTarget) {
           errorCode = "unsafe_url";
           retryable = false;
         } else {
@@ -75,25 +78,17 @@ export async function POST(request: Request) {
           const timestamp = Math.floor(Date.now() / 1000).toString();
           const rawBody = JSON.stringify(job.payload);
           const signature = createHmac("sha256", secret).update(timestamp + "." + rawBody).digest("hex");
-          const response = await fetch(endpoint.url, {
-            method: "POST",
-            headers: {
+          const response = await postHttpsJsonPinned(safeTarget, {
               "Content-Type": "application/json",
               "User-Agent": "Eidren-Webhooks/1.0",
               "Eidren-Event-Id": job.event_id,
               "Eidren-Event": job.event_type,
               "Eidren-Signature": "t=" + timestamp + ",v1=" + signature,
-            },
-            body: rawBody,
-            cache: "no-store",
-            redirect: "error",
-            signal: AbortSignal.timeout(5000),
-          });
+            }, rawBody, 5000);
           responseStatus = response.status;
           success = response.ok;
           retryable = response.status === 408 || response.status === 429 || response.status >= 500;
           if (!success) errorCode = "http_" + response.status;
-          if (response.body) await response.body.cancel().catch(() => undefined);
         }
       } catch (error) {
         errorCode = error instanceof Error && error.name === "TimeoutError" ? "timeout" : error instanceof Error && error.message === "Invalid encrypted webhook secret." ? "secret_decryption_failed" : "delivery_network_error";

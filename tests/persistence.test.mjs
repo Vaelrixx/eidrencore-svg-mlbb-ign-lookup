@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import { enforceLookupRateLimit, enforcePlaygroundLimit, persistLookupLog } from "../src/app/api/lookup/persistence.mjs";
 
 const baseEnv = {
@@ -14,7 +15,7 @@ function request(headers = {}) {
 
 test("rate limiter sends only an HMAC and handles an allowed atomic slot", async () => {
   let captured;
-  const result = await enforceLookupRateLimit(request({ "x-forwarded-for": "spoofed, 203.0.113.9" }), {
+  const result = await enforceLookupRateLimit(request({ "x-real-ip": "198.51.100.77", "x-forwarded-for": "spoofed, 203.0.113.9" }), {
     env: baseEnv,
     fetchImpl: async (url, init) => {
       captured = { url, init, body: JSON.parse(init.body) };
@@ -26,14 +27,20 @@ test("rate limiter sends only an HMAC and handles an allowed atomic slot", async
   assert.equal(result.remaining, 29);
   assert.equal(captured.url, "https://example.supabase.co/rest/v1/rpc/consume_lookup_limit");
   assert.equal(captured.body.p_client_hash.length, 64);
+  assert.equal(captured.body.p_client_hash, createHmac("sha256", "test-hmac-secret").update("203.0.113.9").digest("hex"));
   assert.equal(captured.body.p_client_hash.includes("203.0.113.9"), false);
   assert.equal(captured.body.p_max_requests, 30);
   assert.equal("Prefer" in captured.init.headers, false);
   assert.equal(captured.init.headers.Authorization, "Bearer server-only-test-key");
 });
 
+test("lookup limiter ignores caller-supplied X-Real-IP without Railway X-Forwarded-For", async () => {
+  const result = await enforceLookupRateLimit(request({ "x-real-ip": "203.0.113.14" }), { env: baseEnv });
+  assert.deepEqual(result, { enabled: false, allowed: true, retryAfterSeconds: 0 });
+});
+
 test("blocked requests return a bounded retry delay", async () => {
-  const result = await enforceLookupRateLimit(request({ "x-real-ip": "203.0.113.10" }), {
+  const result = await enforceLookupRateLimit(request({ "x-forwarded-for": "203.0.113.10" }), {
     env: baseEnv,
     fetchImpl: async () => Response.json([{ allowed: false, remaining: 0, reset_at: new Date(Date.now() + 8000).toISOString() }]),
     logger: () => {},
@@ -44,7 +51,7 @@ test("blocked requests return a bounded retry delay", async () => {
 
 test("modern Supabase secret keys are sent only in the apikey header", async () => {
   let headers;
-  await enforceLookupRateLimit(request({ "x-real-ip": "203.0.113.11" }), {
+  await enforceLookupRateLimit(request({ "x-forwarded-for": "203.0.113.11" }), {
     env: { SUPABASE_URL: baseEnv.SUPABASE_URL, SUPABASE_SECRET_KEY: "sb_secret_test", LOOKUP_RATE_LIMIT_SECRET: "secret" },
     fetchImpl: async (_url, init) => {
       headers = init.headers;
@@ -57,11 +64,11 @@ test("modern Supabase secret keys are sent only in the apikey header", async () 
 });
 
 test("rate limiter fails open when configuration or the database is unavailable", async () => {
-  const noConfig = await enforceLookupRateLimit(request({ "x-real-ip": "203.0.113.12" }), { env: {} });
+  const noConfig = await enforceLookupRateLimit(request({ "x-forwarded-for": "203.0.113.12" }), { env: {} });
   assert.deepEqual(noConfig, { enabled: false, allowed: true, retryAfterSeconds: 0 });
 
   const lines = [];
-  const degraded = await enforceLookupRateLimit(request({ "x-real-ip": "203.0.113.12" }), {
+  const degraded = await enforceLookupRateLimit(request({ "x-forwarded-for": "203.0.113.12" }), {
     env: baseEnv,
     fetchImpl: async () => { throw new Error("sensitive database error"); },
     logger: (line) => lines.push(line),

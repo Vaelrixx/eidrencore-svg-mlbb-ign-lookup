@@ -22,3 +22,7 @@ supabase migration list
 Supabase's `migration repair` command updates migration tracking only; it does not execute the migration SQL. Do not use it unless the schema effects are already present. See the [Supabase migration sync guide](https://supabase.com/docs/guides/deployment/database-migrations).
 
 For future changes, create a new migration with the Supabase CLI and deploy schema changes through the normal reviewed migration workflow.
+
+## Atomic API-key cap
+
+`20261016000000_atomic_api_key_cap.sql` adds the service-role-only `create_developer_api_key` RPC. Deploy and verify this migration before deploying application code that calls the RPC; it serializes per-user/per-workspace active-key count-and-insert operations under a transaction-scoped advisory lock. It is additive and does not revoke or rewrite existing API keys.

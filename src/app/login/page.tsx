@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Swords, Chrome, Github, MessageCircle, Send, LoaderCircle, ArrowLeft } from "lucide-react";
+import { safeNextPath } from "@/lib/security/safe-next-path.mjs";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,7 +14,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"signin"|"signup">("signin");
   const [notice, setNotice] = useState("");
-  const nextParam = () => { const value = new URLSearchParams(window.location.search).get("next"); return value?.startsWith("/") && !value.startsWith("//") ? value : "/dashboard"; };
+  const nextParam = () => safeNextPath(new URLSearchParams(window.location.search).get("next"));
   useEffect(() => { const timer = window.setTimeout(() => { const params = new URLSearchParams(window.location.search); if (params.get("mode") === "signup") setMode("signup"); const code = params.get("error"); const messages: Record<string,string> = { telegram_not_configured: "Telegram login needs its BotFather credentials configured.", telegram_auth_failed: "Telegram sign-in failed. Please try again.", telegram_token_failed: "Telegram could not verify the sign-in token.", telegram_claims_failed: "Telegram identity validation failed.", telegram_account_failed: "Could not prepare your Telegram account.", telegram_session_failed: "Could not start your secure session.", oauth_callback_failed: "Social sign-in failed. Check the provider configuration." }; if (code && messages[code]) setError(messages[code]); }, 0); return () => window.clearTimeout(timer); }, []);
   function social(provider: "google"|"github"|"discord") {
     setBusy(provider); setError("");
