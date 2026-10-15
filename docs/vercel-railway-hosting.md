@@ -31,3 +31,9 @@ Telegram Login also requires registering the Vercel domain and callback URI with
 The Razorpay webhook remains on Railway at `https://nexus-mlbb-ign-lookup-production.up.railway.app/api/billing/webhook`. Never move its secret or provider credentials to Vercel.
 
 Do not re-enable Preview deployments until a staging Railway service and isolated auth configuration exist. Validate the public landing page, rewrites and request statuses before any hostname/provider-setting cutover. No client IDs, passwords, keys, or tokens belong in this document.
+
+## Railway serves API only, never UI
+
+Railway is the API backend only. Human-facing pages (`/`, `/login`, `/dashboard/*`, `/playground`, `/forgot-password`, `/reset-password`, `/auth/telegram/complete`) are served exclusively by the Vercel UI deployment. `src/proxy.ts` answers those page routes with `404` on Railway so the UI can never be served from both platforms.
+
+Railway keeps serving `/api/*` plus the auth exchange endpoints that must run beside the secrets: `/auth/callback` (OAuth code exchange) and the `/api/auth/*` token routes. Detection is explicit in `src/lib/deployment-routing.mjs`: `RAILWAY_ENVIRONMENT_NAME` set without any `VERCEL`/`VERCEL_ENV` flag means Railway. Local development sets neither flag, so pages keep rendering locally. Covered by `tests/deployment-routing.test.mjs`.
