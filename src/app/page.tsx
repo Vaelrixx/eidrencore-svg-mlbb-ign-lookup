@@ -4,6 +4,7 @@ import { SiteShell } from "@/components/site-shell";
 import { platformTools } from "@/lib/tools";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PLAN_FALLBACKS } from "@/lib/platform";
+import { resolveRailwayBackendOrigin } from "@/lib/deployment-routing.mjs";
 
 const platform = [
   { icon: KeyRound, title: "API keys", body: "Create and revoke keys. Secrets are hashed at rest and shown once." },
@@ -29,6 +30,25 @@ const faqs = [
 
 type PlanRow = { slug: string; name: string; price_paise: number; monthly_limit: number; enabled: boolean; description: string };
 async function loadPlans(): Promise<PlanRow[]> {
+  if (process.env.VERCEL === "1" || process.env.VERCEL_ENV) {
+    const backendOrigin = resolveRailwayBackendOrigin(process.env.RAILWAY_BACKEND_ORIGIN);
+    if (!backendOrigin) return PLAN_FALLBACKS;
+    try {
+      const response = await fetch(`${backendOrigin}/api/billing/plans`, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(2500),
+      });
+      if (!response.ok) return PLAN_FALLBACKS;
+      const body: unknown = await response.json();
+      if (body && typeof body === "object" && "plans" in body && Array.isArray(body.plans) && body.plans.length) {
+        return body.plans as PlanRow[];
+      }
+    } catch {
+      // Keep the public landing page available during a backend outage.
+    }
+    return PLAN_FALLBACKS;
+  }
+
   try {
     const admin = createAdminClient();
     const { data, error } = await admin.from("developer_plans").select("slug,name,price_paise,monthly_limit,enabled,description").order("monthly_limit");
