@@ -46,8 +46,19 @@ function routePath(game, input) {
   return `/${segments.map((segment) => encodeURIComponent(segment.trim())).join("/")}`;
 }
 
-function classifyGameResponse(httpStatus, payload) {
-  return classifyRapidApiGameResponse(httpStatus, payload);
+function classifyGameResponse(game, input, httpStatus, payload) {
+  const result = classifyRapidApiGameResponse(httpStatus, payload);
+  // CODM has returned the queried numeric identifier in a name-like field.
+  // Treat exact echoes as unverified, but preserve numeric nicknames for other
+  // games where they may be legitimate. Never put the identifier in telemetry.
+  if (
+    game === "cod-mobile-garena" &&
+    result.kind === "success" &&
+    result.nickname === input.playerId
+  ) {
+    return { kind: "unavailable", diagnostic: { reason: "identity_echo" } };
+  }
+  return result;
 }
 
 const GAME_FETCH_TIMEOUT_MS = 15000;
@@ -92,7 +103,7 @@ export async function lookupRapidApiGame(game, input, options = {}) {
       cache: "no-store",
     }, fetchImpl, sleepImpl);
     const payload = await upstream.json().catch(() => null);
-    return classifyGameResponse(upstream.status, payload);
+    return classifyGameResponse(game, input, upstream.status, payload);
   } catch {
     return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
   }

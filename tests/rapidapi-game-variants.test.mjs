@@ -92,6 +92,38 @@ test("success envelopes accept nested profile, player, and alternate nickname fi
   );
 });
 
+test("CODM rejects a nickname that exactly echoes the requested player ID", async () => {
+  const playerId = "8370310025568788000";
+  const result = await lookupRapidApiGame("cod-mobile-garena", { playerId }, {
+    apiKey: "test-key",
+    fetchImpl: async () => new Response(JSON.stringify({
+      error: false,
+      status: 200,
+      msg: "id_found",
+      data: { username: playerId },
+    }), { status: 200, headers: { "Content-Type": "application/json" } }),
+  });
+
+  assert.deepEqual(result, { kind: "unavailable", diagnostic: { reason: "identity_echo" } });
+  assert.equal(JSON.stringify(result).includes(playerId), false);
+});
+
+test("numeric nicknames remain valid for games other than CODM", async () => {
+  const playerId = "8370310025568788000";
+  const result = await lookupRapidApiGame("honor-of-kings", { playerId }, {
+    apiKey: "test-key",
+    fetchImpl: async () => new Response(JSON.stringify({
+      error: false,
+      status: 200,
+      msg: "id_found",
+      data: { username: playerId },
+    }), { status: 200, headers: { "Content-Type": "application/json" } }),
+  });
+
+  assert.equal(result.kind, "success");
+  assert.equal(result.nickname, playerId);
+});
+
 test("shape labels expose structure without player values", () => {
   const label = classifyGameResponseShape({
     error: false,
