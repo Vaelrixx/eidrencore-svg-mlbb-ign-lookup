@@ -48,13 +48,9 @@ function authHeaders(key) {
 }
 
 function clientAddress(request) {
-  const realIp = request?.headers?.get?.("x-real-ip")?.trim();
-  // Only trust X-Real-IP when it is a single IP literal. A hostname or a
-  // comma-joined list is caller-controlled on unmanaged ingress, so treat it
-  // as absent and fall through to the last X-Forwarded-For entry.
-  if (realIp && isIP(realIp)) return realIp;
-  // Railway's ingress appends the connecting client address to X-Forwarded-For.
-  // Use the final entry rather than a caller-controlled leftmost value.
+  // Railway ingress appends the connecting client address to X-Forwarded-For.
+  // Ignore X-Real-IP: direct callers may supply it on untrusted ingress.
+  // The final X-Forwarded-For entry is trusted only behind the configured Railway ingress.
   const forwarded = request?.headers?.get?.("x-forwarded-for");
   if (!forwarded) return null;
   const entries = forwarded.split(",").map((entry) => entry.trim()).filter(Boolean);

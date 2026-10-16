@@ -1,6 +1,7 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { createAdminClient } from "./supabase/admin";
+import { safeNextPath as validateSafeNextPath } from "./security/safe-next-path.mjs";
 
 export const PLAN_FALLBACKS = [
   { slug: "free", name: "Free", price_paise: 0, monthly_limit: 100, enabled: true, description: "Try the API with a small monthly allowance." },
@@ -103,8 +104,7 @@ export async function ensureDeveloperAccount(userId: string) {
 
 /** Accept only same-site relative paths for post-login redirects. */
 export function safeNextPath(value: unknown, fallback = "/dashboard") {
-  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//") || value.includes("\\") || value.length > 200) return fallback;
-  return value;
+  return validateSafeNextPath(value, fallback);
 }
 
 export async function requireUser() {

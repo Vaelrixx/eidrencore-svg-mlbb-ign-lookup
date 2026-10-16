@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: 22
       - name: Install dependencies
-        run: npm install
+        run: npm ci
       - name: Lint
         run: npm run lint
       - name: Unit tests
@@ -33,6 +33,7 @@ jobs:
           npm run test:persistence
           npm run test:billing
           npm run test:auth
+          npm run test:security
           npm run test:supercell
           npm run test:ts-client
       - name: Production build

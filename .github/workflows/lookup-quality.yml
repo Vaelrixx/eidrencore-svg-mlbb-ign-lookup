@@ -16,7 +16,7 @@ jobs:
         with:
           node-version: 22
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Run nickname regression tests
         run: npm run test:lookup
       - name: Run provider adapter tests
@@ -27,6 +27,8 @@ jobs:
         run: npm run test:persistence
       - name: Run auth hardening tests
         run: npm run test:auth
+      - name: Run security boundary tests
+        run: npm run test:security
       - name: Run Supercell provider tests
         run: npm run test:supercell
       - name: Run TypeScript client tests

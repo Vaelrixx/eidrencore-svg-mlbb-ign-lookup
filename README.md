@@ -98,7 +98,8 @@ The developer console lives at `/login` and `/dashboard`. It supports email/pass
 
 ### Required Railway environment variables
 
-- `APP_URL` (recommended): canonical public HTTPS origin used for auth, OAuth, and recovery redirects. Defaults to the Railway production URL; set it when using a custom domain. Localhost HTTP is allowed for local development.\n- `NEXT_PUBLIC_SUPABASE_URL` or `SUPABASE_URL`: the Supabase project URL.
+- `APP_URL`: set this to the public Vercel UI origin (`https://eidrencore-ui.vercel.app`) on Railway so auth, OAuth, recovery, and same-origin checks use the UI host. The backend's internal default is the Railway URL and is not appropriate for browser redirects. Localhost HTTP is allowed for local development.
+- `NEXT_PUBLIC_SUPABASE_URL` or `SUPABASE_URL`: the Supabase project URL.
 - `SUPABASE_PUBLISHABLE_KEY` (already used by the existing service): public/publishable key used by cookie-based auth. `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are optional because sign-in and dashboard auth are routed through server handlers.
 - `SUPABASE_SECRET_KEY` (preferred) or `SUPABASE_SERVICE_ROLE_KEY`: server-only key for API-key management and billing. Never prefix this key with `NEXT_PUBLIC_`.
 - `TELEGRAM_CLIENT_ID` (or `TELEGRAM_BOT_ID`) and `TELEGRAM_CLIENT_SECRET`: Telegram Login credentials from @BotFather. The secret stays server-side.
@@ -123,14 +124,14 @@ These lookups are served by the Eidren identity network on the same keys, quota,
 
 ### Provider dashboard configuration
 
-- In Supabase Auth > URL Configuration, set the Site URL to the Railway production URL and add `https://nexus-mlbb-ign-lookup-production.up.railway.app/auth/callback` to allowed redirect URLs. Also allow the Telegram completion URL `https://nexus-mlbb-ign-lookup-production.up.railway.app/auth/telegram/complete`.
+- In Supabase Auth > URL Configuration, set the Site URL to `https://eidrencore-ui.vercel.app` and add `https://eidrencore-ui.vercel.app/auth/callback` to allowed redirect URLs. Also allow the Telegram completion URL `https://eidrencore-ui.vercel.app/auth/telegram/complete`.
 - In Supabase Auth > Providers, enable Google, GitHub, and Discord, and enter each provider's client ID/secret. Register the Supabase callback URL shown in that provider's settings (usually `https://<project-ref>.supabase.co/auth/v1/callback`) with each OAuth provider. The app callback is `/auth/callback`.
-- For Telegram, use @BotFather > Login Widget to register the production domain and the redirect URI `https://nexus-mlbb-ign-lookup-production.up.railway.app/api/auth/telegram/callback`. Use the provided Client ID and Client Secret as `TELEGRAM_CLIENT_ID` and `TELEGRAM_CLIENT_SECRET`. The Telegram OIDC flow uses state, nonce, PKCE, and server-side ID-token signature validation.
-- In Razorpay, configure the webhook URL `https://nexus-mlbb-ign-lookup-production.up.railway.app/api/billing/webhook` and subscribe to `payment.captured` and `order.paid`. Copy its webhook secret to Railway. Use test-mode credentials before going live.
+- For Telegram, use @BotFather > Login Widget to register `eidrencore-ui.vercel.app` and the redirect URI `https://eidrencore-ui.vercel.app/api/auth/telegram/callback`. Use the provided Client ID and Client Secret as `TELEGRAM_CLIENT_ID` and `TELEGRAM_CLIENT_SECRET` on Railway. The Telegram OIDC flow uses state, nonce, PKCE, and server-side ID-token signature validation.
+- In Razorpay, configure the webhook URL `https://nexus-mlbb-ign-lookup-production.up.railway.app/api/billing/webhook` and subscribe to `payment.captured` and `order.paid`. The server-to-server webhook stays directly on Railway; keep its secret there. Use test-mode credentials before going live.
 
 ### Database and plans
 
-Apply `supabase/migrations/20261010210000_developer_platform.sql` after reviewing it. It creates the plan catalog, hashed API-key records, subscription state, monthly quota counters, and a quota-consumption RPC. All platform tables have RLS enabled and direct client grants revoked; server routes use the server-only Supabase secret and verify the signed-in user before acting on their records.
+Apply `supabase/migrations/20261010175439_developer_platform.sql` after reviewing it. It creates the plan catalog, hashed API-key records, subscription state, monthly quota counters, and a quota-consumption RPC. All platform tables have RLS enabled and direct client grants revoked; server routes use the server-only Supabase secret and verify the signed-in user before acting on their records.
 
 The Free plan starts at 100 API calls/month. Paid plans are disabled by default and have zero prices until you configure them. The current Razorpay MVP grants a verified 30-day access period after a one-time payment; it does not automatically renew or charge a saved payment method. In Supabase SQL Editor, set the price in paise and enable the chosen plan, for example:
 
@@ -163,7 +164,7 @@ The console is split into dedicated areas under /dashboard:
 
 ### Daily analytics migration
 
-Apply supabase/migrations/20261011090000_daily_api_analytics.sql to the linked Supabase project before expecting the 14-day usage chart to populate. It creates developer_api_usage_daily and replaces the quota RPC with a transactionally updated daily counter. Only accepted API-key requests are added to the daily chart; quota-rejected requests are not counted as successful usage. The table has RLS enabled and is accessible only to the server-side service_role.
+Apply `supabase/migrations/20261010195037_daily_api_analytics.sql` to the linked Supabase project before expecting the 14-day usage chart to populate. It creates developer_api_usage_daily and replaces the quota RPC with a transactionally updated daily counter. Only accepted API-key requests are added to the daily chart; quota-rejected requests are not counted as successful usage. The table has RLS enabled and is accessible only to the server-side service_role.
 
 The account page intentionally shows the current session rather than claiming to list every device. “Revoke all sessions” delegates to Supabase Auth's global sign-out scope. Password reset links must be allowed by the project's Supabase Auth URL configuration and email delivery must be configured.
 
@@ -188,13 +189,13 @@ The developer console includes new sections at:
 
 ### Database migration
 
-Apply `supabase/migrations/20261011120000_workspace_audit_webhooks.sql` to the linked Supabase project before deploying these routes. It creates workspace, membership, invitation, audit, webhook endpoint, delivery, and sanitized API request log tables. RLS is enabled on all new tables, and `anon`/`authenticated` table access is revoked; the server uses its secret role only after verifying the current user in the route.
+Apply `supabase/migrations/20261010204128_workspace_audit_webhooks.sql` to the linked Supabase project before deploying these routes. It creates workspace, membership, invitation, audit, webhook endpoint, delivery, and sanitized API request log tables. RLS is enabled on all new tables, and `anon`/`authenticated` table access is revoked; the server uses its secret role only after verifying the current user in the route.
 
 ### Required Railway secret
 
 Set `APP_ENCRYPTION_KEY` to a unique cryptographically random secret of at least 32 characters before creating webhook endpoints. The application uses AES-256-GCM to encrypt webhook signing secrets at rest. Do not reuse a Razorpay secret or expose this value to client code.
 
-Webhook requests contain `Eidren-Event-Id`, `Eidren-Event`, and `Eidren-Signature` headers. The signature is HMAC-SHA256 over `timestamp + "." + raw JSON body` and is formatted as `t=<unix timestamp>,v1=<hex digest>`. Consumers should compare signatures in constant time and reject stale timestamps. Endpoints must be HTTPS; private/special-use IP literals and hostnames resolving to non-public IPv4 addresses are rejected. DNS-based egress filtering should still be enforced at the network layer in hardened production environments.
+Webhook requests contain `Eidren-Event-Id`, `Eidren-Event`, and `Eidren-Signature` headers. The signature is HMAC-SHA256 over `timestamp + "." + raw JSON body` and is formatted as `t=<unix timestamp>,v1=<hex digest>`. Consumers should compare signatures in constant time and reject stale timestamps. Endpoints must be HTTPS; private/special-use IP literals and hostnames resolving to non-public addresses are rejected. The dispatcher pins the validated DNS address for each HTTPS connection and does not follow redirects. Network-layer egress filtering should still be enforced in hardened production environments as defense in depth.
 
 ### Scope and current limitations
 

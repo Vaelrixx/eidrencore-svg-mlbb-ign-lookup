@@ -23,10 +23,20 @@ export async function POST(request: Request) {
   const paidIsCurrent = subscription?.status === "active" && !!subscription.current_period_end && Date.parse(subscription.current_period_end) > Date.now();
   const planSlug = paidIsCurrent ? subscription.plan_slug : "free";
   const { data: plan } = await admin.from("developer_plans").select("monthly_limit").eq("slug", planSlug).maybeSingle();
-  const { count } = await admin.from("api_keys").select("id", { count: "exact", head: true }).eq("user_id", user.id).is("workspace_id", null).neq("key_prefix", "eid_playground").is("revoked_at", null);
-  if ((count || 0) >= 10) return NextResponse.json({ error: "You can have up to 10 active API keys." }, { status: 409 });
   const generated = newApiKey();
-  const { data, error } = await admin.from("api_keys").insert({ user_id: user.id, name, key_hash: hashApiKey(generated.value), key_prefix: generated.prefix, plan_slug: planSlug }).select("id,name,key_prefix,plan_slug,created_at").single();
+  const { data: rows, error } = await admin.rpc("create_developer_api_key", {
+    p_actor_user_id: user.id,
+    p_user_id: user.id,
+    p_workspace_id: null,
+    p_name: name,
+    p_key_hash: hashApiKey(generated.value),
+    p_key_prefix: generated.prefix,
+    p_plan_slug: planSlug,
+  });
+  const data = Array.isArray(rows) ? rows[0] : rows;
+  if (error?.message?.includes("active_api_key_limit_reached")) {
+    return NextResponse.json({ error: "You can have up to 10 active API keys." }, { status: 409 });
+  }
   if (error || !data) return NextResponse.json({ error: "Could not create API key." }, { status: 500 });
   await writeAuditLog({ userId: user.id, action: "api.key.created", resourceType: "api_key", resourceId: data.id, metadata: { name, prefix: data.key_prefix, plan: data.plan_slug } });
   await emitDeveloperEvent({ userId: user.id, type: "api.key.created", data: { key_id: data.id, name: data.name, key_prefix: data.key_prefix, plan: data.plan_slug } });
