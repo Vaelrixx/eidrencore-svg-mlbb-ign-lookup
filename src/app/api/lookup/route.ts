@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { resolveLookupWithFallbacks } from "./resolve-lookup.mjs";
+import { resolveLookupWithFallbacks, selectLookupVerdict } from "./resolve-lookup.mjs";
 import { lookupIsan } from "./providers/isan.mjs";
 import { lookupRapidApi } from "./providers/rapidapi.mjs";
 import { lookupWhoPlays } from "./providers/whoplays.mjs";
@@ -242,7 +242,8 @@ export async function POST(request: NextRequest) {
     pendingFallbacks,
   });
 
-  if (confirmed?.kind === "success") {
+  const verdict = selectLookupVerdict(primary, fallbacks, confirmed);
+  if (verdict === "success" && confirmed?.kind === "success") {
     await recordDeveloperRequest({ ...developerAuth, requestId, status: 200, responseMs: Date.now() - requestStartedAt });
     void persistLookupLog({
       status: "success",
@@ -252,9 +253,7 @@ export async function POST(request: NextRequest) {
     return jsonSuccess(confirmed, playerId, zoneId, requestId);
   }
 
-  const attempts: LookupAttempt[] = [primary, ...fallbacks];
-
-  if (attempts.every((attempt) => attempt.kind === "not_found")) {
+  if (verdict === "not_found") {
     await recordDeveloperRequest({ ...developerAuth, requestId, status: 404, responseMs: Date.now() - requestStartedAt });
     return loggedError(
       "No MLBB account was found for that Player ID and Zone ID.",
@@ -266,7 +265,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (attempts.every((attempt) => attempt.kind === "rate_limited")) {
+  if (verdict === "rate_limited") {
     await recordDeveloperRequest({ ...developerAuth, requestId, status: 429, responseMs: Date.now() - requestStartedAt });
     return loggedError(
       "Eidren is rate-limiting requests right now. Try again shortly.",

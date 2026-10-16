@@ -22,6 +22,9 @@ result before deciding not-found vs. unavailable.
 
 Contract notes:
 
+- Verdict rule: the primary's explicit `not_found` is authoritative once no
+  leg confirms a nickname (404). Unavailable fallbacks never veto it into a
+  502 — only a fallback success overrides it.
 - CodaShop direct (self-reliant, no key): `POST
   https://order-{REGION}.codashop.com/validate` with
   `{country, voucherTypeName, whiteLabelId, deviceId, userId, zoneId}`,

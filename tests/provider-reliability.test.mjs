@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { classifyRapidApiResponse, lookupRapidApi } from "../src/app/api/lookup/providers/rapidapi.mjs";
-import { resolveLookupWithFallbacks } from "../src/app/api/lookup/resolve-lookup.mjs";
+import { resolveLookupWithFallbacks, selectLookupVerdict } from "../src/app/api/lookup/resolve-lookup.mjs";
 
 async function withRapidApiEnv(run, fetchImpl) {
   const previousKey = process.env.RAPIDAPI_KEY;
@@ -84,6 +84,39 @@ test("invalid successful payloads remain unavailable", () => {
   assert.equal(classifyRapidApiResponse(200, {
     error: false, status: 200, msg: "id_found", data: { username: "N/A" },
   }).kind, "unavailable");
+});
+
+test("primary not-found is authoritative once no leg confirms a nickname", () => {
+  // The bogus-ID case: primary says not-found, fallbacks flaky/mixed.
+  assert.equal(
+    selectLookupVerdict(
+      { kind: "not_found" },
+      [{ kind: "unavailable" }, { kind: "not_found" }, { kind: "rate_limited" }, { kind: "unavailable" }],
+      null,
+    ),
+    "not_found",
+  );
+  // Unanimous not-found still 404s.
+  assert.equal(
+    selectLookupVerdict({ kind: "not_found" }, [{ kind: "not_found" }], null),
+    "not_found",
+  );
+  // A fallback success still overrides the primary's not-found.
+  const confirmed = { kind: "success", nickname: "Fallback IGN", source: "fallback" };
+  assert.equal(
+    selectLookupVerdict({ kind: "not_found" }, [confirmed], confirmed),
+    "success",
+  );
+  // Primary down + no confirmations stays unavailable, never a false 404.
+  assert.equal(
+    selectLookupVerdict({ kind: "unavailable" }, [{ kind: "unavailable" }, { kind: "not_found" }], null),
+    "unavailable",
+  );
+  // All rate-limited stays 429.
+  assert.equal(
+    selectLookupVerdict({ kind: "rate_limited" }, [{ kind: "rate_limited" }], null),
+    "rate_limited",
+  );
 });
 
 
