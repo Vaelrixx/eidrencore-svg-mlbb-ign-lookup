@@ -5,10 +5,11 @@ import {
   lookupGoPayFreeFire,
 } from "../src/app/api/lookup/providers/gopay-free-fire.mjs";
 
-// Live-verified 2026-10-13 (re-verified at build time): docs sample resolves.
+// Live-verified 2026-10-13, re-verified 2026-10-17 (docs sample 1958604115
+// resolves to a real nickname; bogus IDs give the unknown-user 404 below).
 const valid = {
   message: "Success",
-  data: { countryOrigin: "ID", username: "FFPlayer" },
+  data: { countryOrigin: "ID", username: "ᴀᴢᴛㅤ~ㅤPUSPAॐ" },
 };
 // Live-verified: bogus UID -> explicit unknown-user 404.
 const missing = {
@@ -20,7 +21,7 @@ const missing = {
 test("success schema resolves a nickname", () => {
   assert.deepEqual(classifyFreeFireResponse(200, valid), {
     kind: "success",
-    nickname: "FFPlayer",
+    nickname: "ᴀᴢᴛㅤ~ㅤPUSPAॐ",
     source: "gopay_games_validation",
   });
 });

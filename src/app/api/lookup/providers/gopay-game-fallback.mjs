@@ -4,22 +4,32 @@ const GOPAY_ENDPOINT = "https://gopay.co.id/games/v1/order/user-account";
 const GOPAY_FETCH_TIMEOUT_MS = 7000;
 
 /**
- * GoPay Games keyless fallback for Arena of Valor (code AOV) and PUBG-family
- * IDs (codes PUBGM for Global, PUBG_ID for Lite). Contract verified live
- * 2026-10-13, PUBGM re-verified 2026-10-17:
+ * GoPay Games keyless direct leg for Arena of Valor (code AOV) and
+ * PUBG-family IDs (codes PUBGM for Global, PUBG_ID for Lite). Contract
+ * verified live 2026-10-13, PUBGM re-verified 2026-10-17 (valid sample
+ * 5204837417 resolves to a real nickname; bogus IDs give the explicit
+ * invalid-account 404 below). PUBG Mobile and Free Fire call this direct
+ * with no keyed leg in front (zero third-party runtime); Arena of Valor
+ * and PUBG Lite keep it behind the keyed primary.
  * - AOV + docs sample 195293573153949 -> 200 Success + username "creature.6's"
  * - AOV + bogus 000000000000001 -> 404 {"statusCode":404,"message":"Unknown User"}
  * - PUBGM + Global sample 5204837417 -> 200 Success + real nickname
+ * - PUBGM + bogus 000000000000001 -> 404 "Invalid user account" (not-found)
  * - PUBG_ID + Global sample 5204837417 -> 200 Success + real nickname
  * - PUBG_ID + Lite sample 7228395004 -> 404 Invalid user account (Lite pool
  *   not carried: partial coverage only, degrade honestly)
  * - PUBG_ID + banned sample -> 404 "User account banned" (ban state, NOT
  *   not-found: degrade, never false not-found)
- * Not-found verdict keys ONLY on the explicit unknown-user message.
+ * Not-found verdict keys ONLY on the code-specific explicit miss envelope:
+ * PUBGM misses say "Invalid user account"; every other code says
+ * "Unknown User". PUBG_ID shares the PUBGM envelope but its miss pool
+ * includes real Lite IDs the code does not carry, so PUBG_ID misses keep
+ * degrading honestly instead of reporting not-found.
  * NOTE: PUBG_MOBILE (with underscore) echoes the ID back instead of
  * resolving — never use it. The echo guard also catches such codes.
  */
-const NOT_FOUND_MESSAGE_PATTERN = /^Unknown User/i;
+const UNKNOWN_USER_PATTERN = /^Unknown User/i;
+const INVALID_ACCOUNT_PATTERN = /^Invalid user account$/i;
 
 function record(value) {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -42,9 +52,13 @@ function responseKind(payload) {
  * GoPay echoes the queried ID back as `username` when the game code is
  * wrong or carries no data (observed live 2026-10-17 across PUBG_MOBILE,
  * CODM, HONOR_OF_KINGS, and other codes). Echoed identities degrade to
- * unavailable, never success.
- */
-export function classifyGoPayGameFallbackResponse(httpStatus, payload, requestIdentity = "") {
+ * unavailable, never success. The `gameCode` argument selects the
+ * code-specific miss envelope: PUBGM reports misses as "Invalid user
+ * account" while every other code reports "Unknown User" (verified live
+ * 2026-10-17). PUBG_ID keeps degrading on its invalid-account envelope
+ * because the same 404 also covers real Lite IDs the code does not carry.
+  */
+export function classifyGoPayGameFallbackResponse(httpStatus, payload, requestIdentity = "", gameCode = "") {
   const root = record(payload);
   const data = record(root?.data);
 
@@ -59,10 +73,15 @@ export function classifyGoPayGameFallbackResponse(httpStatus, payload, requestId
   if (
     httpStatus === 404 &&
     root?.statusCode === 404 &&
-    root?.error === "Not Found" &&
-    NOT_FOUND_MESSAGE_PATTERN.test(message)
+    root?.error === "Not Found"
   ) {
-    return { kind: "not_found" };
+    const normalizedCode = typeof gameCode === "string" ? gameCode.trim().toUpperCase() : "";
+    if (normalizedCode === "PUBGM" && INVALID_ACCOUNT_PATTERN.test(message)) {
+      return { kind: "not_found" };
+    }
+    if (normalizedCode !== "PUBGM" && normalizedCode !== "PUBG_ID" && UNKNOWN_USER_PATTERN.test(message)) {
+      return { kind: "not_found" };
+    }
   }
 
   if (!Number.isInteger(httpStatus) || httpStatus < 200 || httpStatus >= 300) {
@@ -129,7 +148,7 @@ export async function lookupGoPayGameFallback(gameCode, playerId, options = {}) 
       signal: AbortSignal.timeout(GOPAY_FETCH_TIMEOUT_MS),
     });
     const payload = await upstream.json().catch(() => null);
-    return classifyGoPayGameFallbackResponse(upstream.status, payload, playerId.trim());
+    return classifyGoPayGameFallbackResponse(upstream.status, payload, playerId.trim(), gameCode.trim());
   } catch {
     return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
   }

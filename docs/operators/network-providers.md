@@ -156,9 +156,14 @@ Notes:
 - Hero dataset: snapshotted from the BSD-3-Clause Rone Arena API on
   2026-10-17 with attribution in the `_meta` block. Re-snapshot with
   `node scripts/refresh-mlbb-heroes.mjs` when a new hero releases.
-- PUBG Mobile chain now falls back to GoPay code `PUBGM` (verified live
-  2026-10-17: sample `5204837417` resolves). Never use `PUBG_MOBILE`
-  (echoes the ID); the echo guard catches such codes anyway.
+- Free Fire (`/api/lookup/free-fire`, `/api/lookup/free-fire-global`) and
+  PUBG Mobile (`/api/lookup/pubg-mobile`) run direct keyless GoPay legs
+  with no keyed primary (codes `FREEFIRE`, `PUBGM`; same precedent as
+  FC Mobile). Re-verified live 2026-10-17: `1958604115` resolves on FF,
+  `5204837417` resolves on PUBG, bogus IDs give explicit 404s.
+  Not-found envelopes are code-specific: PUBGM misses say "Invalid user
+  account", FREEFIRE/AOV misses say "Unknown User". Never use
+  `PUBG_MOBILE` (echoes the ID); the echo guard catches such codes anyway.
 - Label every surface "unofficial fan tool, not affiliated with Moonton".
 
 ## Diagnostics
@@ -195,3 +200,10 @@ Notes:
   contract was not live-verified. Do not integrate from source inspection only.
 - VocaGame — its product page contains purchase-flow fields; no checkout or
   payment action was invoked, and it is not treated as a lookup backup.
+- Garena shop2game/shop.garena.sg — nickname flows sit behind DataDome; the
+  captcha wall is a stop signal, never bypassed (probed 2026-10-17).
+- Midasbuy web bundles — the buy-page logic ships as a Tencent Chaos-VM
+  obfuscated bundle with no plain-text lookup API; no keyless direct
+  contract exists to verify (probed 2026-10-17).
+- Codashop `/validate` for non-MLBB games — returns `{}` for FREEFIRE and
+  other voucher types; MLBB-only (probed 2026-10-17).
