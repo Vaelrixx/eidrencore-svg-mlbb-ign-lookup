@@ -17,8 +17,8 @@ const GAME_CONFIG: Record<IdentityGame, GameSpec> = {
   "call-of-duty-mobile": {
     label: "Call of Duty: Mobile (Garena)",
     endpoint: "/api/lookup/call-of-duty-mobile",
-    fields: [{ key: "playerId", label: "PLAYER ID", placeholder: "8370310025568788000", inputMode: "numeric", maxLength: 24 }],
-    sample: { playerId: "8370310025568788000" },
+    fields: [{ key: "playerId", label: "PLAYER ID OR NICKNAME", placeholder: "ShadowHex", inputMode: "text", maxLength: 24 }],
+    sample: { playerId: "ShadowHex" },
   },
   valorant: {
     label: "VALORANT",

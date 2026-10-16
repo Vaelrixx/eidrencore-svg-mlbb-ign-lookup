@@ -39,8 +39,10 @@ function jsonResponse(status, payload) {
 // --- CodaShop direct ---
 
 test("codashop table ships only live-verified games", () => {
-  assert.deepEqual(Object.keys(CODASHOP_GAMES), ["mobile-legends"]);
+  assert.deepEqual(Object.keys(CODASHOP_GAMES), ["mobile-legends", "call-of-duty-mobile"]);
   assert.equal(CODASHOP_GAMES["mobile-legends"].voucherTypeName, "9177-MOBILE_LEGENDS");
+  assert.equal(CODASHOP_GAMES["call-of-duty-mobile"].voucherTypeName, "CALL_OF_DUTY_MOBILE_WL");
+  assert.equal(CODASHOP_GAMES["call-of-duty-mobile"].whiteLabelId, "1");
 });
 
 test("codashop success decodes plus-encoded usernames", () => {
@@ -110,6 +112,44 @@ test("codashop lookup rejects unverified games and bad input without fetching", 
     "unavailable",
   );
   assert.equal(fetchCalled, false);
+});
+
+test("codashop CODM white-label: nickname success, No-openId 404, UID-invalid 404", () => {
+  // Live shapes 2026-10-17: result.nickname (not username); bogus nicknames
+  // give -100/No openId; long numerics give -100/UID invalid.
+  assert.deepEqual(
+    classifyCodashopResponse(200, { result: { nickname: "ShadowHex", shortId: "6QKPNM", level: 4 } }),
+    { kind: "success", nickname: "ShadowHex", source: "codashop_direct" },
+  );
+  assert.deepEqual(
+    classifyCodashopResponse(200, { success: false, errorCode: "-100", errorMsg: "No openId for nickname=ZzZzNoSuch" }),
+    { kind: "not_found" },
+  );
+  assert.deepEqual(
+    classifyCodashopResponse(200, { success: false, errorCode: "-100", errorMsg: "UID invalid" }),
+    { kind: "not_found" },
+  );
+});
+
+test("codashop CODM lookup follows one country redirect then stops", async () => {
+  const seenCountries = [];
+  const fetchImpl = async (_url, init) => {
+    const body = JSON.parse(init.body);
+    seenCountries.push(body.country);
+    assert.equal(body.voucherTypeName, "CALL_OF_DUTY_MOBILE_WL");
+    assert.equal(body.whiteLabelId, "1");
+    if (body.country === "IN") {
+      return jsonResponse(200, { success: false, errorCode: -200, errorMsg: "country mismatch", homeBaseCountry2Name: "BG" });
+    }
+    return jsonResponse(200, { result: { nickname: "ShadowHex", shortId: "6QKPNM" } });
+  };
+  const attempt = await lookupCodashopDirect("call-of-duty-mobile", "ShadowHex", "", { fetchImpl, env: {} });
+  assert.deepEqual(attempt, { kind: "success", nickname: "ShadowHex", source: "codashop_direct" });
+  assert.deepEqual(seenCountries, ["IN", "BG"]);
+  // A second -200 degrades instead of looping.
+  const loopImpl = async () => jsonResponse(200, { success: false, errorCode: -200, errorMsg: "x", homeBaseCountry2Name: "BG" });
+  const looped = await lookupCodashopDirect("call-of-duty-mobile", "ShadowHex", "", { fetchImpl: loopImpl, env: {} });
+  assert.equal(looped.kind, "unavailable");
 });
 
 // --- GoPay echo guard ---

@@ -69,7 +69,7 @@ export default function DocsPage() {
       <div className="console-panel-heading"><div><span className="platform-eyebrow">07 / IDENTITY GAMES</span><h2>Identity lookup routes</h2><p>These routes use the same Eidren API keys, quota, and billing. See the repository&apos;s <code>docs/identity-lookups.md</code> for complete examples.</p></div></div>
       <div className="docs-field-list">
         <div><code>POST /api/lookup/pubg-mobile</code><span>PUBG Mobile Global · body: {"{ \"playerId\": \"5204837417\" }"}</span></div>
-        <div><code>POST /api/lookup/call-of-duty-mobile</code><span>Call of Duty: Mobile (Garena) · body: {"{ \"playerId\": \"8370310025568788000\" }"}</span></div>
+        <div><code>POST /api/lookup/call-of-duty-mobile</code><span>Call of Duty: Mobile (Garena) · numeric ID or nickname, body: {"{ \"playerId\": \"ShadowHex\" }"}</span></div>
         <div><code>POST /api/lookup/valorant</code><span>VALORANT · body: {"{ \"name\": \"ucup\", \"tag\": \"123\" }"}</span></div>
         <div><code>POST /api/lookup/genshin-impact</code><span>Genshin Impact · body: {"{ \"playerId\": \"844335555\", \"server\": \"asia\" }"}</span></div>
         <div><code>POST /api/lookup/honkai-star-rail</code><span>Honkai: Star Rail · body: {"{ \"playerId\": \"800333000\" }"}</span></div>

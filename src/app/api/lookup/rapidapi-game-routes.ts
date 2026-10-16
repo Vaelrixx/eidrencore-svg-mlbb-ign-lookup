@@ -6,8 +6,10 @@ import { lookupGoPayGameFallback } from "./providers/gopay-game-fallback.mjs";
 import { lookupFcMobile } from "./providers/gopay-fc-mobile.mjs";
 import { lookupGoPayFreeFire } from "./providers/gopay-free-fire.mjs";
 import { lookupJawakerVerifyUser } from "./providers/jawaker-verify-user.mjs";
+import { lookupCodashopDirect } from "./providers/codashop-direct.mjs";
 
 const numericId = /^\d{3,24}$/;
+const codmIdentity = /^[\p{L}\p{N} _.'-]{3,24}$/u;
 const riotName = /^[\p{L}\p{N} _.'-]{3,16}$/u;
 const riotTag = /^[A-Za-z0-9]{3,5}$/;
 const genshinServer = /^(asia|america|europa|china)$/;
@@ -79,6 +81,22 @@ async function lookupPubgMobileDirect(input: RapidApiGameInput) {
 }
 
 /**
+ * CODM split leg: numeric IDs stay on the keyed provider; nicknames and
+ * shortIds go direct to the Coda white-label voucher (self-reliant: zero
+ * third-party runtime). The WL endpoint rejects long numeric UIDs with
+ * "UID invalid", so sniffing on all-digits keeps both modes honest.
+ * Live-verified 2026-10-17 (ShadowHex → BG redirect → profile; bogus
+ * nicknames give the explicit No-openId 404 that gates not-found).
+ */
+async function lookupCodmSplit(input: RapidApiGameInput) {
+  const playerId = "playerId" in input ? input.playerId : "";
+  if (/^\d+$/.test(playerId)) {
+    return lookupRapidApiGame("cod-mobile-garena", input);
+  }
+  return lookupCodashopDirect("call-of-duty-mobile", playerId, "");
+}
+
+/**
  * Jawaker chain: keyed primary first, then the official webshop verify_user
  * fallback (live-verified 2026-10-13: docs sample resolves to login+level,
  * bogus numbers give explicit HTTP 404). Same terminal-verdict discipline.
@@ -117,8 +135,8 @@ const configs: Record<string, { providerGame?: RapidApiGame; config: Omit<IdGame
       gameLabel: "Call of Duty: Mobile (Garena)",
       publicSource: "eidren_call_of_duty_mobile",
       notFoundCode: "CODM_PLAYER_NOT_FOUND",
-      internalProvider: "rapidapi_id_game_checker_cod_mobile",
-      fields: [{ key: "playerId", label: "Player ID", example: "8370310025568788000", minLength: 3, maxLength: 24, pattern: numericId }],
+      internalProvider: "eidren_codm_split",
+      fields: [{ key: "playerId", label: "Player ID or nickname", example: "ShadowHex", minLength: 3, maxLength: 24, pattern: codmIdentity }],
     },
   },
   valorant: {
@@ -331,6 +349,9 @@ export function createRapidApiGameHandler(game: keyof typeof configs) {
       if (providerGame === "fc-mobile") {
         const playerId = "playerId" in input ? (input as { playerId: string }).playerId : "";
         return lookupFcMobile(playerId);
+      }
+      if (providerGame === "cod-mobile-garena") {
+        return lookupCodmSplit(input as RapidApiGameInput);
       }
       return lookupRapidApiGame(providerGame, input as RapidApiGameInput);
     },

@@ -35,6 +35,12 @@ Contract notes:
   `CODASHOP_GAMES` table are callable — new games ship only after their
   voucher name + valid/bogus shapes are confirmed live. Optional
   `CODASHOP_REGION` (default `sg`) and `CODASHOP_DEVICE_ID` overrides.
+  CODM white-label entry (`CALL_OF_DUTY_MOBILE_WL`, whiteLabelId `1`,
+  voucher shape via Harry260/codm-api MIT): nickname/shortId input only,
+  answers `result.nickname`; bogus nicknames → `-100 No openId for
+  nickname=`; wrong store country → `-200` with `homeBaseCountry2Name`
+  (one retry there, then stop); long numeric UIDs → `-100 UID invalid`.
+  Verified live 2026-10-17 (`ShadowHex` → BG → profile).
 - RapidAPI uses the documented `mobile-legends` slug. Only the structured
   `id_not_found` body counts as not-found; `no_content_0` is unavailable.
 - WhoPlays: only `error: "not_found"` (HTTP 422) counts as not-found.
