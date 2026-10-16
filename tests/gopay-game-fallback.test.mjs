@@ -69,6 +69,40 @@ test("lookup sends the game code with no credentials", async () => {
   assert.equal(result.kind, "success");
 });
 
+// Phase 2 lock-in (live-verified 2026-10-17 on production): PUBGM valid
+// sample resolves, bogus IDs report not-found, and Lite-pool IDs miss on
+// the Global code while degrading (never false not-found) on PUBG_ID.
+const pubgmSuccess = {
+  message: "Success",
+  data: { countryOrigin: "", username: "Agus๛haji" },
+};
+
+test("PUBGM lookup resolves the valid sample and 404s bogus IDs", async () => {
+  const fetchImpl = (payload, status) => async () => new Response(JSON.stringify(payload), { status });
+  const ok = await lookupGoPayGameFallback("PUBGM", "5204837417", {
+    fetchImpl: fetchImpl(pubgmSuccess, 200),
+  });
+  assert.deepEqual(ok, { kind: "success", nickname: "Agus๛haji", source: "gopay_games_validation" });
+  const bogus = await lookupGoPayGameFallback("PUBGM", "000000000000001", {
+    fetchImpl: fetchImpl(litePoolMiss, 404),
+  });
+  assert.deepEqual(bogus, { kind: "not_found" });
+});
+
+test("Lite-pool IDs miss on PUBGM but never false not-found on PUBG_ID", async () => {
+  const fetchImpl = async () => new Response(JSON.stringify(litePoolMiss), { status: 404 });
+  // Live: 7228395004 is a real Lite account; the Global pool has no such
+  // account, so the Global route 404s while the Lite route resolves it.
+  assert.deepEqual(
+    await lookupGoPayGameFallback("PUBGM", "7228395004", { fetchImpl }),
+    { kind: "not_found" },
+  );
+  assert.equal(
+    (await lookupGoPayGameFallback("PUBG_ID", "7228395004", { fetchImpl })).kind,
+    "unavailable",
+  );
+});
+
 test("invalid inputs and network failures degrade without leaking details", async () => {
   assert.deepEqual((await lookupGoPayGameFallback("", "123", { fetchImpl: async () => { throw new Error("x"); } })).kind, "unavailable");
   assert.deepEqual((await lookupGoPayGameFallback("AOV", "abc", { fetchImpl: async () => { throw new Error("x"); } })).kind, "unavailable");

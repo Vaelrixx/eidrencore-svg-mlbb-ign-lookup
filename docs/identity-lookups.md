@@ -20,9 +20,11 @@ Genshin `server` is required and must be one of `asia`, `america`, `europa`, or 
 
 Honkai: Star Rail and Zenless Zone Zero accept numeric UIDs as strings and use their game-specific profile lookup paths. Their endpoints do not require a server field. Responses accept only the observed nickname field for the requested game; an upstream response counts as not-found only on explicit HTTP 404. Other unfamiliar or failed responses return the standard service-unavailable envelope.
 
-Free Fire routes run a two-source chain behind their single source labels (keyed primary, then the live-verified keyless secondary), so UIDs missing from one feed still resolve when the other carries them. Bigo Live and Higgs Domino run primary-only on the keyed route (no keyless fallback found). Jawaker runs a two-source chain behind its single source label (keyed primary, then the official webshop player check).
+Free Fire, PUBG Mobile, and FC Mobile run direct keyless legs behind their single source labels (no keyed hop, zero third-party runtime). Bigo Live, Higgs Domino, and Teen Patti Gold run primary-only on the keyed route (no keyless fallback found). Jawaker runs a two-source chain behind its single source label (keyed primary, then the official webshop player check). Arena of Valor and PUBG Mobile Lite each run a two-source chain behind their single source label: the keyed route first, then a keyless secondary when the primary is degraded.
 
-Free Fire routes were previously key-ready: the endpoints validate input and return honest degraded responses until a provider key or fallback is provisioned. Request samples use the provider's documented examples. The routes share the standard response envelope, so no client changes are needed when the upstream is connected.
+### PUBG Lite vs Global routing
+
+The Global route (`/api/lookup/pubg-mobile`) only resolves Global-pool IDs, and the Lite route (`/api/lookup/pubg-lite`) resolves Lite-pool IDs through its keyed primary. A Lite-pool ID sent to the Global route returns `404 PUBG_PLAYER_NOT_FOUND` — the verdict is scoped to the route's pool ("No PUBG Mobile Global account was found"), not a claim the ID exists nowhere. Live-verified 2026-10-17: `7228395004` 404s on the Global route and resolves to `silviamegaf` on the Lite route. Send each ID to its own route.
 
 ### IDs are strings
 
@@ -96,7 +98,7 @@ A successful lookup returns the resolved name and echoes the submitted fields as
 
 Genshin responses also echo the selected `server` value. A missing identity returns HTTP `404` with a game-specific `*_PLAYER_NOT_FOUND` code. Invalid data returns `400 INVALID_INPUT`; request bodies larger than 4 KiB return `413 PAYLOAD_TOO_LARGE`; authentication failures return `401`; quota limits return `429`; and upstream outages return `502 SERVICE_UNAVAILABLE`. Temporary service throttling returns `429 SERVICE_RATE_LIMIT`. Error responses include an `X-Lookup-Request-Id` header.
 
-A sample account may stop resolving as game data changes. The service reports an account as missing only when it receives an explicit missing-account result; degraded or unfamiliar upstream responses are treated as unavailable instead, so a provider-side outage never becomes a false missing-account verdict.
+A sample account may stop resolving as game data changes. The service reports an account as missing only when it receives an explicit missing-account result; degraded or unfamiliar upstream responses are treated as unavailable instead, so a provider-side outage never becomes a false missing-account verdict. The direct legs gate not-found on code-specific explicit envelopes (PUBG Global misses say "Invalid user account"; Free Fire and Arena of Valor misses say "Unknown User"); anything else degrades to `502`.
 | Arena of Valor | `POST /api/lookup/arena-of-valor` | `{ "playerId": "195293573153949" }` | `eidren_arena_of_valor` |
 | PUBG Mobile Lite | `POST /api/lookup/pubg-lite` | `{ "playerId": "7228395004" }` | `eidren_pubg_lite` |
 | Teen Patti Gold | `POST /api/lookup/teen-patti-gold` | `{ "playerId": "100439992784" }` | `eidren_teen_patti_gold` |
@@ -104,4 +106,4 @@ A sample account may stop resolving as game data changes. The service reports an
 | FC Mobile | `POST /api/lookup/fc-mobile` | `{ "playerId": "1856150661662899105" }` | `eidren_fc_mobile` |
 | Bigo Live | `POST /api/lookup/bigo-live` | `{ "playerId": "901234567" }` | `eidren_bigo_live` |
 | Higgs Domino | `POST /api/lookup/higgs-domino` | `{ "playerId": "55666" }` | `eidren_higgs_domino` |
-Arena of Valor and PUBG Mobile Lite each run through a two-source chain behind their single source label: the keyed route first, then a keyless secondary when the primary is degraded. PUBG Lite's secondary covers the shared PUBG-family pool, so Lite-pool-only IDs degrade honestly when neither source carries them. Teen Patti Gold and Jawaker run primary-only on the keyed route (no keyless fallback found); FC Mobile runs on the keyless secondary as its primary leg since no keyed slug exists on the current key.
+PUBG Lite's keyless secondary covers the shared PUBG-family pool but stays behind the keyed primary, so Lite-pool-only IDs resolve through the primary while pool misses on the secondary degrade honestly instead of reporting not-found.
