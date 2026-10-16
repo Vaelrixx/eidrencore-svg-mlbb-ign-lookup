@@ -7,7 +7,7 @@ Resolve a player's in-game name from an account identifier. All routes require a
 | Game | Route | Request body | Public source label |
 | --- | --- | --- | --- |
 | PUBG Mobile Global | `POST /api/lookup/pubg-mobile` | `{ "playerId": "5204837417" }` | `eidren_pubg_mobile` |
-| Call of Duty: Mobile (Garena) | `POST /api/lookup/call-of-duty-mobile` | `{ "playerId": "8370310025568788000" }` | `eidren_call_of_duty_mobile` |
+| Call of Duty: Mobile (Garena) | `POST /api/lookup/call-of-duty-mobile` | `{ "playerId": "ShadowHex" }` (numeric ID or nickname) | `eidren_call_of_duty_mobile` |
 | VALORANT | `POST /api/lookup/valorant` | `{ "name": "ucup", "tag": "123" }` | `eidren_valorant` |
 | Genshin Impact | `POST /api/lookup/genshin-impact` | `{ "playerId": "844335555", "server": "asia" }` | `eidren_genshin_impact` |
 | Honkai: Star Rail | `POST /api/lookup/honkai-star-rail` | `{ "playerId": "800333000" }` | `eidren_honkai_star_rail` |
@@ -17,6 +17,10 @@ Resolve a player's in-game name from an account identifier. All routes require a
 | Free Fire Global | `POST /api/lookup/free-fire-global` | `{ "playerId": "12341234" }` | `eidren_free_fire_global` |
 
 Genshin `server` is required and must be one of `asia`, `america`, `europa`, or `china`. Genshin lookups run through a two-source identity chain behind the single `eidren_genshin_impact` source label, so UIDs missing from one feed still resolve when the other carries them. The Call of Duty route covers the Garena region. PUBG Mobile is the Global route.
+
+### Call of Duty nickname vs numeric input
+
+The Call of Duty route accepts a numeric Player ID or a nickname/shortId in the same `playerId` field. All-digit inputs stay on the keyed route; anything else goes direct to the Coda white-label voucher (keyless, zero third-party runtime), which follows one country redirect to the account's home store when needed. Bogus nicknames return `404 CODM_PLAYER_NOT_FOUND` on the explicit No-openId envelope. Live-verified 2026-10-17: `ShadowHex` resolves via its BG home store; `ZzZzNoSuchPlayer9x8y7z` 404s.
 
 Honkai: Star Rail and Zenless Zone Zero accept numeric UIDs as strings and use their game-specific profile lookup paths. Their endpoints do not require a server field. Responses accept only the observed nickname field for the requested game; an upstream response counts as not-found only on explicit HTTP 404. Other unfamiliar or failed responses return the standard service-unavailable envelope.
 
