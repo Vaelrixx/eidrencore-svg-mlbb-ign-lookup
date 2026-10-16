@@ -10,5 +10,5 @@ export function classifyGoPayGameFallbackResponse(
 export function lookupGoPayGameFallback(
   gameCode: string,
   playerId: string,
-  options?: { fetchImpl?: typeof fetch },
+  options?: { fetchImpl?: typeof fetch; cache?: { getOrLoad: (key: string, ttlSeconds: number, loader: () => Promise<unknown>) => Promise<{ value: unknown; cached: boolean }> } },
 ): Promise<RapidApiGameAttempt>;

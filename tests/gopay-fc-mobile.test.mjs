@@ -4,6 +4,7 @@ import {
   classifyFcMobileResponse,
   lookupFcMobile,
 } from "../src/app/api/lookup/providers/gopay-fc-mobile.mjs";
+import { createProviderCache } from "../src/app/api/lookup/providers/provider-cache.mjs";
 
 // Live-observed 2026-10-13: bogus 19-digit UID -> explicit invalid-account 404.
 const missing = {
@@ -51,6 +52,7 @@ test("non-string IDs and network failures degrade without leaking details", asyn
   assert.deepEqual((await lookupFcMobile("abc", { fetchImpl: async () => { throw new Error("x"); } })).kind, "unavailable");
   const net = await lookupFcMobile("1856150661662899105", {
     fetchImpl: async () => { throw new Error("private socket detail"); },
+    cache: createProviderCache(),
   });
   assert.deepEqual(net, { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } });
   assert.equal(JSON.stringify(net).includes("private socket"), false);

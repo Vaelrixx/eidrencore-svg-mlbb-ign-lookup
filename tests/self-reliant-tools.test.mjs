@@ -20,6 +20,17 @@ import {
   listHeroes,
   searchHeroes,
 } from "../src/app/api/lookup/tools/mlbb-heroes.mjs";
+import {
+  datasetMeta as ffWeaponMeta,
+  filterWeapons,
+  listWeapons,
+  searchWeapons,
+} from "../src/app/api/lookup/tools/ff-weapons.mjs";
+import {
+  normalizeTier,
+  sensitivityPreset,
+  sensitivityTiers,
+} from "../src/app/api/lookup/tools/ff-sensitivity.mjs";
 
 function jsonResponse(status, payload) {
   return { status, json: async () => payload };
@@ -182,4 +193,52 @@ test("hero search is case-insensitive substring with a cap", () => {
   assert.ok(searchHeroes("a").length <= 20);
   assert.deepEqual(searchHeroes(""), []);
   assert.deepEqual(searchHeroes("zzzzzz"), []);
+});
+
+// --- Owned FF weapon dataset ---
+
+test("weapon dataset ships roster facts with class/ammo/slot", () => {
+  const weapons = listWeapons();
+  assert.ok(weapons.length >= 50);
+  assert.equal(weapons.length, ffWeaponMeta().count);
+  assert.ok(weapons.every((w) => w.name && w.class && w.ammo && w.slot));
+  assert.ok(ffWeaponMeta().attribution.includes("Garena"));
+  const names = weapons.map((w) => w.name.toLowerCase());
+  assert.equal(new Set(names).size, names.length);
+});
+
+test("weapon filters and search work case-insensitively", () => {
+  const smgs = filterWeapons({ class: "SMG" });
+  assert.ok(smgs.length > 0);
+  assert.ok(smgs.every((w) => w.class === "smg"));
+  const ars = filterWeapons({ ammo: "ar" });
+  assert.ok(ars.length > 0);
+  assert.ok(ars.every((w) => w.ammo === "AR"));
+  const hits = searchWeapons("mp");
+  assert.ok(hits.some((w) => w.name === "MP40"));
+  assert.ok(searchWeapons("a").length <= 20);
+  assert.deepEqual(searchWeapons(""), []);
+});
+
+// --- Sensitivity presets ---
+
+test("sensitivity presets cover three tiers on the 0-200 scale", () => {
+  assert.deepEqual(sensitivityTiers(), ["low", "balanced", "aggressive"]);
+  for (const tier of sensitivityTiers()) {
+    const preset = sensitivityPreset(tier);
+    assert.equal(preset.ok, true);
+    assert.deepEqual(Object.keys(preset.values).sort(), ["freeLook", "general", "redDot", "scope2x", "scope4x", "sniper"]);
+    assert.ok(Object.values(preset.values).every((v) => Number.isInteger(v) && v >= 0 && v <= 200));
+    assert.ok(preset.notes.length > 0);
+    assert.ok(preset.disclaimer.includes("Starting presets only"));
+  }
+});
+
+test("tier normalization accepts aliases and rejects unknown tiers", () => {
+  assert.equal(normalizeTier("mid"), "balanced");
+  assert.equal(normalizeTier("FLAGSHIP"), "aggressive");
+  assert.equal(normalizeTier("beginner"), "low");
+  assert.equal(normalizeTier(""), null);
+  assert.equal(normalizeTier("ultra"), null);
+  assert.equal(sensitivityPreset("ultra").ok, false);
 });
