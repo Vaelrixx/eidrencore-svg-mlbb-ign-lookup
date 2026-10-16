@@ -3,6 +3,8 @@ import type { RapidApiGameAttempt } from "./rapidapi-games.mjs";
 export function classifyGoPayGameFallbackResponse(
   httpStatus: number,
   payload: unknown,
+  requestIdentity?: string,
+  gameCode?: string,
 ): RapidApiGameAttempt;
 
 export function lookupGoPayGameFallback(

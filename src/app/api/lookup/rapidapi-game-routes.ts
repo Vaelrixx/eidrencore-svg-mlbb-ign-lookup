@@ -56,24 +56,26 @@ async function lookupWithGoPayFallback(
 }
 
 /**
- * Free Fire chain: keyed primary first, then the keyless GoPay FREEFIRE
- * fallback (live-verified 2026-10-13: docs sample resolves, Unknown User 404
- * gates not-found). Same terminal-verdict discipline as the other chains.
+ * Free Fire direct leg: keyless GoPay FREEFIRE only, no keyed leg in front
+ * (self-reliant: zero third-party runtime). Live-verified 2026-10-13 and
+ * re-verified 2026-10-17 (docs sample 1958604115 resolves; bogus IDs give
+ * the explicit Unknown User 404 that gates not-found).
  */
-async function lookupFreeFireWithFallback(
-  game: RapidApiGame,
-  input: RapidApiGameInput,
-) {
-  const primary = await lookupRapidApiGame(game, input);
-  if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") {
-    return primary;
-  }
+async function lookupFreeFireDirect(input: RapidApiGameInput) {
   const playerId = "playerId" in input ? input.playerId : "";
-  const fallback = await lookupGoPayFreeFire(playerId);
-  if (fallback.kind === "success" || fallback.kind === "not_found" || fallback.kind === "rate_limited") {
-    return fallback;
-  }
-  return primary;
+  return lookupGoPayFreeFire(playerId);
+}
+
+/**
+ * PUBG Mobile direct leg: keyless GoPay PUBGM only, no keyed leg in front
+ * (self-reliant: zero third-party runtime). Live-verified 2026-10-17
+ * (Global sample 5204837417 resolves to "Agus๛haji"; bogus IDs give the
+ * explicit Invalid user account 404 that gates not-found). Never use the
+ * PUBG_MOBILE code (echoes the ID); the echo guard catches it anyway.
+ */
+async function lookupPubgMobileDirect(input: RapidApiGameInput) {
+  const playerId = "playerId" in input ? input.playerId : "";
+  return lookupGoPayGameFallback("PUBGM", playerId);
 }
 
 /**
@@ -104,7 +106,7 @@ const configs: Record<string, { providerGame?: RapidApiGame; config: Omit<IdGame
       gameLabel: "PUBG Mobile Global",
       publicSource: "eidren_pubg_mobile",
       notFoundCode: "PUBG_PLAYER_NOT_FOUND",
-      internalProvider: "eidren_pubg_mobile_chain",
+      internalProvider: "eidren_pubg_mobile_direct",
       fields: [{ key: "playerId", label: "Character ID", example: "5204837417", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
@@ -243,9 +245,8 @@ const configs: Record<string, { providerGame?: RapidApiGame; config: Omit<IdGame
       fields: [{ key: "playerId", label: "UID", example: "1856150661662899105", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
-  // Free Fire chain (case 20261013-ffown + Lane A fallback): keyed primary
-  // first, then the live-verified keyless GoPay FREEFIRE fallback. Samples
-  // are the provider's documented examples.
+  // Free Fire direct legs (self-reliant): keyless GoPay FREEFIRE only, no
+  // keyed primary. Samples are the documented examples both legs resolve.
   "free-fire": {
     providerGame: "free-fire",
     config: {
@@ -253,7 +254,7 @@ const configs: Record<string, { providerGame?: RapidApiGame; config: Omit<IdGame
       gameLabel: "Free Fire",
       publicSource: "eidren_free_fire",
       notFoundCode: "FREE_FIRE_PLAYER_NOT_FOUND",
-      internalProvider: "eidren_free_fire_chain",
+      internalProvider: "eidren_free_fire_direct",
       fields: [{ key: "playerId", label: "UID", example: "1958604115", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
@@ -264,7 +265,7 @@ const configs: Record<string, { providerGame?: RapidApiGame; config: Omit<IdGame
       gameLabel: "Free Fire Global",
       publicSource: "eidren_free_fire_global",
       notFoundCode: "FREE_FIRE_GLOBAL_PLAYER_NOT_FOUND",
-      internalProvider: "eidren_free_fire_global_chain",
+      internalProvider: "eidren_free_fire_global_direct",
       fields: [{ key: "playerId", label: "UID", example: "12341234", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
@@ -307,10 +308,10 @@ export function createRapidApiGameHandler(game: keyof typeof configs) {
       }
       const providerGame = entry.providerGame;
       if (!providerGame) return { kind: "unavailable", diagnostic: { reason: "missing_route_config" } };
-      // Free Fire chain: keyed primary first, then the live-verified keyless
-      // GoPay FREEFIRE fallback. Terminal on success/not_found/rate_limit.
+      // Free Fire + PUBG Mobile: direct keyless GoPay legs, no keyed primary
+      // (self-reliant: zero third-party runtime). Same FC Mobile precedent.
       if (providerGame === "free-fire" || providerGame === "free-fire-global") {
-        return lookupFreeFireWithFallback(providerGame, input as RapidApiGameInput);
+        return lookupFreeFireDirect(input as RapidApiGameInput);
       }
       if (providerGame === "genshin-impact") {
         return lookupGenshinWithFallback(input as RapidApiGameInput);
@@ -319,7 +320,7 @@ export function createRapidApiGameHandler(game: keyof typeof configs) {
         return lookupWithGoPayFallback("arena-of-valor", input as RapidApiGameInput, "AOV");
       }
       if (providerGame === "pubg-mobile") {
-        return lookupWithGoPayFallback("pubg-mobile", input as RapidApiGameInput, "PUBGM");
+        return lookupPubgMobileDirect(input as RapidApiGameInput);
       }
       if (providerGame === "pubg-lite") {
         return lookupWithGoPayFallback("pubg-lite", input as RapidApiGameInput, "PUBG_ID");

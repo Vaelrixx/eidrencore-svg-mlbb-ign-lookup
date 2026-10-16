@@ -37,10 +37,18 @@ test("AOV success schema resolves the live-verified nickname", () => {
 });
 
 test("only the explicit unknown-user 404 is not-found; ban and pool misses degrade", () => {
-  assert.deepEqual(classifyGoPayGameFallbackResponse(404, aovMissing), { kind: "not_found" });
-  assert.equal(classifyGoPayGameFallbackResponse(404, litePoolMiss).kind, "unavailable");
-  assert.equal(classifyGoPayGameFallbackResponse(404, bannedAccount).kind, "unavailable");
-  assert.equal(classifyGoPayGameFallbackResponse(404, null).kind, "unavailable");
+  assert.deepEqual(classifyGoPayGameFallbackResponse(404, aovMissing, "", "AOV"), { kind: "not_found" });
+  assert.equal(classifyGoPayGameFallbackResponse(404, litePoolMiss, "", "PUBG_ID").kind, "unavailable");
+  assert.equal(classifyGoPayGameFallbackResponse(404, bannedAccount, "", "PUBG_ID").kind, "unavailable");
+  assert.equal(classifyGoPayGameFallbackResponse(404, null, "", "AOV").kind, "unavailable");
+});
+
+test("PUBGM invalid-account 404 is not-found (live-verified 2026-10-17)", () => {
+  assert.deepEqual(classifyGoPayGameFallbackResponse(404, litePoolMiss, "", "PUBGM"), { kind: "not_found" });
+  // Same envelope on other codes never reports not-found: PUBG_ID pool
+  // misses include real Lite IDs, and AOV uses the unknown-user envelope.
+  assert.equal(classifyGoPayGameFallbackResponse(404, litePoolMiss, "", "AOV").kind, "unavailable");
+  assert.equal(classifyGoPayGameFallbackResponse(404, aovMissing, "", "PUBGM").kind, "unavailable");
 });
 
 test("rate limits and malformed bodies never become not-found", () => {
