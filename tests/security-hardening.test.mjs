@@ -124,7 +124,7 @@ test("pinned HTTPS request preserves hostname/SNI and only supplies the validate
 });
 
 test("API-key cap migration serializes count-and-insert and limits RPC access to service_role", () => {
-  const migration = readFileSync(new URL("../supabase/migrations/20261016000000_atomic_api_key_cap.sql", import.meta.url), "utf8");
+  const migration = readFileSync(new URL("../supabase/migrations/20261016062256_atomic_api_key_cap.sql", import.meta.url), "utf8");
   assert.match(migration, /pg_advisory_xact_lock/);
   assert.match(migration, /v_active_count\s*>=\s*10/);
   assert.match(migration, /return query\s+insert into public\.api_keys/s);

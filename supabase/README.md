@@ -25,4 +25,4 @@ For future changes, create a new migration with the Supabase CLI and deploy sche
 
 ## Atomic API-key cap
 
-`20261016000000_atomic_api_key_cap.sql` adds the service-role-only `create_developer_api_key` RPC. Deploy and verify this migration before deploying application code that calls the RPC; it serializes per-user/per-workspace active-key count-and-insert operations under a transaction-scoped advisory lock. It is additive and does not revoke or rewrite existing API keys.
+`20261016062256_atomic_api_key_cap.sql` adds the service-role-only `create_developer_api_key` RPC. This migration has been applied to the linked production project and its recorded version is `20261016062256`; keep this filename/version aligned with the Supabase migration history. It serializes per-user/per-workspace active-key count-and-insert operations under a transaction-scoped advisory lock. It is additive and does not revoke or rewrite existing API keys.
