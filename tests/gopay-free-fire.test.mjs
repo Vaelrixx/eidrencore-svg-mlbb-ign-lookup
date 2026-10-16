@@ -52,6 +52,13 @@ test("lookup sends FREEFIRE code with string IDs and no credentials", async () =
   assert.equal(result.kind, "success");
 });
 
+test("FREEFIRE lookup 404s bogus IDs on the unknown-user envelope (live-verified 2026-10-17)", async () => {
+  const bogus = await lookupGoPayFreeFire("000000000000001", {
+    fetchImpl: async () => new Response(JSON.stringify(missing), { status: 404 }),
+  });
+  assert.deepEqual(bogus, { kind: "not_found" });
+});
+
 test("invalid inputs and network failures degrade without leaking details", async () => {
   assert.deepEqual((await lookupGoPayFreeFire("abc", { fetchImpl: async () => { throw new Error("x"); } })).kind, "unavailable");
   const net = await lookupGoPayFreeFire("1958604115", {
