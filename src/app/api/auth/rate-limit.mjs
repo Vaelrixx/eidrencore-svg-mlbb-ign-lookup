@@ -34,13 +34,14 @@ function authHeaders(key) {
 }
 
 function clientAddress(request) {
-  // Railway ingress appends the connecting client address to X-Forwarded-For.
-  // Ignore X-Real-IP: direct callers may supply it on untrusted ingress.
-  // The final X-Forwarded-For entry is trusted only behind the configured Railway ingress.
-  const forwarded = request?.headers?.get?.("x-forwarded-for");
-  if (!forwarded) return null;
-  const entries = forwarded.split(",").map((entry) => entry.trim()).filter(Boolean);
-  const address = entries.at(-1);
+  // Railway ingress overwrites X-Real-IP with the connecting client address,
+  // its documented single source of truth. Client-supplied X-Forwarded-For is
+  // stripped at the edge, and Railway may append an internal hop, so the final
+  // XFF entry is not a reliable per-client key. Trusted only behind the
+  // configured Railway ingress.
+  const realIp = request?.headers?.get?.("x-real-ip");
+  if (!realIp) return null;
+  const address = realIp.split(",").map((entry) => entry.trim()).filter(Boolean).at(-1);
   return address && isIP(address) ? address : null;
 }
 

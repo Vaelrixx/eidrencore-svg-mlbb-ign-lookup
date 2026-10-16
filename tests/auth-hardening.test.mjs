@@ -55,7 +55,7 @@ test("auth limiter uses scoped HMAC buckets with strict windows", async () => {
   assert.equal(AUTH_RECOVERY_MAX_REQUESTS, 5);
 
   let captured;
-  const result = await consumeAuthAttempt(request({ "x-real-ip": "198.51.100.77", "x-forwarded-for": "spoofed, 203.0.113.9" }), "auth:signin", {
+  const result = await consumeAuthAttempt(request({ "x-real-ip": "203.0.113.9", "x-forwarded-for": "spoofed, 10.0.0.1" }), "auth:signin", {
     env: baseEnv,
     windowSeconds: AUTH_SIGNIN_WINDOW_SECONDS,
     maxRequests: AUTH_SIGNIN_MAX_REQUESTS,
@@ -76,8 +76,24 @@ test("auth limiter uses scoped HMAC buckets with strict windows", async () => {
   assert.equal(captured.body.p_max_requests, 20);
 });
 
-test("auth limiter ignores caller-supplied X-Real-IP without Railway X-Forwarded-For", async () => {
-  const result = await consumeAuthAttempt(request({ "x-real-ip": "203.0.113.11" }), "auth:signin", {
+test("auth limiter keys on Railway X-Real-IP and ignores X-Forwarded-For", async () => {
+  let captured;
+  const result = await consumeAuthAttempt(request({ "x-real-ip": "203.0.113.11", "x-forwarded-for": "198.51.100.77, 10.0.0.3" }), "auth:signin", {
+    env: baseEnv,
+    windowSeconds: AUTH_SIGNIN_WINDOW_SECONDS,
+    maxRequests: AUTH_SIGNIN_MAX_REQUESTS,
+    fetchImpl: async (url, init) => {
+      captured = { body: JSON.parse(init.body) };
+      return Response.json([{ allowed: true, remaining: 19, reset_at: "2026-10-12T00:15:00Z" }]);
+    },
+    logger: () => {},
+  });
+  assert.equal(result.allowed, true);
+  assert.equal(captured.body.p_client_hash, createHmac("sha256", "test-hmac-secret").update("auth:signin:203.0.113.11").digest("hex"));
+});
+
+test("auth limiter stays disabled without Railway X-Real-IP", async () => {
+  const result = await consumeAuthAttempt(request({ "x-forwarded-for": "203.0.113.11" }), "auth:signin", {
     env: baseEnv,
     windowSeconds: AUTH_SIGNIN_WINDOW_SECONDS,
     maxRequests: AUTH_SIGNIN_MAX_REQUESTS,
@@ -87,7 +103,7 @@ test("auth limiter ignores caller-supplied X-Real-IP without Railway X-Forwarded
 });
 
 test("auth limiter blocks with Retry-After and fails closed when degraded", async () => {
-  const blocked = await consumeAuthAttempt(request({ "x-forwarded-for": "203.0.113.10" }), "auth:signup", {
+  const blocked = await consumeAuthAttempt(request({ "x-real-ip": "203.0.113.10" }), "auth:signup", {
     env: baseEnv,
     windowSeconds: AUTH_SIGNUP_WINDOW_SECONDS,
     maxRequests: AUTH_SIGNUP_MAX_REQUESTS,
@@ -98,7 +114,7 @@ test("auth limiter blocks with Retry-After and fails closed when degraded", asyn
   assert.ok(blocked.retryAfterSeconds >= 1 && blocked.retryAfterSeconds <= 3600);
 
   const lines = [];
-  const degraded = await consumeAuthAttempt(request({ "x-forwarded-for": "203.0.113.10" }), "auth:signin", {
+  const degraded = await consumeAuthAttempt(request({ "x-real-ip": "203.0.113.10" }), "auth:signin", {
     env: baseEnv,
     windowSeconds: AUTH_SIGNIN_WINDOW_SECONDS,
     maxRequests: AUTH_SIGNIN_MAX_REQUESTS,
@@ -114,7 +130,7 @@ test("auth limiter blocks with Retry-After and fails closed when degraded", asyn
 });
 
 test("auth limiter stays out of the way when limiter secrets are missing", async () => {
-  const result = await consumeAuthAttempt(request({ "x-forwarded-for": "203.0.113.11" }), "auth:recovery", {
+  const result = await consumeAuthAttempt(request({ "x-real-ip": "203.0.113.11" }), "auth:recovery", {
     env: {},
     windowSeconds: AUTH_RECOVERY_WINDOW_SECONDS,
     maxRequests: AUTH_RECOVERY_MAX_REQUESTS,
