@@ -104,7 +104,7 @@ const configs: Record<string, { providerGame?: RapidApiGame; config: Omit<IdGame
       gameLabel: "PUBG Mobile Global",
       publicSource: "eidren_pubg_mobile",
       notFoundCode: "PUBG_PLAYER_NOT_FOUND",
-      internalProvider: "rapidapi_id_game_checker_pubg_mobile",
+      internalProvider: "eidren_pubg_mobile_chain",
       fields: [{ key: "playerId", label: "Character ID", example: "5204837417", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
@@ -317,6 +317,9 @@ export function createRapidApiGameHandler(game: keyof typeof configs) {
       }
       if (providerGame === "arena-of-valor") {
         return lookupWithGoPayFallback("arena-of-valor", input as RapidApiGameInput, "AOV");
+      }
+      if (providerGame === "pubg-mobile") {
+        return lookupWithGoPayFallback("pubg-mobile", input as RapidApiGameInput, "PUBGM");
       }
       if (providerGame === "pubg-lite") {
         return lookupWithGoPayFallback("pubg-lite", input as RapidApiGameInput, "PUBG_ID");

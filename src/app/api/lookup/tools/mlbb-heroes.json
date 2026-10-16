@@ -1,0 +1,2317 @@
+{
+ "_meta": {
+  "game": "Mobile Legends: Bang Bang",
+  "source": "Rone Arena API (BSD-3-Clause), snapshot 2026-10-17",
+  "attribution": "Hero data via Rone Arena (github.com/ridwaanhall/rone-arena-api). Unofficial fan data, not affiliated with Moonton.",
+  "count": 133,
+  "refresh": "Re-snapshot via scripts/refresh-mlbb-heroes.mjs when a new hero releases."
+ },
+ "heroes": [
+  {
+   "id": 1,
+   "name": "Miya",
+   "slug": "miya",
+   "counters": [
+    52,
+    101
+   ],
+   "strongAgainst": [
+    3,
+    15,
+    27
+   ],
+   "teammates": [
+    6,
+    70
+   ]
+  },
+  {
+   "id": 2,
+   "name": "Balmond",
+   "slug": "balmond",
+   "counters": [
+    53,
+    43
+   ],
+   "strongAgainst": [
+    18,
+    15
+   ],
+   "teammates": [
+    55,
+    14
+   ]
+  },
+  {
+   "id": 3,
+   "name": "Saber",
+   "slug": "saber",
+   "counters": [
+    34,
+    76
+   ],
+   "strongAgainst": [
+    18,
+    15
+   ],
+   "teammates": [
+    75,
+    33
+   ]
+  },
+  {
+   "id": 4,
+   "name": "Alice",
+   "slug": "alice",
+   "counters": [
+    87,
+    58
+   ],
+   "strongAgainst": [
+    91,
+    61
+   ],
+   "teammates": [
+    2,
+    85
+   ]
+  },
+  {
+   "id": 5,
+   "name": "Nana",
+   "slug": "nana",
+   "counters": [
+    16,
+    24
+   ],
+   "strongAgainst": [
+    15,
+    75
+   ],
+   "teammates": [
+    14,
+    10
+   ]
+  },
+  {
+   "id": 6,
+   "name": "Tigreal",
+   "slug": "tigreal",
+   "counters": [
+    61,
+    50
+   ],
+   "strongAgainst": [
+    16,
+    22
+   ],
+   "teammates": [
+    38,
+    46
+   ]
+  },
+  {
+   "id": 7,
+   "name": "Alucard",
+   "slug": "alucard",
+   "counters": [
+    10,
+    32
+   ],
+   "strongAgainst": [
+    42,
+    109
+   ],
+   "teammates": [
+    41,
+    115
+   ]
+  },
+  {
+   "id": 8,
+   "name": "Karina",
+   "slug": "karina",
+   "counters": [
+    9,
+    78
+   ],
+   "strongAgainst": [
+    18,
+    60
+   ],
+   "teammates": [
+    6,
+    76
+   ]
+  },
+  {
+   "id": 9,
+   "name": "Akai",
+   "slug": "akai",
+   "counters": [
+    5,
+    48
+   ],
+   "strongAgainst": [
+    15,
+    46
+   ],
+   "teammates": [
+    3,
+    15
+   ]
+  },
+  {
+   "id": 10,
+   "name": "Franco",
+   "slug": "franco",
+   "counters": [
+    89,
+    17,
+    77
+   ],
+   "strongAgainst": [
+    66,
+    34,
+    18
+   ],
+   "teammates": [
+    66,
+    8,
+    100
+   ]
+  },
+  {
+   "id": 11,
+   "name": "Bane",
+   "slug": "bane",
+   "counters": [
+    66,
+    115
+   ],
+   "strongAgainst": [
+    49,
+    70
+   ],
+   "teammates": [
+    6,
+    96
+   ]
+  },
+  {
+   "id": 12,
+   "name": "Bruno",
+   "slug": "bruno",
+   "counters": [
+    41,
+    117
+   ],
+   "strongAgainst": [
+    60,
+    1
+   ],
+   "teammates": [
+    10,
+    78
+   ]
+  },
+  {
+   "id": 13,
+   "name": "Clint",
+   "slug": "clint",
+   "counters": [
+    114,
+    40
+   ],
+   "strongAgainst": [
+    31,
+    1
+   ],
+   "teammates": [
+    14,
+    55
+   ]
+  },
+  {
+   "id": 14,
+   "name": "Rafaela",
+   "slug": "rafaela",
+   "counters": [
+    84,
+    21
+   ],
+   "strongAgainst": [
+    88,
+    99
+   ],
+   "teammates": [
+    22,
+    37
+   ]
+  },
+  {
+   "id": 15,
+   "name": "Eudora",
+   "slug": "eudora",
+   "counters": [
+    21,
+    75
+   ],
+   "strongAgainst": [
+    131,
+    31
+   ],
+   "teammates": [
+    48,
+    6
+   ]
+  },
+  {
+   "id": 16,
+   "name": "Zilong",
+   "slug": "zilong",
+   "counters": [
+    10,
+    5
+   ],
+   "strongAgainst": [
+    18,
+    86
+   ],
+   "teammates": [
+    52,
+    60
+   ]
+  },
+  {
+   "id": 17,
+   "name": "Fanny",
+   "slug": "fanny",
+   "counters": [
+    62,
+    78
+   ],
+   "strongAgainst": [
+    40,
+    43
+   ],
+   "teammates": [
+    19,
+    41
+   ]
+  },
+  {
+   "id": 18,
+   "name": "Layla",
+   "slug": "layla",
+   "counters": [
+    8,
+    84
+   ],
+   "strongAgainst": [
+    6,
+    70
+   ],
+   "teammates": [
+    74,
+    70
+   ]
+  },
+  {
+   "id": 19,
+   "name": "Minotaur",
+   "slug": "minotaur",
+   "counters": [
+    18,
+    53
+   ],
+   "strongAgainst": [
+    103,
+    116
+   ],
+   "teammates": [
+    79,
+    114
+   ]
+  },
+  {
+   "id": 20,
+   "name": "Lolita",
+   "slug": "lolita",
+   "counters": [
+    84,
+    103
+   ],
+   "strongAgainst": [
+    71,
+    33
+   ],
+   "teammates": [
+    60,
+    18
+   ]
+  },
+  {
+   "id": 21,
+   "name": "Hayabusa",
+   "slug": "hayabusa",
+   "counters": [
+    10,
+    62
+   ],
+   "strongAgainst": [
+    61,
+    91
+   ],
+   "teammates": [
+    37,
+    28
+   ]
+  },
+  {
+   "id": 22,
+   "name": "Freya",
+   "slug": "freya",
+   "counters": [
+    106,
+    130
+   ],
+   "strongAgainst": [
+    53,
+    121
+   ],
+   "teammates": [
+    70,
+    41
+   ]
+  },
+  {
+   "id": 23,
+   "name": "Gord",
+   "slug": "gord",
+   "counters": [
+    17,
+    47
+   ],
+   "strongAgainst": [
+    99,
+    117
+   ],
+   "teammates": [
+    49,
+    70
+   ]
+  },
+  {
+   "id": 24,
+   "name": "Natalia",
+   "slug": "natalia",
+   "counters": [
+    74,
+    62
+   ],
+   "strongAgainst": [
+    119,
+    43
+   ],
+   "teammates": [
+    30,
+    38
+   ]
+  },
+  {
+   "id": 25,
+   "name": "Kagura",
+   "slug": "kagura",
+   "counters": [
+    118,
+    58
+   ],
+   "strongAgainst": [
+    18,
+    15
+   ],
+   "teammates": [
+    93,
+    6
+   ]
+  },
+  {
+   "id": 26,
+   "name": "Chou",
+   "slug": "chou",
+   "counters": [
+    53,
+    52
+   ],
+   "strongAgainst": [
+    82,
+    28
+   ],
+   "teammates": [
+    55,
+    14
+   ]
+  },
+  {
+   "id": 27,
+   "name": "Sun",
+   "slug": "sun",
+   "counters": [
+    29
+   ],
+   "strongAgainst": [
+    10,
+    41
+   ],
+   "teammates": [
+    70,
+    6
+   ]
+  },
+  {
+   "id": 28,
+   "name": "Alpha",
+   "slug": "alpha",
+   "counters": [
+    26,
+    56
+   ],
+   "strongAgainst": [
+    18,
+    121
+   ],
+   "teammates": [
+    38,
+    63
+   ]
+  },
+  {
+   "id": 29,
+   "name": "Ruby",
+   "slug": "ruby",
+   "counters": [
+    89,
+    43
+   ],
+   "strongAgainst": [
+    64,
+    80
+   ],
+   "teammates": [
+    52,
+    75
+   ]
+  },
+  {
+   "id": 30,
+   "name": "Yi Sun-shin",
+   "slug": "yi-sun-shin",
+   "counters": [
+    10,
+    62
+   ],
+   "strongAgainst": [
+    59,
+    82
+   ],
+   "teammates": [
+    28,
+    98
+   ]
+  },
+  {
+   "id": 31,
+   "name": "Moskov",
+   "slug": "moskov",
+   "counters": [
+    47,
+    24
+   ],
+   "strongAgainst": [
+    72,
+    2
+   ],
+   "teammates": [
+    117,
+    41
+   ]
+  },
+  {
+   "id": 32,
+   "name": "Johnson",
+   "slug": "johnson",
+   "counters": [
+    73,
+    25
+   ],
+   "strongAgainst": [
+    7,
+    16
+   ],
+   "teammates": [
+    46,
+    75
+   ]
+  },
+  {
+   "id": 33,
+   "name": "Cyclops",
+   "slug": "cyclops",
+   "counters": [
+    47,
+    7,
+    25
+   ],
+   "strongAgainst": [
+    82,
+    28
+   ],
+   "teammates": [
+    70,
+    74
+   ]
+  },
+  {
+   "id": 34,
+   "name": "Estes",
+   "slug": "estes",
+   "counters": [
+    3,
+    15
+   ],
+   "strongAgainst": [
+    57,
+    4
+   ],
+   "teammates": [
+    53,
+    60
+   ]
+  },
+  {
+   "id": 35,
+   "name": "Hilda",
+   "slug": "hilda",
+   "counters": [
+    72,
+    59
+   ],
+   "strongAgainst": [
+    16,
+    18
+   ],
+   "teammates": [
+    14,
+    10
+   ]
+  },
+  {
+   "id": 36,
+   "name": "Aurora",
+   "slug": "aurora",
+   "counters": [
+    84,
+    75,
+    80
+   ],
+   "strongAgainst": [
+    67,
+    72,
+    82
+   ],
+   "teammates": [
+    121,
+    22,
+    40
+   ]
+  },
+  {
+   "id": 37,
+   "name": "Lapu-Lapu",
+   "slug": "lapu-lapu",
+   "counters": [
+    53,
+    31
+   ],
+   "strongAgainst": [
+    18,
+    15
+   ],
+   "teammates": [
+    6,
+    93
+   ]
+  },
+  {
+   "id": 38,
+   "name": "Vexana",
+   "slug": "vexana",
+   "counters": [
+    3,
+    109,
+    8
+   ],
+   "strongAgainst": [
+    18,
+    43,
+    115
+   ],
+   "teammates": [
+    93,
+    105
+   ]
+  },
+  {
+   "id": 39,
+   "name": "Roger",
+   "slug": "roger",
+   "counters": [
+    74,
+    78
+   ],
+   "strongAgainst": [
+    60,
+    46
+   ],
+   "teammates": [
+    52,
+    38
+   ]
+  },
+  {
+   "id": 40,
+   "name": "Karrie",
+   "slug": "karrie",
+   "counters": [
+    115,
+    18,
+    5
+   ],
+   "strongAgainst": [
+    6,
+    117
+   ],
+   "teammates": [
+    3,
+    109
+   ]
+  },
+  {
+   "id": 41,
+   "name": "Gatotkaca",
+   "slug": "gatotkaca",
+   "counters": [
+    48,
+    89
+   ],
+   "strongAgainst": [
+    18,
+    94
+   ],
+   "teammates": [
+    25,
+    66
+   ]
+  },
+  {
+   "id": 42,
+   "name": "Harley",
+   "slug": "harley",
+   "counters": [
+    20,
+    59
+   ],
+   "strongAgainst": [
+    91,
+    121
+   ],
+   "teammates": [
+    9,
+    78
+   ]
+  },
+  {
+   "id": 43,
+   "name": "Irithel",
+   "slug": "irithel",
+   "counters": [
+    77,
+    90
+   ],
+   "strongAgainst": [
+    1,
+    28
+   ],
+   "teammates": [
+    57,
+    49
+   ]
+  },
+  {
+   "id": 44,
+   "name": "Grock",
+   "slug": "grock",
+   "counters": [
+    71,
+    42
+   ],
+   "strongAgainst": [
+    23,
+    18
+   ],
+   "teammates": [
+    46,
+    52
+   ]
+  },
+  {
+   "id": 45,
+   "name": "Argus",
+   "slug": "argus",
+   "counters": [
+    41,
+    6
+   ],
+   "strongAgainst": [
+    23,
+    36
+   ],
+   "teammates": [
+    55,
+    14
+   ]
+  },
+  {
+   "id": 46,
+   "name": "Odette",
+   "slug": "odette",
+   "counters": [
+    19,
+    111
+   ],
+   "strongAgainst": [
+    18,
+    43
+   ],
+   "teammates": [
+    32,
+    54
+   ]
+  },
+  {
+   "id": 47,
+   "name": "Lancelot",
+   "slug": "lancelot",
+   "counters": [
+    74,
+    106
+   ],
+   "strongAgainst": [
+    91,
+    52
+   ],
+   "teammates": [
+    93,
+    6
+   ]
+  },
+  {
+   "id": 48,
+   "name": "Diggie",
+   "slug": "diggie",
+   "counters": [
+    84,
+    109
+   ],
+   "strongAgainst": [
+    93,
+    20
+   ],
+   "teammates": [
+    18,
+    1
+   ]
+  },
+  {
+   "id": 49,
+   "name": "Hylos",
+   "slug": "hylos",
+   "counters": [
+    40,
+    53
+   ],
+   "strongAgainst": [
+    18,
+    23
+   ],
+   "teammates": [
+    82,
+    74
+   ]
+  },
+  {
+   "id": 50,
+   "name": "Zhask",
+   "slug": "zhask",
+   "counters": [
+    52,
+    91
+   ],
+   "strongAgainst": [
+    64,
+    103
+   ],
+   "teammates": [
+    70,
+    20
+   ]
+  },
+  {
+   "id": 51,
+   "name": "Helcurt",
+   "slug": "helcurt",
+   "counters": [
+    117,
+    70,
+    41
+   ],
+   "strongAgainst": [
+    18,
+    61,
+    66
+   ],
+   "teammates": [
+    6,
+    81,
+    82
+   ]
+  },
+  {
+   "id": 52,
+   "name": "Pharsa",
+   "slug": "pharsa",
+   "counters": [
+    10,
+    16,
+    74
+   ],
+   "strongAgainst": [
+    18,
+    60,
+    115
+   ],
+   "teammates": [
+    93,
+    10
+   ]
+  },
+  {
+   "id": 53,
+   "name": "Lesley",
+   "slug": "lesley",
+   "counters": [
+    84,
+    47
+   ],
+   "strongAgainst": [
+    41,
+    117
+   ],
+   "teammates": [
+    19,
+    87
+   ]
+  },
+  {
+   "id": 54,
+   "name": "Jawhead",
+   "slug": "jawhead",
+   "counters": [
+    111,
+    72
+   ],
+   "strongAgainst": [
+    3,
+    15
+   ],
+   "teammates": [
+    46,
+    70
+   ]
+  },
+  {
+   "id": 55,
+   "name": "Angela",
+   "slug": "angela",
+   "counters": [
+    84,
+    42
+   ],
+   "strongAgainst": [
+    59,
+    70
+   ],
+   "teammates": [
+    47,
+    109
+   ]
+  },
+  {
+   "id": 56,
+   "name": "Gusion",
+   "slug": "gusion",
+   "counters": [
+    10,
+    62
+   ],
+   "strongAgainst": [
+    18,
+    60
+   ],
+   "teammates": [
+    38,
+    52
+   ]
+  },
+  {
+   "id": 57,
+   "name": "Valir",
+   "slug": "valir",
+   "counters": [
+    47,
+    17
+   ],
+   "strongAgainst": [
+    2,
+    117
+   ],
+   "teammates": [
+    98,
+    95
+   ]
+  },
+  {
+   "id": 58,
+   "name": "Martis",
+   "slug": "martis",
+   "counters": [
+    72,
+    117
+   ],
+   "strongAgainst": [
+    18,
+    46
+   ],
+   "teammates": [
+    28,
+    98
+   ]
+  },
+  {
+   "id": 59,
+   "name": "Uranus",
+   "slug": "uranus",
+   "counters": [
+    18,
+    53
+   ],
+   "strongAgainst": [
+    6,
+    10
+   ],
+   "teammates": [
+    105,
+    60
+   ]
+  },
+  {
+   "id": 60,
+   "name": "Hanabi",
+   "slug": "hanabi",
+   "counters": [
+    47,
+    16
+   ],
+   "strongAgainst": [
+    6,
+    70
+   ],
+   "teammates": [
+    92,
+    93
+   ]
+  },
+  {
+   "id": 61,
+   "name": "Chang'e",
+   "slug": "change",
+   "counters": [
+    69,
+    42
+   ],
+   "strongAgainst": [
+    15,
+    46
+   ],
+   "teammates": [
+    41,
+    6
+   ]
+  },
+  {
+   "id": 62,
+   "name": "Kaja",
+   "slug": "kaja",
+   "counters": [
+    25,
+    30,
+    126
+   ],
+   "strongAgainst": [
+    18,
+    121,
+    38
+   ],
+   "teammates": [
+    46,
+    52,
+    121
+   ]
+  },
+  {
+   "id": 63,
+   "name": "Selena",
+   "slug": "selena",
+   "counters": [
+    60,
+    89
+   ],
+   "strongAgainst": [
+    23,
+    18
+   ],
+   "teammates": [
+    115,
+    105
+   ]
+  },
+  {
+   "id": 64,
+   "name": "Aldous",
+   "slug": "aldous",
+   "counters": [
+    58,
+    85
+   ],
+   "strongAgainst": [
+    16,
+    67
+   ],
+   "teammates": [
+    2,
+    12
+   ]
+  },
+  {
+   "id": 65,
+   "name": "Claude",
+   "slug": "claude",
+   "counters": [
+    15,
+    10
+   ],
+   "strongAgainst": [
+    38,
+    112
+   ],
+   "teammates": [
+    55,
+    76
+   ]
+  },
+  {
+   "id": 66,
+   "name": "Vale",
+   "slug": "vale",
+   "counters": [
+    21,
+    84
+   ],
+   "strongAgainst": [
+    82,
+    35
+   ],
+   "teammates": [
+    20,
+    70
+   ]
+  },
+  {
+   "id": 67,
+   "name": "Leomord",
+   "slug": "leomord",
+   "counters": [
+    106,
+    10,
+    9,
+    5
+   ],
+   "strongAgainst": [
+    46,
+    52,
+    101,
+    91
+   ],
+   "teammates": [
+    52,
+    38
+   ]
+  },
+  {
+   "id": 68,
+   "name": "Lunox",
+   "slug": "lunox",
+   "counters": [
+    122,
+    84
+   ],
+   "strongAgainst": [
+    101,
+    86
+   ],
+   "teammates": [
+    10,
+    19
+   ]
+  },
+  {
+   "id": 69,
+   "name": "Hanzo",
+   "slug": "hanzo",
+   "counters": [
+    17,
+    47,
+    120
+   ],
+   "strongAgainst": [
+    18,
+    121,
+    125
+   ],
+   "teammates": [
+    36,
+    70,
+    6
+   ]
+  },
+  {
+   "id": 70,
+   "name": "Belerick",
+   "slug": "belerick",
+   "counters": [
+    57,
+    115
+   ],
+   "strongAgainst": [
+    47,
+    84
+   ],
+   "teammates": [
+    107,
+    1
+   ]
+  },
+  {
+   "id": 71,
+   "name": "Kimmy",
+   "slug": "kimmy",
+   "counters": [
+    3,
+    47
+   ],
+   "strongAgainst": [
+    79,
+    91
+   ],
+   "teammates": [
+    77,
+    29
+   ]
+  },
+  {
+   "id": 72,
+   "name": "Thamuz",
+   "slug": "thamuz",
+   "counters": [
+    40,
+    43
+   ],
+   "strongAgainst": [
+    16,
+    27
+   ],
+   "teammates": [
+    55,
+    14
+   ]
+  },
+  {
+   "id": 73,
+   "name": "Harith",
+   "slug": "harith",
+   "counters": [
+    119,
+    52
+   ],
+   "strongAgainst": [
+    70,
+    32
+   ],
+   "teammates": [
+    74,
+    19
+   ]
+  },
+  {
+   "id": 74,
+   "name": "Minsitthar",
+   "slug": "minsitthar",
+   "counters": [
+    16,
+    108
+   ],
+   "strongAgainst": [
+    97,
+    120
+   ],
+   "teammates": [
+    114,
+    60
+   ]
+  },
+  {
+   "id": 75,
+   "name": "Kadita",
+   "slug": "kadita",
+   "counters": [
+    13,
+    105
+   ],
+   "strongAgainst": [
+    36,
+    15
+   ],
+   "teammates": [
+    93,
+    6
+   ]
+  },
+  {
+   "id": 76,
+   "name": "Faramis",
+   "slug": "faramis",
+   "counters": [
+    119,
+    52
+   ],
+   "strongAgainst": [
+    3,
+    15
+   ],
+   "teammates": [
+    67,
+    58
+   ]
+  },
+  {
+   "id": 77,
+   "name": "Badang",
+   "slug": "badang",
+   "counters": [
+    89,
+    84
+   ],
+   "strongAgainst": [
+    18,
+    46
+   ],
+   "teammates": [
+    6,
+    96
+   ]
+  },
+  {
+   "id": 78,
+   "name": "Khufra",
+   "slug": "khufra",
+   "counters": [
+    117,
+    104
+   ],
+   "strongAgainst": [
+    118,
+    47
+   ],
+   "teammates": [
+    15,
+    52
+   ]
+  },
+  {
+   "id": 79,
+   "name": "Granger",
+   "slug": "granger",
+   "counters": [
+    3,
+    21
+   ],
+   "strongAgainst": [
+    61,
+    91
+   ],
+   "teammates": [
+    10,
+    62
+   ]
+  },
+  {
+   "id": 80,
+   "name": "Guinevere",
+   "slug": "guinevere",
+   "counters": [
+    77,
+    26
+   ],
+   "strongAgainst": [
+    16,
+    90
+   ],
+   "teammates": [
+    10,
+    49
+   ]
+  },
+  {
+   "id": 81,
+   "name": "Esmeralda",
+   "slug": "esmeralda",
+   "counters": [
+    40,
+    53
+   ],
+   "strongAgainst": [
+    9,
+    20
+   ],
+   "teammates": [
+    93,
+    6
+   ]
+  },
+  {
+   "id": 82,
+   "name": "Terizla",
+   "slug": "terizla",
+   "counters": [
+    120,
+    53
+   ],
+   "strongAgainst": [
+    16,
+    27
+   ],
+   "teammates": [
+    41,
+    93
+   ]
+  },
+  {
+   "id": 83,
+   "name": "X.Borg",
+   "slug": "x.borg",
+   "counters": [
+    58,
+    85
+   ],
+   "strongAgainst": [
+    82,
+    108
+   ],
+   "teammates": [
+    8,
+    58
+   ]
+  },
+  {
+   "id": 84,
+   "name": "Ling",
+   "slug": "ling",
+   "counters": [
+    15,
+    54
+   ],
+   "strongAgainst": [
+    18,
+    60
+   ],
+   "teammates": [
+    55,
+    78
+   ]
+  },
+  {
+   "id": 85,
+   "name": "Dyrroth",
+   "slug": "dyrroth",
+   "counters": [
+    38,
+    70
+   ],
+   "strongAgainst": [
+    23,
+    60
+   ],
+   "teammates": [
+    10,
+    62
+   ]
+  },
+  {
+   "id": 86,
+   "name": "Lylia",
+   "slug": "lylia",
+   "counters": [
+    122,
+    84
+   ],
+   "strongAgainst": [
+    92,
+    49
+   ],
+   "teammates": [
+    19,
+    10
+   ]
+  },
+  {
+   "id": 87,
+   "name": "Baxia",
+   "slug": "baxia",
+   "counters": [
+    40,
+    53
+   ],
+   "strongAgainst": [
+    61,
+    90
+   ],
+   "teammates": [
+    72,
+    28
+   ]
+  },
+  {
+   "id": 88,
+   "name": "Masha",
+   "slug": "masha",
+   "counters": [
+    17,
+    65
+   ],
+   "strongAgainst": [
+    15,
+    75
+   ],
+   "teammates": [
+    93,
+    19
+   ]
+  },
+  {
+   "id": 89,
+   "name": "Wanwan",
+   "slug": "wanwan",
+   "counters": [
+    47,
+    23
+   ],
+   "strongAgainst": [
+    117,
+    96
+   ],
+   "teammates": [
+    10,
+    70
+   ]
+  },
+  {
+   "id": 90,
+   "name": "Silvanna",
+   "slug": "silvanna",
+   "counters": [
+    58
+   ],
+   "strongAgainst": [
+    18,
+    57
+   ],
+   "teammates": [
+    93,
+    6
+   ]
+  },
+  {
+   "id": 91,
+   "name": "Cecilion",
+   "slug": "cecilion",
+   "counters": [
+    84,
+    17
+   ],
+   "strongAgainst": [
+    2,
+    82
+   ],
+   "teammates": [
+    92,
+    19
+   ]
+  },
+  {
+   "id": 92,
+   "name": "Carmilla",
+   "slug": "carmilla",
+   "counters": [
+    60,
+    89
+   ],
+   "strongAgainst": [
+    85,
+    37
+   ],
+   "teammates": [
+    91,
+    36
+   ]
+  },
+  {
+   "id": 93,
+   "name": "Atlas",
+   "slug": "atlas",
+   "counters": [
+    57,
+    31
+   ],
+   "strongAgainst": [
+    38,
+    15
+   ],
+   "teammates": [
+    66,
+    121
+   ]
+  },
+  {
+   "id": 94,
+   "name": "Popol and Kupa",
+   "slug": "popol-and-kupa",
+   "counters": [
+    56,
+    8
+   ],
+   "strongAgainst": [
+    53,
+    100
+   ],
+   "teammates": [
+    28,
+    98
+   ]
+  },
+  {
+   "id": 95,
+   "name": "Yu Zhong",
+   "slug": "yu-zhong",
+   "counters": [
+    53,
+    40
+   ],
+   "strongAgainst": [
+    108,
+    16
+   ],
+   "teammates": [
+    38,
+    115
+   ]
+  },
+  {
+   "id": 96,
+   "name": "Luo Yi",
+   "slug": "luo-yi",
+   "counters": [
+    59,
+    117
+   ],
+   "strongAgainst": [
+    15,
+    23
+   ],
+   "teammates": [
+    109,
+    8
+   ]
+  },
+  {
+   "id": 97,
+   "name": "Benedetta",
+   "slug": "benedetta",
+   "counters": [
+    74,
+    106
+   ],
+   "strongAgainst": [
+    54,
+    80
+   ],
+   "teammates": [
+    32,
+    41
+   ]
+  },
+  {
+   "id": 98,
+   "name": "Khaleed",
+   "slug": "khaleed",
+   "counters": [
+    83,
+    26
+   ],
+   "strongAgainst": [
+    33,
+    115
+   ],
+   "teammates": [
+    39,
+    8
+   ]
+  },
+  {
+   "id": 99,
+   "name": "Barats",
+   "slug": "barats",
+   "counters": [
+    9,
+    31
+   ],
+   "strongAgainst": [
+    70,
+    20
+   ],
+   "teammates": [
+    102,
+    55
+   ]
+  },
+  {
+   "id": 100,
+   "name": "Brody",
+   "slug": "brody",
+   "counters": [
+    58,
+    89
+   ],
+   "strongAgainst": [
+    109,
+    113
+   ],
+   "teammates": [
+    49,
+    74
+   ]
+  },
+  {
+   "id": 101,
+   "name": "Yve",
+   "slug": "yve",
+   "counters": [
+    113,
+    3,
+    8
+   ],
+   "strongAgainst": [
+    117,
+    99,
+    108
+   ],
+   "teammates": [
+    19,
+    41,
+    93
+   ]
+  },
+  {
+   "id": 102,
+   "name": "Mathilda",
+   "slug": "mathilda",
+   "counters": [
+    10,
+    74
+   ],
+   "strongAgainst": [
+    23,
+    66
+   ],
+   "teammates": [
+    3,
+    15
+   ]
+  },
+  {
+   "id": 103,
+   "name": "Paquito",
+   "slug": "paquito",
+   "counters": [
+    10,
+    62
+   ],
+   "strongAgainst": [
+    23,
+    18
+   ],
+   "teammates": [
+    55,
+    14
+   ]
+  },
+  {
+   "id": 104,
+   "name": "Gloo",
+   "slug": "gloo",
+   "counters": [
+    40,
+    53
+   ],
+   "strongAgainst": [
+    91,
+    61
+   ],
+   "teammates": [
+    15,
+    3
+   ]
+  },
+  {
+   "id": 105,
+   "name": "Beatrix",
+   "slug": "beatrix",
+   "counters": [
+    15,
+    84
+   ],
+   "strongAgainst": [
+    49,
+    70
+   ],
+   "teammates": [
+    78,
+    93
+   ]
+  },
+  {
+   "id": 106,
+   "name": "Phoveus",
+   "slug": "phoveus",
+   "counters": [
+    36,
+    57,
+    38
+   ],
+   "strongAgainst": [
+    89,
+    120,
+    26
+   ],
+   "teammates": [
+    41,
+    19,
+    6
+   ]
+  },
+  {
+   "id": 107,
+   "name": "Natan",
+   "slug": "natan",
+   "counters": [
+    3,
+    15
+   ],
+   "strongAgainst": [
+    6,
+    41
+   ],
+   "teammates": [
+    32,
+    28
+   ]
+  },
+  {
+   "id": 108,
+   "name": "Aulus",
+   "slug": "aulus",
+   "counters": [
+    10,
+    114,
+    8
+   ],
+   "strongAgainst": [
+    60,
+    1,
+    23
+   ],
+   "teammates": [
+    55,
+    112
+   ]
+  },
+  {
+   "id": 109,
+   "name": "Aamon",
+   "slug": "aamon",
+   "counters": [
+    2,
+    117
+   ],
+   "strongAgainst": [
+    115,
+    91
+   ],
+   "teammates": [
+    14,
+    112
+   ]
+  },
+  {
+   "id": 110,
+   "name": "Valentina",
+   "slug": "valentina",
+   "counters": [
+    21,
+    24,
+    69
+   ],
+   "strongAgainst": [
+    60,
+    76
+   ],
+   "teammates": [
+    92,
+    93
+   ]
+  },
+  {
+   "id": 111,
+   "name": "Edith",
+   "slug": "edith",
+   "counters": [
+    60,
+    89
+   ],
+   "strongAgainst": [
+    16,
+    108
+   ],
+   "teammates": [
+    19,
+    93
+   ]
+  },
+  {
+   "id": 112,
+   "name": "Floryn",
+   "slug": "floryn",
+   "counters": [
+    8,
+    3
+   ],
+   "strongAgainst": [
+    59,
+    20
+   ],
+   "teammates": [
+    82,
+    72
+   ]
+  },
+  {
+   "id": 113,
+   "name": "Yin",
+   "slug": "yin",
+   "counters": [
+    117,
+    77
+   ],
+   "strongAgainst": [
+    18,
+    91
+   ],
+   "teammates": [
+    102,
+    14
+   ]
+  },
+  {
+   "id": 114,
+   "name": "Melissa",
+   "slug": "melissa",
+   "counters": [
+    115,
+    5
+   ],
+   "strongAgainst": [
+    27,
+    16
+   ],
+   "teammates": [
+    6,
+    19
+   ]
+  },
+  {
+   "id": 115,
+   "name": "Xavier",
+   "slug": "xavier",
+   "counters": [
+    97,
+    21,
+    24
+   ],
+   "strongAgainst": [
+    60,
+    76
+   ],
+   "teammates": [
+    92,
+    93
+   ]
+  },
+  {
+   "id": 116,
+   "name": "Julian",
+   "slug": "julian",
+   "counters": [
+    118,
+    73
+   ],
+   "strongAgainst": [
+    91,
+    64
+   ],
+   "teammates": [
+    55,
+    48
+   ]
+  },
+  {
+   "id": 117,
+   "name": "Fredrinn",
+   "slug": "fredrinn",
+   "counters": [
+    40,
+    53
+   ],
+   "strongAgainst": [
+    66,
+    15
+   ],
+   "teammates": [
+    55,
+    112
+   ]
+  },
+  {
+   "id": 118,
+   "name": "Joy",
+   "slug": "joy",
+   "counters": [
+    74,
+    78
+   ],
+   "strongAgainst": [
+    115,
+    38
+   ],
+   "teammates": [
+    55,
+    49
+   ]
+  },
+  {
+   "id": 119,
+   "name": "Novaria",
+   "slug": "novaria",
+   "counters": [
+    3,
+    21
+   ],
+   "strongAgainst": [
+    15,
+    46
+   ],
+   "teammates": [
+    105,
+    18
+   ]
+  },
+  {
+   "id": 120,
+   "name": "Arlott",
+   "slug": "arlott",
+   "counters": [
+    72,
+    117
+   ],
+   "strongAgainst": [
+    27,
+    16
+   ],
+   "teammates": [
+    41,
+    93
+   ]
+  },
+  {
+   "id": 121,
+   "name": "Ixia",
+   "slug": "ixia",
+   "counters": [
+    3,
+    109
+   ],
+   "strongAgainst": [
+    117,
+    11
+   ],
+   "teammates": [
+    117,
+    11
+   ]
+  },
+  {
+   "id": 122,
+   "name": "Nolan",
+   "slug": "nolan",
+   "counters": [
+    72,
+    117
+   ],
+   "strongAgainst": [
+    60,
+    15
+   ],
+   "teammates": [
+    6,
+    41
+   ]
+  },
+  {
+   "id": 123,
+   "name": "Cici",
+   "slug": "cici",
+   "counters": [
+    3,
+    62
+   ],
+   "strongAgainst": [
+    117,
+    19
+   ],
+   "teammates": [
+    55,
+    112
+   ]
+  },
+  {
+   "id": 124,
+   "name": "Chip",
+   "slug": "chip",
+   "counters": [
+    99,
+    6
+   ],
+   "strongAgainst": [
+    38,
+    18,
+    121
+   ],
+   "teammates": [
+    28,
+    60,
+    75
+   ]
+  },
+  {
+   "id": 125,
+   "name": "Zhuxin",
+   "slug": "zhuxin",
+   "counters": [
+    3,
+    17
+   ],
+   "strongAgainst": [
+    33,
+    94
+   ],
+   "teammates": [
+    123,
+    71,
+    70
+   ]
+  },
+  {
+   "id": 126,
+   "name": "Suyou",
+   "slug": "suyou",
+   "counters": [
+    114,
+    77
+   ],
+   "strongAgainst": [
+    121,
+    115
+   ],
+   "teammates": [
+    14,
+    6
+   ]
+  },
+  {
+   "id": 127,
+   "name": "Lukas",
+   "slug": "lukas",
+   "counters": [
+    17,
+    57,
+    116
+   ],
+   "strongAgainst": [
+    60,
+    121
+   ],
+   "teammates": [
+    93,
+    6,
+    41
+   ]
+  },
+  {
+   "id": 128,
+   "name": "Kalea",
+   "slug": "kalea",
+   "counters": [
+    48,
+    19
+   ],
+   "strongAgainst": [
+    18,
+    61
+   ],
+   "teammates": [
+    15,
+    42,
+    13
+   ]
+  },
+  {
+   "id": 129,
+   "name": "Zetian",
+   "slug": "zetian",
+   "counters": [
+    110
+   ],
+   "strongAgainst": [
+    2,
+    16
+   ],
+   "teammates": [
+    112,
+    14
+   ]
+  },
+  {
+   "id": 130,
+   "name": "Obsidia",
+   "slug": "obsidia",
+   "counters": [
+    12,
+    18
+   ],
+   "strongAgainst": [
+    21,
+    22,
+    47
+   ],
+   "teammates": [
+    55,
+    34
+   ]
+  },
+  {
+   "id": 131,
+   "name": "Sora",
+   "slug": "sora",
+   "counters": [
+    57,
+    17,
+    120
+   ],
+   "strongAgainst": [
+    18,
+    1,
+    60
+   ],
+   "teammates": [
+    41,
+    6,
+    19
+   ]
+  },
+  {
+   "id": 132,
+   "name": "Marcel",
+   "slug": "marcel",
+   "counters": [
+    84,
+    83
+   ],
+   "strongAgainst": [
+    18,
+    38
+   ],
+   "teammates": [
+    60,
+    121
+   ]
+  },
+  {
+   "id": 133,
+   "name": "Hirara",
+   "slug": "hirara",
+   "counters": [
+    3,
+    24
+   ],
+   "strongAgainst": [
+    52,
+    121,
+    113,
+    56
+   ],
+   "teammates": [
+    55,
+    19
+   ]
+  }
+ ]
+}
