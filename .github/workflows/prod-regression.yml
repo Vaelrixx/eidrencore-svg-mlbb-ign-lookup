@@ -2,8 +2,10 @@ name: Production regression sweep
 
 on:
   schedule:
-    # Every 6 hours. Alerts via the repository's Discord webhook on failure.
-    - cron: "17 */6 * * *"
+    # Weekly: the sweep makes 9 metered calls/run and the monitor key sits
+    # on the free plan (100/month). Move to a pro-owned key before raising
+    # the cadence. Alerts via the repository's Discord webhook on failure.
+    - cron: "17 3 * * 1"
   workflow_dispatch:
 
 permissions:
