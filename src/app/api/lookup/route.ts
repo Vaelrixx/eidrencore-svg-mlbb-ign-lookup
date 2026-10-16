@@ -1,12 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { confirmedNickname } from "./nickname-validation.mjs";
 import { resolveLookupWithFallbacks } from "./resolve-lookup.mjs";
 import { lookupIsan } from "./providers/isan.mjs";
 import { lookupRapidApi } from "./providers/rapidapi.mjs";
 import { lookupWhoPlays } from "./providers/whoplays.mjs";
 import { lookupGoPayGames } from "./providers/gopay-games.mjs";
-import { lookupNeferbyteMlbb } from "./providers/neferbyte-mlbb.mjs";
+import { lookupCodashopDirect } from "./providers/codashop-direct.mjs";
 import { logLookupSummary, observeProvider } from "./observability.mjs";
 import { enforceLookupRateLimit, enforcePlaygroundLimit, persistLookupLog } from "./persistence.mjs";
 import { getUserFromRequest, getUserFromSession, requireUser } from "@/lib/platform";
@@ -15,7 +14,6 @@ import { recordDeveloperRequest } from "@/lib/developer-events";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const LOOKUP_ENDPOINT = "https://mlbb-api.isan.eu.org/find";
 const PLAYER_ID_PATTERN = /^\d{4,20}$/;
 const ZONE_ID_PATTERN = /^\d{1,10}$/;
 
@@ -95,65 +93,17 @@ function jsonSuccess(
   );
 }
 
-function record(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null;
-}
-
-function explicitlyNotFound(payload: unknown): boolean {
-  const root = record(payload);
-  if (!root) return false;
-  const data = record(root.data);
-  const message = [
-    root.message, root.msg, root.error, root.reason,
-    data?.message, data?.msg, data?.error, data?.reason,
-  ].filter((value): value is string => typeof value === "string").join(" ");
-  return root.success === false || root.valid === false || data?.valid === false
-    ? /not found|does not exist|invalid|cannot find|can't find|no such|wrong (player|user|game)?\s*id/i.test(message)
-    : /not found|does not exist|invalid (player|user|game)?\s*id|cannot find|can't find|no such account/i.test(message);
-}
-
 /**
- * Primary provider: public community-run MLBB identity endpoint.
- * Its contract and availability are outside our control.
+ * Primary provider: the CodaShop store's own validation endpoint, called
+ * directly with our own request shape (no aggregator, no key). Contract
+ * verified live 2026-10-17; see providers/codashop-direct.mjs.
  */
 async function lookupPrimary(playerId: string, zoneId: string): Promise<LookupAttempt> {
-  const query = new URLSearchParams({ id: playerId, zone: zoneId });
-  try {
-    const upstream = await fetch(`${LOOKUP_ENDPOINT}?${query.toString()}`, {
-      method: "GET",
-      headers: { Accept: "application/json", "User-Agent": "EidrenMLBBLookup/1.0" },
-      cache: "no-store",
-      signal: AbortSignal.timeout(7000),
-    });
-
-    if (upstream.status === 429) return { kind: "rate_limited", diagnostic: { reason: "http_error", statusCode: 429 } };
-    if (upstream.status === 404) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: 404 } };
-    if (!upstream.ok) return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: upstream.status } };
-
-    const payload: unknown = await upstream.json().catch(() => null);
-    if (!payload || typeof payload !== "object") return { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
-
-    const data = payload as Record<string, unknown>;
-    if (data.success !== true) {
-      return explicitlyNotFound(payload)
-        ? { kind: "not_found" }
-        : { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
-    }
-
-    const nickname = confirmedNickname(payload);
-    if (!nickname) return { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: upstream.status } };
-
-    return {
-      kind: "success",
-      nickname,
-      country: typeof data.countryName === "string" ? data.countryName : undefined,
-      source: "community_lookup",
-    };
-  } catch {
-    return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
+  const attempt = await lookupCodashopDirect("mobile-legends", playerId, zoneId);
+  if (attempt.kind === "success") {
+    return { kind: "success", nickname: attempt.nickname, source: "codashop_direct" };
   }
+  return attempt as LookupAttempt;
 }
 
 /**
@@ -271,7 +221,7 @@ export async function POST(request: NextRequest) {
   const resolution = await resolveLookupWithFallbacks(
     () => observeProvider({
       requestId,
-      provider: "isan_find",
+      provider: "codashop_direct",
       lookup: () => lookupPrimary(playerId, zoneId),
     }),
     [
@@ -280,7 +230,6 @@ export async function POST(request: NextRequest) {
       () => observeProvider({ requestId, provider: "isan_nickname_api", lookup: () => lookupIsan(playerId, zoneId) }),
       () => observeProvider({ requestId, provider: "whoplays_check", lookup: () => lookupWhoPlays(playerId, zoneId) }),
       () => observeProvider({ requestId, provider: "gopay_games_validation", lookup: () => lookupGoPayGames(playerId, zoneId) }),
-      () => observeProvider({ requestId, provider: "neferbyte_game_id_checker", lookup: () => lookupNeferbyteMlbb(playerId, zoneId) }),
     ],
   );
   const { primary, fallbacks, confirmed, pendingFallbacks } = resolution;

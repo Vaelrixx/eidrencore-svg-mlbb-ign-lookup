@@ -22,8 +22,15 @@ function responseKind(payload) {
  * Classify only the observed structured contract. An HTTP 404 alone is not a
  * missing-player verdict: require the explicit account-not-recognized message
  * and matching error envelope. Unknown or changed responses stay unavailable.
+ *
+ * Echo guard: GoPay echoes the request identity back as `username` when a
+ * game code is wrong or carries no data for the ID (observed live
+ * 2026-10-17: PUBG_MOBILE returned the raw ID, MOBILE_LEGENDS_BANG_BANG
+ * returned id+zone concatenated). A username that merely repeats the
+ * queried identity is NOT a confirmed nickname — it degrades to
+ * unavailable so the chain keeps trying other legs.
  */
-export function classifyGoPayGamesResponse(httpStatus, payload) {
+export function classifyGoPayGamesResponse(httpStatus, payload, requestIdentity = "") {
   const root = record(payload);
   const data = record(root?.data);
 
@@ -52,6 +59,12 @@ export function classifyGoPayGamesResponse(httpStatus, payload) {
   }
 
   if (root?.message === "Success" && typeof data?.username === "string") {
+    if (isEchoedIdentity(data.username, requestIdentity)) {
+      return {
+        kind: "unavailable",
+        diagnostic: { reason: "unrecognized_response", statusCode: httpStatus, responseKind: responseKind(payload) },
+      };
+    }
     const nickname = confirmedNickname(payload);
     if (nickname) return { kind: "success", nickname, source: "gopay_games_validation" };
   }
@@ -64,6 +77,19 @@ export function classifyGoPayGamesResponse(httpStatus, payload) {
       responseKind: responseKind(payload),
     },
   };
+}
+
+/**
+ * True when the returned username is just the queried identity echoed back
+ * (raw ID, or ID+zone concatenated). Comparison is digit-insensitive to
+ * separators so "1114 917746" still matches "1114917746".
+ */
+export function isEchoedIdentity(username, requestIdentity) {
+  if (typeof username !== "string" || typeof requestIdentity !== "string") return false;
+  const compactUsername = username.replace(/[\s+\-_.]/g, "");
+  const compactIdentity = requestIdentity.replace(/[\s+\-_.]/g, "");
+  if (!compactUsername || !compactIdentity) return false;
+  return compactUsername === compactIdentity;
 }
 
 export async function lookupGoPayGames(playerId, zoneId) {
@@ -84,7 +110,8 @@ export async function lookupGoPayGames(playerId, zoneId) {
     });
 
     const payload = await upstream.json().catch(() => null);
-    return classifyGoPayGamesResponse(upstream.status, payload);
+    const identity = `${playerId ?? ""}${zoneId ?? ""}`;
+    return classifyGoPayGamesResponse(upstream.status, payload, identity);
   } catch {
     return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
   }

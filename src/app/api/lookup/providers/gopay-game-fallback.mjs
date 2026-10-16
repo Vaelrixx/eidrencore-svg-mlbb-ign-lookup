@@ -5,15 +5,19 @@ const GOPAY_FETCH_TIMEOUT_MS = 7000;
 
 /**
  * GoPay Games keyless fallback for Arena of Valor (code AOV) and PUBG-family
- * IDs (code PUBG_ID). Contract verified live 2026-10-13:
+ * IDs (codes PUBGM for Global, PUBG_ID for Lite). Contract verified live
+ * 2026-10-13, PUBGM re-verified 2026-10-17:
  * - AOV + docs sample 195293573153949 -> 200 Success + username "creature.6's"
  * - AOV + bogus 000000000000001 -> 404 {"statusCode":404,"message":"Unknown User"}
+ * - PUBGM + Global sample 5204837417 -> 200 Success + real nickname
  * - PUBG_ID + Global sample 5204837417 -> 200 Success + real nickname
  * - PUBG_ID + Lite sample 7228395004 -> 404 Invalid user account (Lite pool
  *   not carried: partial coverage only, degrade honestly)
  * - PUBG_ID + banned sample -> 404 "User account banned" (ban state, NOT
  *   not-found: degrade, never false not-found)
  * Not-found verdict keys ONLY on the explicit unknown-user message.
+ * NOTE: PUBG_MOBILE (with underscore) echoes the ID back instead of
+ * resolving — never use it. The echo guard also catches such codes.
  */
 const NOT_FOUND_MESSAGE_PATTERN = /^Unknown User/i;
 
@@ -33,7 +37,14 @@ function responseKind(payload) {
   return "other_json_object";
 }
 
-export function classifyGoPayGameFallbackResponse(httpStatus, payload) {
+/**
+ * Classify the shared GoPay fallback contract. Includes the echo guard:
+ * GoPay echoes the queried ID back as `username` when the game code is
+ * wrong or carries no data (observed live 2026-10-17 across PUBG_MOBILE,
+ * CODM, HONOR_OF_KINGS, and other codes). Echoed identities degrade to
+ * unavailable, never success.
+ */
+export function classifyGoPayGameFallbackResponse(httpStatus, payload, requestIdentity = "") {
   const root = record(payload);
   const data = record(root?.data);
 
@@ -62,6 +73,12 @@ export function classifyGoPayGameFallbackResponse(httpStatus, payload) {
   }
 
   if (root?.message === "Success" && typeof data?.username === "string") {
+    if (isEchoedIdentity(data.username, requestIdentity)) {
+      return {
+        kind: "unavailable",
+        diagnostic: { reason: "unrecognized_response", statusCode: httpStatus, responseKind: responseKind(payload) },
+      };
+    }
     const nickname = confirmedNickname(payload);
     if (nickname) return { kind: "success", nickname, source: "gopay_games_validation" };
   }
@@ -74,6 +91,18 @@ export function classifyGoPayGameFallbackResponse(httpStatus, payload) {
       responseKind: responseKind(payload),
     },
   };
+}
+
+/**
+ * True when the returned username merely repeats the queried identity.
+ * Comparison strips separators so formatted echoes still match.
+ */
+export function isEchoedIdentity(username, requestIdentity) {
+  if (typeof username !== "string" || typeof requestIdentity !== "string") return false;
+  const compactUsername = username.replace(/[\s+\-_.]/g, "");
+  const compactIdentity = requestIdentity.replace(/[\s+\-_.]/g, "");
+  if (!compactUsername || !compactIdentity) return false;
+  return compactUsername === compactIdentity;
 }
 
 export async function lookupGoPayGameFallback(gameCode, playerId, options = {}) {
@@ -100,7 +129,7 @@ export async function lookupGoPayGameFallback(gameCode, playerId, options = {}) 
       signal: AbortSignal.timeout(GOPAY_FETCH_TIMEOUT_MS),
     });
     const payload = await upstream.json().catch(() => null);
-    return classifyGoPayGameFallbackResponse(upstream.status, payload);
+    return classifyGoPayGameFallbackResponse(upstream.status, payload, playerId.trim());
   } catch {
     return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
   }

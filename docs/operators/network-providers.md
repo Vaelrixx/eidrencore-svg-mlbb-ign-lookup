@@ -14,15 +14,24 @@ result before deciding not-found vs. unavailable.
 
 | Role | Adapter | Server labels | Auth |
 |---|---|---|---|
-| Primary | `src/app/api/lookup/route.ts` → `lookupPrimary` | `isan_find` / `community_lookup` | None — `https://mlbb-api.isan.eu.org/find` |
+| Primary | `providers/codashop-direct.mjs` | `codashop_direct` | None — CodaShop store's own `/validate`, called directly with our own request shape |
 | Fallback 1 | `providers/rapidapi.mjs` | `rapidapi_id_game_checker` | `RAPIDAPI_KEY` (or legacy `RAPIDAPI_APP_TOKEN`) |
 | Fallback 2 | `providers/isan.mjs` | `isan_nickname_api` | None — `https://api.isan.eu.org/nickname/ml` |
 | Fallback 3 | `providers/whoplays.mjs` | `whoplays_check` | `WHOPLAYS_API_KEY` from whoplays.doedja.com/dashboard (free: 30/min) |
 | Fallback 4 | `providers/gopay-games.mjs` | `gopay_games_validation` | None — direct JSON validation endpoint |
-| Fallback 5 | `providers/neferbyte-mlbb.mjs` | `neferbyte_game_id_checker` | `NEFERBYTE_API_KEY` (32-char key via RapidAPI sub or Telegram bot; daily quota, resets 00:00 UTC) |
 
 Contract notes:
 
+- CodaShop direct (self-reliant, no key): `POST
+  https://order-{REGION}.codashop.com/validate` with
+  `{country, voucherTypeName, whiteLabelId, deviceId, userId, zoneId}`,
+  reverse-engineered from the store's public frontend and verified live
+  2026-10-17. Valid MLBB → `{result:{username}}` (plus-encoded, decoded
+  server-side); bogus user → errorCode `1003` (`Error_Role_Null`); bogus
+  zone → errorCode `-100` (`Error_InvalidZoneId`). Only games in the
+  `CODASHOP_GAMES` table are callable — new games ship only after their
+  voucher name + valid/bogus shapes are confirmed live. Optional
+  `CODASHOP_REGION` (default `sg`) and `CODASHOP_DEVICE_ID` overrides.
 - RapidAPI uses the documented `mobile-legends` slug. Only the structured
   `id_not_found` body counts as not-found; `no_content_0` is unavailable.
 - WhoPlays: only `error: "not_found"` (HTTP 422) counts as not-found.
@@ -34,13 +43,10 @@ Contract notes:
   requires the observed `message: "Success"` envelope and a confirmed
   `data.username` nickname. The endpoint is a secondary Codashop-family data
   path, so treat it as operationally separate, not data-lineage independent.
-- Neferbyte: `GET {base}/game-id-checker/mobile-legends/{id}/{server}` with
-  `x-api-key`. Success requires the documented
-  `{success:true,data:{username}}` envelope; auth/quota errors arrive as
-  HTTP 200 `{error:true,msg}` and degrade to unavailable (never not-found).
-  Optional `NEFERBYTE_API_BASE` override (default
-  `https://api.neferbyte.com`). Without a key the leg reports
-  `missing_config` and the chain is unaffected.
+  Echo guard (all GoPay legs): a `username` that merely repeats the queried
+  identity (raw ID, or ID+zone concatenated) is an unresolved echo, not a
+  nickname — it degrades to unavailable. Observed live 2026-10-17 on wrong
+  game codes (e.g. `PUBG_MOBILE`, `MOBILE_LEGENDS_BANG_BANG`).
 - Missing keyed-provider keys degrade to `missing_config` without fetching.
 - Customer-facing source is always `eidren_mlbb` regardless of adapter.
 
@@ -127,37 +133,30 @@ allowlist. A missing game key logs `missing_config` server-side and
 returns the generic `SERVICE_UNAVAILABLE` (502) to customers — the operator
 signal stays in Railway logs, never in the API response.
 
-## Phase 2 webshop archetype (MLBB meta, Free Fire, PUBG verify)
+## Self-reliant tools (no third parties, no keys)
 
-Shared `createMetaLookupHandler` factory (`meta-route.ts`): auth, quota,
-telemetry, and error codes mirror the game factories; success envelopes
-carry `meta.cached`. All Phase 2 providers cache with single-flight
-coalescing (`provider-cache.mjs`). Telemetry labels: `rone_arena_api`,
-`freefire_community_api`, `midasbuy_api`.
+Policy: Eidren tools must not depend on third-party aggregators at runtime.
+Allowed upstreams are (a) the stores'/publishers' own public endpoints
+called directly with our own reverse-engineered request shapes, (b) official
+keyed APIs we hold ourselves (Supercell), and (c) data vendored into the
+repo. Removed 2026-10-17: Neferbyte, Free Fire Community API, MidasbuyAPI
+proxy, and live Rone Arena reads.
 
-| Route | Upstream | Auth | Cache |
-|---|---|---|---|
-| `GET/POST /api/lookup/mlbb/meta/heroes` | Rone Arena `GET /api/heroes?limit=200` | None (keyless) | 24h |
-| `GET/POST /api/lookup/mlbb/meta/hero?hero={id\|slug}` | Rone Arena hero + counters + compatibility | None (keyless) | 24h |
-| `GET/POST /api/lookup/mlbb/meta/rank` | Rone Arena `GET /api/heroes/rank` | None (keyless) | 24h |
-| `GET/POST /api/lookup/free-fire/profile?uid={uid}` | FF Community `GET /api/v1/info?uid=` | `FREEFIRE_COMMUNITY_API_KEY` (free: 100 req/h) | 1h |
-| `GET/POST /api/lookup/free-fire/stats?uid={uid}` | FF Community `GET /api/v1/stats?uid=` | `FREEFIRE_COMMUNITY_API_KEY` | 1h |
-| `GET/POST /api/lookup/pubg-mobile/topup-verify?playerId={id}` | MidasbuyAPI `POST /api/v1/pubg/getPlayer` | `MIDASBUY_API_KEY` (via dev Telegram) | 7d |
+| Route | Implementation | Auth |
+|---|---|---|
+| `GET/POST /api/lookup/mlbb/tools/win-rate` | Pure-math calculator (`tools/win-rate.mjs`) | None |
+| `GET /api/lookup/mlbb/heroes` (+ `?q=`) | Vendored 133-hero dataset (`tools/mlbb-heroes.json`) | None |
+| `GET /api/lookup/mlbb/heroes/{id\|slug}` | Vendored dataset, relations resolved to names | None |
 
 Notes:
 
-- Rone Arena (`arena.rone.dev`, BSD-3-Clause): hero/academy reads need no
-  auth (verified live 2026-10-17). The `/api/user/*` group needs VC login
-  and is never called. Optional `RONE_API_BASE` override. Label every
-  surface "unofficial fan tool, not affiliated with Moonton".
-- Free Fire Community API: key from developers.freefirecommunity.com.
-  Optional `FREEFIRE_COMMUNITY_API_BASE` override. Missing key →
-  `missing_config` → generic 502 to customers.
-- MidasbuyAPI: key issued by the developer via Telegram (centralized
-  quota). Optional `MIDASBUY_API_BASE` override. Verify-only: this route
-  never activates codes or touches payments.
-- Without keys, the FF and PUBG routes degrade honestly (502
-  `SERVICE_UNAVAILABLE`); the Rone meta routes work keyless.
+- Hero dataset: snapshotted from the BSD-3-Clause Rone Arena API on
+  2026-10-17 with attribution in the `_meta` block. Re-snapshot with
+  `node scripts/refresh-mlbb-heroes.mjs` when a new hero releases.
+- PUBG Mobile chain now falls back to GoPay code `PUBGM` (verified live
+  2026-10-17: sample `5204837417` resolves). Never use `PUBG_MOBILE`
+  (echoes the ID); the echo guard catches such codes anyway.
+- Label every surface "unofficial fan tool, not affiliated with Moonton".
 
 ## Diagnostics
 

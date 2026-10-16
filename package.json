@@ -19,7 +19,7 @@
     "test:auth": "node --test tests/auth-hardening.test.mjs tests/content-security-policy.test.mjs",
     "test:security": "node --test tests/security-hardening.test.mjs",
     "test:supercell": "node --test tests/supercell-providers.test.mjs tests/supercell-expansion.test.mjs tests/phase1-supercell.test.mjs",
-    "test:phase2": "node --test tests/phase2-webshop.test.mjs",
+    "test:self-reliant": "node --test tests/self-reliant-tools.test.mjs",
     "test:ts-client": "node --test tests/typescript-client.test.mjs"
   },
   "dependencies": {

@@ -29,7 +29,13 @@ function responseKind(payload) {
   return "other_json_object";
 }
 
-export function classifyFcMobileResponse(httpStatus, payload) {
+/**
+ * Classify the GoPay FC_MOBILE contract. Includes the echo guard: GoPay
+ * echoes the queried ID back as `username` when the game code carries no
+ * data for it (observed live 2026-10-17). Echoed identities degrade to
+ * unavailable, never success.
+ */
+export function classifyFcMobileResponse(httpStatus, payload, requestIdentity = "") {
   const root = record(payload);
   const data = record(root?.data);
 
@@ -58,6 +64,12 @@ export function classifyFcMobileResponse(httpStatus, payload) {
   }
 
   if (root?.message === "Success" && typeof data?.username === "string") {
+    if (isEchoedIdentity(data.username, requestIdentity)) {
+      return {
+        kind: "unavailable",
+        diagnostic: { reason: "unrecognized_response", statusCode: httpStatus, responseKind: responseKind(payload) },
+      };
+    }
     const nickname = confirmedNickname(payload);
     if (nickname) return { kind: "success", nickname, source: "gopay_games_validation" };
   }
@@ -70,6 +82,18 @@ export function classifyFcMobileResponse(httpStatus, payload) {
       responseKind: responseKind(payload),
     },
   };
+}
+
+/**
+ * True when the returned username merely repeats the queried identity.
+ * Comparison strips separators so formatted echoes still match.
+ */
+export function isEchoedIdentity(username, requestIdentity) {
+  if (typeof username !== "string" || typeof requestIdentity !== "string") return false;
+  const compactUsername = username.replace(/[\s+\-_.]/g, "");
+  const compactIdentity = requestIdentity.replace(/[\s+\-_.]/g, "");
+  if (!compactUsername || !compactIdentity) return false;
+  return compactUsername === compactIdentity;
 }
 
 export async function lookupFcMobile(playerId, options = {}) {
@@ -93,7 +117,7 @@ export async function lookupFcMobile(playerId, options = {}) {
       signal: AbortSignal.timeout(GOPAY_FETCH_TIMEOUT_MS),
     });
     const payload = await upstream.json().catch(() => null);
-    return classifyFcMobileResponse(upstream.status, payload);
+    return classifyFcMobileResponse(upstream.status, payload, playerId.trim());
   } catch {
     return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
   }
