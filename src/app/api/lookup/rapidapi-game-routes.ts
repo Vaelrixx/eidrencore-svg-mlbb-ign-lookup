@@ -7,9 +7,9 @@ import { lookupFcMobile } from "./providers/gopay-fc-mobile.mjs";
 import { lookupGoPayFreeFire } from "./providers/gopay-free-fire.mjs";
 import { lookupJawakerVerifyUser } from "./providers/jawaker-verify-user.mjs";
 import { lookupCodashopDirect } from "./providers/codashop-direct.mjs";
+import { CODM_IDENTITY_PATTERN, classifyCodmInput } from "./providers/codm-input.mjs";
 
 const numericId = /^\d{3,24}$/;
-const codmIdentity = /^[\p{L}\p{N} _.'-]{3,24}$/u;
 const riotName = /^[\p{L}\p{N} _.'-]{3,16}$/u;
 const riotTag = /^[A-Za-z0-9]{3,5}$/;
 const genshinServer = /^(asia|america|europa|china)$/;
@@ -90,7 +90,7 @@ async function lookupPubgMobileDirect(input: RapidApiGameInput) {
  */
 async function lookupCodmSplit(input: RapidApiGameInput) {
   const playerId = "playerId" in input ? input.playerId : "";
-  if (/^\d+$/.test(playerId)) {
+  if (classifyCodmInput(playerId) !== "direct") {
     return lookupRapidApiGame("cod-mobile-garena", input);
   }
   return lookupCodashopDirect("call-of-duty-mobile", playerId, "");
@@ -136,7 +136,7 @@ const configs: Record<string, { providerGame?: RapidApiGame; config: Omit<IdGame
       publicSource: "eidren_call_of_duty_mobile",
       notFoundCode: "CODM_PLAYER_NOT_FOUND",
       internalProvider: "eidren_codm_split",
-      fields: [{ key: "playerId", label: "Player ID or nickname", example: "ShadowHex", minLength: 3, maxLength: 24, pattern: codmIdentity }],
+      fields: [{ key: "playerId", label: "Player ID or nickname", example: "ShadowHex", minLength: 3, maxLength: 24, pattern: CODM_IDENTITY_PATTERN }],
     },
   },
   valorant: {

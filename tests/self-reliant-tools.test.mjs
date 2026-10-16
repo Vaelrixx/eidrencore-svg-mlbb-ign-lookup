@@ -5,6 +5,10 @@ import {
   lookupCodashopDirect,
   CODASHOP_GAMES,
 } from "../src/app/api/lookup/providers/codashop-direct.mjs";
+import {
+  CODM_IDENTITY_PATTERN,
+  classifyCodmInput,
+} from "../src/app/api/lookup/providers/codm-input.mjs";
 import { classifyGoPayGamesResponse, isEchoedIdentity as isEchoedMlbb } from "../src/app/api/lookup/providers/gopay-games.mjs";
 import { classifyGoPayGameFallbackResponse } from "../src/app/api/lookup/providers/gopay-game-fallback.mjs";
 import { classifyFreeFireResponse } from "../src/app/api/lookup/providers/gopay-free-fire.mjs";
@@ -150,6 +154,30 @@ test("codashop CODM lookup follows one country redirect then stops", async () =>
   const loopImpl = async () => jsonResponse(200, { success: false, errorCode: -200, errorMsg: "x", homeBaseCountry2Name: "BG" });
   const looped = await lookupCodashopDirect("call-of-duty-mobile", "ShadowHex", "", { fetchImpl: loopImpl, env: {} });
   assert.equal(looped.kind, "unavailable");
+});
+
+test("CODM input modes route digits to keyed, nicknames/shortIds direct (live-verified 2026-10-17)", () => {
+  // Numeric mode: keyed leg (unchanged behavior for existing callers).
+  assert.equal(classifyCodmInput("8370310025568788000"), "keyed");
+  assert.equal(classifyCodmInput("5204837417"), "keyed");
+  // Nickname mode: direct WL voucher (ShadowHex → 200 live).
+  assert.equal(classifyCodmInput("ShadowHex"), "direct");
+  assert.equal(classifyCodmInput("Nyx8080"), "direct");
+  // shortId mode: direct WL voucher (6QKPNM → ShadowHex live).
+  assert.equal(classifyCodmInput("6QKPNM"), "direct");
+  // All-digit input always routes keyed — even when a numeric-named account
+  // exists on the WL side (123456789 → shortId 9FCUEL was observed live on
+  // the voucher, but the route keeps digits on the keyed leg by design).
+  assert.equal(classifyCodmInput("123456789"), "keyed");
+  // Invalid inputs never route.
+  assert.equal(classifyCodmInput("ab"), null);
+  assert.equal(classifyCodmInput("x".repeat(25)), null);
+  assert.equal(classifyCodmInput("hack<script>"), null);
+  assert.equal(classifyCodmInput(""), null);
+  assert.equal(classifyCodmInput(123), null);
+  // The shared pattern is what the route field validates against.
+  assert.ok(CODM_IDENTITY_PATTERN.test("ShadowHex"));
+  assert.ok(!CODM_IDENTITY_PATTERN.test("ab"));
 });
 
 // --- GoPay echo guard ---
