@@ -1,0 +1,41 @@
+name: Production regression sweep
+
+on:
+  schedule:
+    # Weekly: the sweep makes 9 metered calls/run and the monitor key sits
+    # on the free plan (100/month). Move to a pro-owned key before raising
+    # the cadence. Alerts via the repository's Discord webhook on failure.
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prod-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run production regression sweep
+        env:
+          PROD_BASE_URL: ${{ secrets.PROD_BASE_URL }}
+          EIDREN_MONITOR_KEY: ${{ secrets.EIDREN_MONITOR_KEY }}
+        run: node scripts/prod-regression.mjs
+      - name: Notify Discord on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "DISCORD_WEBHOOK_URL not set; skipping notification."
+            exit 0
+          fi
+          curl -fsS -m 15 -H 'Content-Type: application/json' \
+            -d "{\"content\": \"❌ Production regression failed on ${{ github.ref_name }} — see ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            "$DISCORD_WEBHOOK_URL"
