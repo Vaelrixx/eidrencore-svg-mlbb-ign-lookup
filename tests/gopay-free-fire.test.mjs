@@ -4,6 +4,7 @@ import {
   classifyFreeFireResponse,
   lookupGoPayFreeFire,
 } from "../src/app/api/lookup/providers/gopay-free-fire.mjs";
+import { createProviderCache } from "../src/app/api/lookup/providers/provider-cache.mjs";
 
 // Live-verified 2026-10-13, re-verified 2026-10-17 (docs sample 1958604115
 // resolves to a real nickname; bogus IDs give the unknown-user 404 below).
@@ -59,10 +60,35 @@ test("FREEFIRE lookup 404s bogus IDs on the unknown-user envelope (live-verified
   assert.deepEqual(bogus, { kind: "not_found" });
 });
 
+test("stable verdicts cache; transient misses always re-fetch", async () => {
+  const cache = createProviderCache();
+  let calls = 0;
+  const fetchImpl = async () => {
+    calls += 1;
+    return new Response(JSON.stringify(valid), { status: 200 });
+  };
+  const first = await lookupGoPayFreeFire("1958604115", { fetchImpl, cache });
+  assert.equal(first.cached, false);
+  const second = await lookupGoPayFreeFire("1958604115", { fetchImpl, cache });
+  assert.equal(second.cached, true);
+  assert.equal(calls, 1);
+  assert.equal(second.nickname, first.nickname);
+  // Unavailable outcomes never stick: every call re-fetches.
+  let misses = 0;
+  const missImpl = async () => {
+    misses += 1;
+    return new Response(JSON.stringify({ message: "down" }), { status: 503 });
+  };
+  await lookupGoPayFreeFire("1958604116", { fetchImpl: missImpl, cache });
+  await lookupGoPayFreeFire("1958604116", { fetchImpl: missImpl, cache });
+  assert.equal(misses, 2);
+});
+
 test("invalid inputs and network failures degrade without leaking details", async () => {
   assert.deepEqual((await lookupGoPayFreeFire("abc", { fetchImpl: async () => { throw new Error("x"); } })).kind, "unavailable");
   const net = await lookupGoPayFreeFire("1958604115", {
     fetchImpl: async () => { throw new Error("private socket detail"); },
+    cache: createProviderCache(),
   });
   assert.deepEqual(net, { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } });
   assert.equal(JSON.stringify(net).includes("private socket"), false);

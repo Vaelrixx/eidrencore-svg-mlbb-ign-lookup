@@ -4,6 +4,7 @@ import {
   classifyGoPayGameFallbackResponse,
   lookupGoPayGameFallback,
 } from "../src/app/api/lookup/providers/gopay-game-fallback.mjs";
+import { createProviderCache } from "../src/app/api/lookup/providers/provider-cache.mjs";
 
 // Live-observed 2026-10-13: AOV + docs sample -> real nickname.
 const aovSuccess = {
@@ -82,7 +83,7 @@ test("PUBGM lookup resolves the valid sample and 404s bogus IDs", async () => {
   const ok = await lookupGoPayGameFallback("PUBGM", "5204837417", {
     fetchImpl: fetchImpl(pubgmSuccess, 200),
   });
-  assert.deepEqual(ok, { kind: "success", nickname: "Agus๛haji", source: "gopay_games_validation" });
+  assert.deepEqual(ok, { kind: "success", nickname: "Agus๛haji", source: "gopay_games_validation", cached: false });
   const bogus = await lookupGoPayGameFallback("PUBGM", "000000000000001", {
     fetchImpl: fetchImpl(litePoolMiss, 404),
   });
@@ -103,11 +104,32 @@ test("Lite-pool IDs miss on PUBGM but never false not-found on PUBG_ID", async (
   );
 });
 
+test("cache keys include the game code; concurrent lookups coalesce", async () => {
+  const cache = createProviderCache();
+  let calls = 0;
+  const fetchImpl = async () => {
+    calls += 1;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    return new Response(JSON.stringify(pubgmSuccess), { status: 200 });
+  };
+  // Same ID, two codes: separate cache entries (PUBGM vs PUBG_ID differ).
+  const [a, b, c] = await Promise.all([
+    lookupGoPayGameFallback("PUBGM", "5204837417", { fetchImpl, cache }),
+    lookupGoPayGameFallback("PUBGM", "5204837417", { fetchImpl, cache }),
+    lookupGoPayGameFallback("PUBG_ID", "5204837417", { fetchImpl, cache }),
+  ]);
+  assert.equal(calls, 2);
+  assert.equal(a.nickname, "Agus๛haji");
+  assert.equal(b.cached, true);
+  assert.equal(c.nickname, "Agus๛haji");
+});
+
 test("invalid inputs and network failures degrade without leaking details", async () => {
   assert.deepEqual((await lookupGoPayGameFallback("", "123", { fetchImpl: async () => { throw new Error("x"); } })).kind, "unavailable");
   assert.deepEqual((await lookupGoPayGameFallback("AOV", "abc", { fetchImpl: async () => { throw new Error("x"); } })).kind, "unavailable");
   const net = await lookupGoPayGameFallback("AOV", "195293573153949", {
     fetchImpl: async () => { throw new Error("private socket detail"); },
+    cache: createProviderCache(),
   });
   assert.deepEqual(net, { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } });
   assert.equal(JSON.stringify(net).includes("private socket"), false);

@@ -1,7 +1,17 @@
 import { confirmedNickname } from "../nickname-validation.mjs";
+import { providerCache } from "./provider-cache.mjs";
 
 const GOPAY_ENDPOINT = "https://gopay.co.id/games/v1/order/user-account";
 const GOPAY_FETCH_TIMEOUT_MS = 7000;
+export const GOPAY_IDENTITY_CACHE_TTL_SECONDS = 300;
+
+/** Sentinel: thrown to keep transient misses out of the cache (rejections are never cached). */
+class TransientUpstreamError extends Error {
+  constructor(attempt) {
+    super("transient upstream outcome");
+    this.attempt = attempt;
+  }
+}
 
 /**
  * GoPay Games keyless direct leg for Arena of Valor (code AOV) and
@@ -132,24 +142,39 @@ export async function lookupGoPayGameFallback(gameCode, playerId, options = {}) 
     return { kind: "unavailable", diagnostic: { reason: "invalid_input" } };
   }
   const fetchImpl = options.fetchImpl ?? fetch;
+  const cache = options.cache ?? providerCache;
+  const cacheKey = `gopay:identity:${gameCode.trim().toUpperCase()}:${playerId.trim()}`;
   try {
-    const upstream = await fetchImpl(GOPAY_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0 (compatible; EidrenMLBBLookup/1.0)",
-      },
-      body: JSON.stringify({
-        code: gameCode.trim(),
-        data: { userId: playerId.trim(), zoneId: "" },
-      }),
-      cache: "no-store",
-      signal: AbortSignal.timeout(GOPAY_FETCH_TIMEOUT_MS),
+    const { value, cached } = await cache.getOrLoad(cacheKey, GOPAY_IDENTITY_CACHE_TTL_SECONDS, async () => {
+      let attempt;
+      try {
+        const upstream = await fetchImpl(GOPAY_ENDPOINT, {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (compatible; EidrenMLBBLookup/1.0)",
+          },
+          body: JSON.stringify({
+            code: gameCode.trim(),
+            data: { userId: playerId.trim(), zoneId: "" },
+          }),
+          cache: "no-store",
+          signal: AbortSignal.timeout(GOPAY_FETCH_TIMEOUT_MS),
+        });
+        const payload = await upstream.json().catch(() => null);
+        attempt = classifyGoPayGameFallbackResponse(upstream.status, payload, playerId.trim(), gameCode.trim());
+      } catch {
+        attempt = { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
+      }
+      // Cache stable verdicts only; transient misses always re-fetch.
+      if (attempt?.kind === "unavailable") throw new TransientUpstreamError(attempt);
+      return attempt;
     });
-    const payload = await upstream.json().catch(() => null);
-    return classifyGoPayGameFallbackResponse(upstream.status, payload, playerId.trim(), gameCode.trim());
-  } catch {
+    if (value?.kind === "success") return { ...value, cached };
+    return value;
+  } catch (error) {
+    if (error instanceof TransientUpstreamError) return error.attempt;
     return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
   }
 }

@@ -150,12 +150,19 @@ proxy, and live Rone Arena reads.
 | `GET/POST /api/lookup/mlbb/tools/win-rate` | Pure-math calculator (`tools/win-rate.mjs`) | None |
 | `GET /api/lookup/mlbb/heroes` (+ `?q=`) | Vendored 133-hero dataset (`tools/mlbb-heroes.json`) | None |
 | `GET /api/lookup/mlbb/heroes/{id\|slug}` | Vendored dataset, relations resolved to names | None |
+| `GET /api/lookup/free-fire/weapons` (+ `?q=`, `?class=`, `?ammo=`) | Curated 51-weapon roster facts (`tools/ff-weapons.json`) | None |
+| `GET/POST /api/lookup/free-fire/tools/sensitivity` | Editorial preset generator (`tools/ff-sensitivity.mjs`) | None |
 
 Notes:
 
 - Hero dataset: snapshotted from the BSD-3-Clause Rone Arena API on
   2026-10-17 with attribution in the `_meta` block. Re-snapshot with
   `node scripts/refresh-mlbb-heroes.mjs` when a new hero releases.
+- FF weapons: hand-curated roster facts (name/class/ammo/slot, no
+  per-patch stats). The FreeFireItems dumps were evaluated and rejected
+  as a source — 28-33k cosmetic/badge records with no weapon stats.
+- FF sensitivity: preset midpoints of published community ranges per
+  device tier; starting points only, response says so explicitly.
 - Free Fire (`/api/lookup/free-fire`, `/api/lookup/free-fire-global`) and
   PUBG Mobile (`/api/lookup/pubg-mobile`) run direct keyless GoPay legs
   with no keyed primary (codes `FREEFIRE`, `PUBGM`; same precedent as
@@ -164,6 +171,12 @@ Notes:
   Not-found envelopes are code-specific: PUBGM misses say "Invalid user
   account", FREEFIRE/AOV misses say "Unknown User". Never use
   `PUBG_MOBILE` (echoes the ID); the echo guard catches such codes anyway.
+- GoPay identity legs (FREEFIRE, PUBGM, PUBG_ID, AOV, FC_MOBILE) cache
+  stable verdicts (success, not-found, rate-limited) for 5 minutes with
+  single-flight coalescing (`provider-cache.mjs`, same pattern as
+  Supercell profiles). Transient `unavailable` outcomes never cache —
+  every one re-fetches. Success attempts carry a `cached` boolean for
+  observability; it never reaches API responses.
 - Label every surface "unofficial fan tool, not affiliated with Moonton".
 
 ## Diagnostics
