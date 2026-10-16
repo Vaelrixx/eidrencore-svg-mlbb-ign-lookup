@@ -27,7 +27,7 @@ export async function resolveLookupWithFallbacks(primaryLookup, fallbackLookups)
     }));
 
   // If no fallback confirms a nickname, wait until every result is known so
-  // the route can safely distinguish all-not-found from upstream unavailability.
+  // the route can apply the primary's verdict with full fallback context.
   const allFallbacks = Promise.all(attempts).then((fallbacks) => ({
     type: "complete",
     fallbacks,
@@ -53,4 +53,21 @@ export async function resolveLookupWithFallbacks(primaryLookup, fallbackLookups)
     confirmed: outcome.fallbacks.find((attempt) => attempt?.kind === "success") ?? null,
     pendingFallbacks: 0,
   };
+}
+
+/**
+ * Decide the route verdict from a completed resolution. Any confirmed
+ * nickname wins; otherwise the primary's explicit not-found is authoritative
+ * (unavailable fallbacks never veto it into a 502).
+ */
+export function selectLookupVerdict(primary, fallbacks, confirmed) {
+  if (confirmed?.kind === "success") return "success";
+  const legs = Array.isArray(fallbacks) ? fallbacks : [];
+  if (primary?.kind === "not_found" && legs.every((attempt) => attempt?.kind !== "success")) {
+    return "not_found";
+  }
+  if (primary?.kind === "rate_limited" && legs.every((attempt) => attempt?.kind === "rate_limited")) {
+    return "rate_limited";
+  }
+  return "unavailable";
 }

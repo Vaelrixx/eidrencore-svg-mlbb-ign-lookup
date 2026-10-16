@@ -13,3 +13,9 @@ export function resolveLookupWithFallbacks(
   confirmed: LookupAttempt | null;
   pendingFallbacks: number;
 }>;
+
+export function selectLookupVerdict(
+  primary: LookupAttempt,
+  fallbacks: LookupAttempt[],
+  confirmed: LookupAttempt | null,
+): "success" | "not_found" | "rate_limited" | "unavailable";
