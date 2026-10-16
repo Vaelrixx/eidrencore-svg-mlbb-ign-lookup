@@ -89,9 +89,19 @@ rather than a key/gateway outage. The game classifier therefore accepts these va
 
 ## Supercell lookups (`/api/lookup/{brawl-stars,clash-of-clans,clash-royale}`)
 
-Single-adapter per game through the RoyaleAPI community proxy
-(`docs.royaleapi.com/proxy.html`). Customer-facing sources are
+Hardened primary/secondary chain per game (Phase 1): official direct host
+first (`api.brawlstars.com`, `api.clashofclans.com`, `api.clashroyale.com`),
+failing over to the RoyaleAPI community proxy (`docs.royaleapi.com/proxy.html`)
+on transport failure, HTTP 5xx, or HTTP 403 (key/IP mismatch on one host
+often succeeds on the other). HTTP 429 never fails over — it propagates as
+`rate_limited` so quota is not burned twice. Customer-facing sources are
 `eidren_brawl_stars`, `eidren_clash_of_clans`, `eidren_clash_royale`.
+
+New in Phase 1: full profile summaries at
+`/api/lookup/{game}/profile` (identity, trophies, level, wins, club pointer,
+game-specific counts; 5-minute TTL with single-flight coalescing) and a
+no-secret operator health endpoint at `/api/lookup/supercell-health`
+(per-game key presence + resolved primary/secondary hosts, no network I/O).
 
 Configure the per-game server-only Railway variables:
 
@@ -99,11 +109,13 @@ Configure the per-game server-only Railway variables:
 - `CLASH_OF_CLANS_API_KEY` from developer.clashofclans.com
 - `CLASH_ROYALE_API_KEY` from developer.clashroyale.com
 
-When creating each key, allowlist RoyaleAPI's proxy IP `45.79.218.79`.
-Eidren sends each key as a bearer token to the corresponding RoyaleAPI
-proxy host. These lookups do not use Fixie. Optional `*_API_BASE` variables
-override the API base; keep overrides server-side and compatible with the
-key's IP allowlist. A missing game key logs `missing_config` server-side and
+When creating each key, allowlist BOTH the Railway backend egress IP
+(primary: official host) and RoyaleAPI's proxy IP `45.79.218.79`
+(secondary). Eidren sends each key as a bearer token to the active host.
+These lookups do not use Fixie. Optional `*_API_BASE` variables override
+the primary base and `*_API_FALLBACK_BASE` variables override the
+secondary; keep overrides server-side and compatible with the key's IP
+allowlist. A missing game key logs `missing_config` server-side and
 returns the generic `SERVICE_UNAVAILABLE` (502) to customers — the operator
 signal stays in Railway logs, never in the API response.
 

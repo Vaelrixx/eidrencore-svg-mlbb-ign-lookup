@@ -76,11 +76,11 @@ test("missing game keys fail closed without fetching", async () => {
   assert.equal(fetchCalled, false);
 });
 
-test("each game adapter hits its own community proxy host with a bearer key", async () => {
+test("each game adapter hits its own official host first with a bearer key", async () => {
   const cases = [
-    { lookup: lookupBrawlStars, envKey: "BRAWL_STARS_API_KEY", host: "https://bsproxy.royaleapi.dev" },
-    { lookup: lookupClashOfClans, envKey: "CLASH_OF_CLANS_API_KEY", host: "https://cocproxy.royaleapi.dev" },
-    { lookup: lookupClashRoyale, envKey: "CLASH_ROYALE_API_KEY", host: "https://proxy.royaleapi.dev" },
+    { lookup: lookupBrawlStars, envKey: "BRAWL_STARS_API_KEY", host: "https://api.brawlstars.com" },
+    { lookup: lookupClashOfClans, envKey: "CLASH_OF_CLANS_API_KEY", host: "https://api.clashofclans.com" },
+    { lookup: lookupClashRoyale, envKey: "CLASH_ROYALE_API_KEY", host: "https://api.clashroyale.com" },
   ];
   const previousFetch = globalThis.fetch;
   for (const { lookup, envKey, host } of cases) {

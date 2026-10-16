@@ -1,19 +1,22 @@
 import { confirmedNickname } from "../nickname-validation.mjs";
+import { fetchSupercellPathWithFallback } from "./supercell-fallback.mjs";
 
 /**
  * Shared core for Supercell player lookups (Brawl Stars, Clash of Clans,
- * Clash Royale) via the official per-game APIs through the RoyaleAPI
- * community proxy.
+ * Clash Royale) via the official per-game APIs with a hardened
+ * primary/secondary chain (official direct first, RoyaleAPI community proxy
+ * as failover). See supercell-fallback.mjs for the chain and triggers.
  *
  * Community proxy note: the Isan community proxy is MLBB-only, and ID Game
  * Checker's own listing marks its Supercell category "not available", so
- * Supercell traffic goes through the RoyaleAPI community proxy hosts below.
+ * Supercell failover traffic goes through the RoyaleAPI community proxy
+ * hosts below.
  * Supercell developer keys are free; each game has its own developer portal
- * and key. When creating each key, allowlist the RoyaleAPI proxy IP
- * 45.79.218.79, then call the proxy host with the key as a Bearer token —
- * no Fixie/other egress proxy is used. Per-game base URLs can still be
- * overridden with BRAWL_STARS_API_BASE / CLASH_OF_CLANS_API_BASE /
- * CLASH_ROYALE_API_BASE (e.g. to point at the official hosts directly).
+ * and key. For the default chain, allowlist BOTH the Railway backend egress
+ * IP (primary: official host) and the RoyaleAPI proxy IP 45.79.218.79
+ * (secondary) on each key. Per-game base URLs can still be overridden with
+ * BRAWL_STARS_API_BASE / CLASH_OF_CLANS_API_BASE / CLASH_ROYALE_API_BASE
+ * (primary) and the matching *_API_FALLBACK_BASE (secondary).
  *
  * Privacy: adapters never log or return tags, nicknames, payloads, URLs,
  * headers, or credentials. Only the shared LookupAttempt shape leaves here.
@@ -101,6 +104,8 @@ export function supercellConfigFor(game, env = process.env) {
 
 /**
  * GET a path on a game's official API through the community proxy.
+ * Single-host primitive kept for the fallback chain internals and the
+ * clan/battle/ranking adapters (which fail over at their own layer later).
  *
  * Returns a tagged result so clan/battle/ranking adapters can classify the
  * upstream response themselves: `{ ok: true, status, payload }` on any
@@ -133,9 +138,10 @@ export async function fetchSupercellPath(game, path, {
 }
 
 /**
- * Look up a Supercell player by tag against the official per-game API.
- * Returns missing_config when the game's key is not set, so routes degrade
- * to a clear 503 instead of calling upstream without credentials.
+ * Look up a Supercell player by tag against the official per-game API via
+ * the hardened primary/secondary chain. Returns missing_config when the
+ * game's key is not set, so routes degrade to a clear 503 instead of
+ * calling upstream without credentials.
  */
 export async function lookupSupercellPlayer(game, tag, {
   fetchImpl = fetch,
@@ -144,7 +150,7 @@ export async function lookupSupercellPlayer(game, tag, {
   const normalized = normalizeSupercellTag(tag);
   if (!normalized) return { kind: "unavailable", diagnostic: { reason: "provider_error" } };
 
-  const fetched = await fetchSupercellPath(game, `/v1/players/${encodeURIComponent(normalized)}`, { fetchImpl, env });
+  const fetched = await fetchSupercellPathWithFallback(game, `/v1/players/${encodeURIComponent(normalized)}`, { fetchImpl, env });
   if (!fetched.ok) return fetched.attempt;
   return classifySupercellResponse(fetched.status, fetched.payload, fetched.source);
 }
