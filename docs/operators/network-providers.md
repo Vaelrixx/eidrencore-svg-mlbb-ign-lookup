@@ -19,6 +19,7 @@ result before deciding not-found vs. unavailable.
 | Fallback 2 | `providers/isan.mjs` | `isan_nickname_api` | None — `https://api.isan.eu.org/nickname/ml` |
 | Fallback 3 | `providers/whoplays.mjs` | `whoplays_check` | `WHOPLAYS_API_KEY` from whoplays.doedja.com/dashboard (free: 30/min) |
 | Fallback 4 | `providers/gopay-games.mjs` | `gopay_games_validation` | None — direct JSON validation endpoint |
+| Fallback 5 | `providers/neferbyte-mlbb.mjs` | `neferbyte_game_id_checker` | `NEFERBYTE_API_KEY` (32-char key via RapidAPI sub or Telegram bot; daily quota, resets 00:00 UTC) |
 
 Contract notes:
 
@@ -33,6 +34,13 @@ Contract notes:
   requires the observed `message: "Success"` envelope and a confirmed
   `data.username` nickname. The endpoint is a secondary Codashop-family data
   path, so treat it as operationally separate, not data-lineage independent.
+- Neferbyte: `GET {base}/game-id-checker/mobile-legends/{id}/{server}` with
+  `x-api-key`. Success requires the documented
+  `{success:true,data:{username}}` envelope; auth/quota errors arrive as
+  HTTP 200 `{error:true,msg}` and degrade to unavailable (never not-found).
+  Optional `NEFERBYTE_API_BASE` override (default
+  `https://api.neferbyte.com`). Without a key the leg reports
+  `missing_config` and the chain is unaffected.
 - Missing keyed-provider keys degrade to `missing_config` without fetching.
 - Customer-facing source is always `eidren_mlbb` regardless of adapter.
 
@@ -118,6 +126,38 @@ secondary; keep overrides server-side and compatible with the key's IP
 allowlist. A missing game key logs `missing_config` server-side and
 returns the generic `SERVICE_UNAVAILABLE` (502) to customers — the operator
 signal stays in Railway logs, never in the API response.
+
+## Phase 2 webshop archetype (MLBB meta, Free Fire, PUBG verify)
+
+Shared `createMetaLookupHandler` factory (`meta-route.ts`): auth, quota,
+telemetry, and error codes mirror the game factories; success envelopes
+carry `meta.cached`. All Phase 2 providers cache with single-flight
+coalescing (`provider-cache.mjs`). Telemetry labels: `rone_arena_api`,
+`freefire_community_api`, `midasbuy_api`.
+
+| Route | Upstream | Auth | Cache |
+|---|---|---|---|
+| `GET/POST /api/lookup/mlbb/meta/heroes` | Rone Arena `GET /api/heroes?limit=200` | None (keyless) | 24h |
+| `GET/POST /api/lookup/mlbb/meta/hero?hero={id\|slug}` | Rone Arena hero + counters + compatibility | None (keyless) | 24h |
+| `GET/POST /api/lookup/mlbb/meta/rank` | Rone Arena `GET /api/heroes/rank` | None (keyless) | 24h |
+| `GET/POST /api/lookup/free-fire/profile?uid={uid}` | FF Community `GET /api/v1/info?uid=` | `FREEFIRE_COMMUNITY_API_KEY` (free: 100 req/h) | 1h |
+| `GET/POST /api/lookup/free-fire/stats?uid={uid}` | FF Community `GET /api/v1/stats?uid=` | `FREEFIRE_COMMUNITY_API_KEY` | 1h |
+| `GET/POST /api/lookup/pubg-mobile/topup-verify?playerId={id}` | MidasbuyAPI `POST /api/v1/pubg/getPlayer` | `MIDASBUY_API_KEY` (via dev Telegram) | 7d |
+
+Notes:
+
+- Rone Arena (`arena.rone.dev`, BSD-3-Clause): hero/academy reads need no
+  auth (verified live 2026-10-17). The `/api/user/*` group needs VC login
+  and is never called. Optional `RONE_API_BASE` override. Label every
+  surface "unofficial fan tool, not affiliated with Moonton".
+- Free Fire Community API: key from developers.freefirecommunity.com.
+  Optional `FREEFIRE_COMMUNITY_API_BASE` override. Missing key →
+  `missing_config` → generic 502 to customers.
+- MidasbuyAPI: key issued by the developer via Telegram (centralized
+  quota). Optional `MIDASBUY_API_BASE` override. Verify-only: this route
+  never activates codes or touches payments.
+- Without keys, the FF and PUBG routes degrade honestly (502
+  `SERVICE_UNAVAILABLE`); the Rone meta routes work keyless.
 
 ## Diagnostics
 
