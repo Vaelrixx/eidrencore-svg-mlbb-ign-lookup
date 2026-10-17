@@ -4,17 +4,20 @@ import { BULK_CONCURRENCY, BULK_GAMES, BULK_MAX_BYTES, BULK_MAX_ITEMS, bulkGameS
 
 test("bulk registry covers every live lookup route", () => {
   const slugs = bulkGameSlugs();
-  assert.equal(slugs.length, 39);
+  assert.equal(slugs.length, 37);
   for (const slug of ["mlbb", "pubg-mobile", "call-of-duty-mobile", "valorant", "genshin-impact",
     "honkai-star-rail", "zenless-zone-zero", "honor-of-kings", "arena-of-valor", "pubg-lite",
     "teen-patti-gold", "jawaker", "fc-mobile", "free-fire", "free-fire-global", "bigo-live",
     "higgs-domino", "brawl-stars", "clash-of-clans", "clash-royale",
-    "8-ball-pool", "arena-breakout", "blood-strike", "delta-force", "delta-force-garena",
+    "8-ball-pool", "arena-breakout", "blood-strike", "delta-force-garena",
     "eggy-party", "ace-racer", "dragon-raja", "metal-slug", "lifeafter", "one-punch-man",
-    "pokemon-unite", "whiteout-survival", "hay-day", "magic-chess", "speed-drifters", "undawn",
+    "pokemon-unite", "whiteout-survival", "hay-day", "magic-chess", "speed-drifters",
     "super-sus", "point-blank"]) {
     assert.ok(slugs.includes(slug), `missing bulk game: ${slug}`);
   }
+  // Dead slugs pulled 2026-10-18 (upstream carries no data): delta-force, undawn.
+  assert.ok(!slugs.includes("delta-force"), "delta-force must stay pulled");
+  assert.ok(!slugs.includes("undawn"), "undawn must stay pulled");
 });
 
 test("bulk limits protect upstream providers", () => {
@@ -48,4 +51,14 @@ test("bulk validators accept documented samples and reject junk", () => {
   assert.deepEqual(BULK_GAMES["free-fire"].validate({ playerId: "1958604115" }), { playerId: "1958604115" });
   assert.equal(BULK_GAMES["free-fire"].validate({ playerId: "12" }), null);
   assert.deepEqual(BULK_GAMES["call-of-duty-mobile"].validate({ playerId: "ShadowHex" }), { playerId: "ShadowHex" });
+  // Degraded-legs verdicts 2026-10-18: real-format contracts.
+  assert.deepEqual(BULK_GAMES["hay-day"].validate({ playerId: "PURC098R2" }), { playerId: "PURC098R2" });
+  assert.deepEqual(BULK_GAMES["hay-day"].validate({ playerId: "#PURC098R2" }), { playerId: "#PURC098R2" });
+  assert.equal(BULK_GAMES["hay-day"].validate({ playerId: "!!!" }), null);
+  assert.deepEqual(BULK_GAMES["pokemon-unite"].validate({ playerId: "LYK85AP" }), { playerId: "LYK85AP" });
+  assert.equal(BULK_GAMES["pokemon-unite"].validate({ playerId: "ab" }), null);
+  assert.deepEqual(BULK_GAMES["point-blank"].validate({ playerId: "TestUser99" }), { playerId: "TestUser99" });
+  assert.equal(BULK_GAMES["point-blank"].validate({ playerId: "!!" }), null);
+  assert.deepEqual(BULK_GAMES.lifeafter.validate({ playerId: "11043723", server: "NancyCity" }), { playerId: "11043723", server: "NancyCity" });
+  assert.deepEqual(BULK_GAMES["magic-chess"].validate({ playerId: "12345678", server: "1234" }), { playerId: "12345678", server: "1234" });
 });

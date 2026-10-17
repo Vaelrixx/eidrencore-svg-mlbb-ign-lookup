@@ -39,7 +39,6 @@ export const RAPIDAPI_GAME_ROUTES = Object.freeze({
   // verified live 2026-10-18; server shapes per endpoint templates).
   "arena-breakout": Object.freeze({ slug: "arena-breakout", fields: ["playerId"] }),
   "blood-strike": Object.freeze({ slug: "blood-strike", fields: ["playerId"] }),
-  "delta-force": Object.freeze({ slug: "dfm", fields: ["playerId"] }),
   "delta-force-garena": Object.freeze({ slug: "dfm-garena", fields: ["playerId"] }),
   "eggy-party": Object.freeze({ slug: "eggy-party", fields: ["playerId", "server"] }),
   "ace-racer": Object.freeze({ slug: "ace-racer", fields: ["playerId", "server"] }),
@@ -52,7 +51,6 @@ export const RAPIDAPI_GAME_ROUTES = Object.freeze({
   "hay-day": Object.freeze({ slug: "hayday", fields: ["playerId"] }),
   "magic-chess": Object.freeze({ slug: "mcgg", fields: ["playerId", "server"] }),
   "speed-drifters": Object.freeze({ slug: "speed-drifters", fields: ["playerId"] }),
-  undawn: Object.freeze({ slug: "undawn", fields: ["playerId"] }),
   // Point Blank: /point-blank/{id} on the key's published endpoint list.
   // Keyed primary-only: the Coda initPayment leg echoes short input IDs
   // back as username (verified live 2026-10-18), so it carries no

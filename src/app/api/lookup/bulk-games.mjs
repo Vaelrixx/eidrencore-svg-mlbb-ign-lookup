@@ -34,6 +34,9 @@ const genshinServer = /^(asia|america|europa|china)$/;
 const providerServer = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,31}$/;
 const mlbbPlayerId = /^\d{4,20}$/;
 const mlbbZoneId = /^\d{1,10}$/;
+const supercellTag = /^#?[0289PYLQGRJCUV]{3,20}$/i;
+const uniteTrainerId = /^[A-Za-z0-9]{5,12}$/;
+const pointBlankId = /^[A-Za-z0-9][A-Za-z0-9_.@-]{2,31}$/;
 
 function stringField(value, minLength, maxLength, pattern) {
   const trimmed = typeof value === "string" ? value.trim() : "";
@@ -335,14 +338,6 @@ export const BULK_GAMES = {
     validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
     lookup: async (input) => lookupRapidApiGame("blood-strike", input),
   }),
-  "delta-force": identityGame({
-    gameLabel: "Delta Force",
-    publicSource: "eidren_delta_force",
-    notFoundCode: "DELTA_FORCE_PLAYER_NOT_FOUND",
-    fields: [{ key: "playerId", label: "Player ID", example: "123456789" }],
-    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
-    lookup: async (input) => lookupRapidApiGame("delta-force", input),
-  }),
   "delta-force-garena": identityGame({
     gameLabel: "Delta Force (Garena)",
     publicSource: "eidren_delta_force_garena",
@@ -400,8 +395,8 @@ export const BULK_GAMES = {
     publicSource: "eidren_lifeafter",
     notFoundCode: "LIFEAFTER_PLAYER_NOT_FOUND",
     fields: [
-      { key: "playerId", label: "Player ID", example: "123456789" },
-      { key: "server", label: "Server", example: "asia" },
+      { key: "playerId", label: "Account ID", example: "11043723" },
+      { key: "server", label: "Server", example: "NancyCity" },
     ],
     validate: (item) => validateFields(item, [
       { key: "playerId", validate: numericField },
@@ -427,8 +422,8 @@ export const BULK_GAMES = {
     gameLabel: "Pokémon UNITE",
     publicSource: "eidren_pokemon_unite",
     notFoundCode: "POKEMON_UNITE_PLAYER_NOT_FOUND",
-    fields: [{ key: "playerId", label: "Player ID", example: "123456789" }],
-    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    fields: [{ key: "playerId", label: "Trainer ID", example: "LYK85AP" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: (value) => stringField(value, 5, 12, uniteTrainerId) }]),
     lookup: async (input) => lookupRapidApiGame("pokemon-unite", input),
   }),
   "whiteout-survival": identityGame({
@@ -443,8 +438,8 @@ export const BULK_GAMES = {
     gameLabel: "Hay Day",
     publicSource: "eidren_hay_day",
     notFoundCode: "HAY_DAY_PLAYER_NOT_FOUND",
-    fields: [{ key: "playerId", label: "Player tag", example: "123456789" }],
-    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    fields: [{ key: "playerId", label: "Farm tag", example: "PURC098R2" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: (value) => stringField(value, 3, 21, supercellTag) }]),
     lookup: async (input) => lookupRapidApiGame("hay-day", input),
   }),
   "magic-chess": identityGame({
@@ -452,8 +447,8 @@ export const BULK_GAMES = {
     publicSource: "eidren_magic_chess",
     notFoundCode: "MAGIC_CHESS_PLAYER_NOT_FOUND",
     fields: [
-      { key: "playerId", label: "Player ID", example: "123456789" },
-      { key: "server", label: "Server", example: "asia" },
+      { key: "playerId", label: "User ID", example: "12345678" },
+      { key: "server", label: "Zone ID", example: "1234" },
     ],
     validate: (item) => validateFields(item, [
       { key: "playerId", validate: numericField },
@@ -469,14 +464,6 @@ export const BULK_GAMES = {
     validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
     lookup: async (input) => lookupRapidApiGame("speed-drifters", input),
   }),
-  undawn: identityGame({
-    gameLabel: "Undawn",
-    publicSource: "eidren_undawn",
-    notFoundCode: "UNDAWN_PLAYER_NOT_FOUND",
-    fields: [{ key: "playerId", label: "Player ID", example: "123456789" }],
-    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
-    lookup: async (input) => lookupRapidApiGame("undawn", input),
-  }),
   "super-sus": identityGame({
     gameLabel: "Super Sus",
     publicSource: "eidren_super_sus",
@@ -489,8 +476,8 @@ export const BULK_GAMES = {
     gameLabel: "Point Blank",
     publicSource: "eidren_point_blank",
     notFoundCode: "POINT_BLANK_PLAYER_NOT_FOUND",
-    fields: [{ key: "playerId", label: "Player ID", example: "123456789" }],
-    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    fields: [{ key: "playerId", label: "Zepetto ID", example: "123456789" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: (value) => stringField(value, 3, 32, pointBlankId) }]),
     lookup: async (input) => lookupRapidApiGame("point-blank", input),
   }),
 };

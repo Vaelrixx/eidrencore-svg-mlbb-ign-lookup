@@ -17,7 +17,6 @@ export type RapidApiGame =
   | "free-fire-global"
   | "arena-breakout"
   | "blood-strike"
-  | "delta-force"
   | "delta-force-garena"
   | "eggy-party"
   | "ace-racer"
@@ -30,7 +29,6 @@ export type RapidApiGame =
   | "hay-day"
   | "magic-chess"
   | "speed-drifters"
-  | "undawn"
   | "point-blank";
 
 export type RapidApiGameInput =

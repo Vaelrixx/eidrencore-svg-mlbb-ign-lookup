@@ -15,6 +15,12 @@ const riotName = /^[\p{L}\p{N} _.'-]{3,16}$/u;
 const riotTag = /^[A-Za-z0-9]{3,5}$/;
 const genshinServer = /^(asia|america|europa|china)$/;
 const providerServer = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,31}$/;
+// Hay Day: Supercell farm tag, same alphabet as the official tag pattern.
+const supercellTag = /^#?[0289PYLQGRJCUV]{3,20}$/i;
+// Pokémon UNITE: 7-char alphanumeric trainer code (e.g. LYK85AP).
+const uniteTrainerId = /^[A-Za-z0-9]{5,12}$/;
+// Point Blank: Zepetto account username (top-up sites label it "ID Zepetto").
+const pointBlankId = /^[A-Za-z0-9][A-Za-z0-9_.@-]{2,31}$/;
 
 /**
  * Genshin chain: keyed primary first, then the keyless showcase fallback.
@@ -401,17 +407,9 @@ const configs: Record<string, { providerGame?: RapidApiGame; config: Omit<IdGame
       fields: [{ key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
-  "delta-force": {
-    providerGame: "delta-force",
-    config: {
-      endpoint: "/api/lookup/delta-force",
-      gameLabel: "Delta Force",
-      publicSource: "eidren_delta_force",
-      notFoundCode: "DELTA_FORCE_PLAYER_NOT_FOUND",
-      internalProvider: "rapidapi_id_game_checker_delta_force",
-      fields: [{ key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId }],
-    },
-  },
+  // Delta Force pulled 2026-10-18: two player-documented real UIDs plus
+  // baseline probes all 502d, never a nickname — the keyed upstream
+  // carries no data for this game.
   "delta-force-garena": {
     providerGame: "delta-force-garena",
     config: {
@@ -482,8 +480,8 @@ const configs: Record<string, { providerGame?: RapidApiGame; config: Omit<IdGame
       notFoundCode: "LIFEAFTER_PLAYER_NOT_FOUND",
       internalProvider: "rapidapi_id_game_checker_lifeafter",
       fields: [
-        { key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId },
-        { key: "server", label: "Server", example: "asia", minLength: 1, maxLength: 32, pattern: providerServer },
+        { key: "playerId", label: "Account ID", example: "11043723", minLength: 3, maxLength: 24, pattern: numericId },
+        { key: "server", label: "Server", example: "NancyCity", minLength: 1, maxLength: 32, pattern: providerServer },
       ],
     },
   },
@@ -509,7 +507,7 @@ const configs: Record<string, { providerGame?: RapidApiGame; config: Omit<IdGame
       publicSource: "eidren_pokemon_unite",
       notFoundCode: "POKEMON_UNITE_PLAYER_NOT_FOUND",
       internalProvider: "rapidapi_id_game_checker_pokemon_unite",
-      fields: [{ key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId }],
+      fields: [{ key: "playerId", label: "Trainer ID", example: "LYK85AP", minLength: 5, maxLength: 12, pattern: uniteTrainerId }],
     },
   },
   "whiteout-survival": {
@@ -531,7 +529,7 @@ const configs: Record<string, { providerGame?: RapidApiGame; config: Omit<IdGame
       publicSource: "eidren_hay_day",
       notFoundCode: "HAY_DAY_PLAYER_NOT_FOUND",
       internalProvider: "rapidapi_id_game_checker_hay_day",
-      fields: [{ key: "playerId", label: "Player tag", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId }],
+      fields: [{ key: "playerId", label: "Farm tag", example: "PURC098R2", minLength: 3, maxLength: 21, pattern: supercellTag }],
     },
   },
   "magic-chess": {
@@ -543,8 +541,8 @@ const configs: Record<string, { providerGame?: RapidApiGame; config: Omit<IdGame
       notFoundCode: "MAGIC_CHESS_PLAYER_NOT_FOUND",
       internalProvider: "rapidapi_id_game_checker_magic_chess",
       fields: [
-        { key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId },
-        { key: "server", label: "Server", example: "asia", minLength: 1, maxLength: 32, pattern: providerServer },
+        { key: "playerId", label: "User ID", example: "12345678", minLength: 3, maxLength: 24, pattern: numericId },
+        { key: "server", label: "Zone ID", example: "1234", minLength: 1, maxLength: 32, pattern: providerServer },
       ],
     },
   },
@@ -559,19 +557,12 @@ const configs: Record<string, { providerGame?: RapidApiGame; config: Omit<IdGame
       fields: [{ key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
-  undawn: {
-    providerGame: "undawn",
-    config: {
-      endpoint: "/api/lookup/undawn",
-      gameLabel: "Undawn",
-      publicSource: "eidren_undawn",
-      notFoundCode: "UNDAWN_PLAYER_NOT_FOUND",
-      internalProvider: "rapidapi_id_game_checker_undawn",
-      fields: [{ key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId }],
-    },
-  },
+  // Undawn pulled 2026-10-18: even a documented real UID 502d across
+  // 8 probes, never a nickname — the keyed upstream carries no data.
   // Point Blank: keyed primary-only. No keyless leg: Coda initPayment
   // echoes short IDs (verified live 2026-10-18), GoPay has no PB code.
+  // Top-up sites ask for the Zepetto account username, so the route
+  // accepts account strings as well as numeric IDs.
   "point-blank": {
     providerGame: "point-blank",
     config: {
@@ -580,7 +571,7 @@ const configs: Record<string, { providerGame?: RapidApiGame; config: Omit<IdGame
       publicSource: "eidren_point_blank",
       notFoundCode: "POINT_BLANK_PLAYER_NOT_FOUND",
       internalProvider: "rapidapi_id_game_checker_point_blank",
-      fields: [{ key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId }],
+      fields: [{ key: "playerId", label: "Zepetto ID", example: "123456789", minLength: 3, maxLength: 32, pattern: pointBlankId }],
     },
   },
 };
