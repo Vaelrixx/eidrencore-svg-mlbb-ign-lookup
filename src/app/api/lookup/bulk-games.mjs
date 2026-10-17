@@ -21,8 +21,6 @@ import { lookupJawakerVerifyUser } from "./providers/jawaker-verify-user.mjs";
 import { lookupCodashopDirect } from "./providers/codashop-direct.mjs";
 import { lookupCodashopInitpay } from "./providers/codashop-initpay.mjs";
 import { lookupRapidApi } from "./providers/rapidapi.mjs";
-import { lookupIsan } from "./providers/isan.mjs";
-import { lookupWhoPlays } from "./providers/whoplays.mjs";
 import { lookupGoPayGames } from "./providers/gopay-games.mjs";
 import { resolveLookupWithFallbacks, selectLookupVerdict } from "./resolve-lookup.mjs";
 import { CODM_IDENTITY_PATTERN, classifyCodmInput } from "./providers/codm-input.mjs";
@@ -96,7 +94,8 @@ async function lookupZzz(input) {
 }
 
 // Mirrors POST /api/lookup: CodaShop direct primary, then the four
-// live-swept fallbacks with the same verdict selection.
+// live-swept fallbacks with the same verdict selection. Community mirrors
+// (isan, whoplays) removed 2026-10-18: unowned third-party runtime.
 async function lookupMlbb(input) {
   const primary = await lookupCodashopDirect("mobile-legends", input.playerId, input.zoneId)
     .then((attempt) => attempt.kind === "success"
@@ -107,8 +106,6 @@ async function lookupMlbb(input) {
     () => Promise.resolve(primary),
     [
       () => lookupRapidApi(input.playerId, input.zoneId).catch(() => ({ kind: "unavailable" })),
-      () => lookupIsan(input.playerId, input.zoneId).catch(() => ({ kind: "unavailable" })),
-      () => lookupWhoPlays(input.playerId, input.zoneId).catch(() => ({ kind: "unavailable" })),
       () => lookupGoPayGames(input.playerId, input.zoneId).catch(() => ({ kind: "unavailable" })),
     ],
   );
