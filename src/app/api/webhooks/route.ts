@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/platform";
 import { encryptWebhookSecret, isSafeWebhookUrl, writeAuditLog } from "@/lib/developer-events";
 
 export const runtime = "nodejs";
-const ALLOWED_EVENTS = ["api.key.created", "api.key.revoked", "billing.subscription.activated", "workspace.member.invited", "workspace.member.removed"];
+const ALLOWED_EVENTS = ["api.key.created", "api.key.revoked", "billing.subscription.activated", "workspace.member.invited", "workspace.member.removed", "lookup.bulk.completed"];
 export async function GET() {
   const { user } = await requireUser();
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });

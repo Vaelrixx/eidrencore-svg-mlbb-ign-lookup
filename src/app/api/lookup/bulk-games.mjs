@@ -1,0 +1,296 @@
+/**
+ * Bulk verification game registry.
+ *
+ * Each entry mirrors its single-lookup route's validation contract and
+ * provider chain exactly (same patterns, same lookup functions, same
+ * public source labels), so bulk results match single results item for
+ * item. Single routes stay the canonical contract; this registry only
+ * reuses their provider legs for batch calls.
+ */
+import { normalizeSupercellTag } from "./providers/supercell.mjs";
+import { lookupBrawlStars } from "./providers/brawl-stars.mjs";
+import { lookupClashOfClans } from "./providers/clash-of-clans.mjs";
+import { lookupClashRoyale } from "./providers/clash-royale.mjs";
+import { lookupRapidApiGame } from "./providers/rapidapi-games.mjs";
+import { lookupEnkaGenshin } from "./providers/enka-genshin.mjs";
+import { lookupEnkaIdentity } from "./providers/enka-identity.mjs";
+import { lookupGoPayGameFallback } from "./providers/gopay-game-fallback.mjs";
+import { lookupFcMobile } from "./providers/gopay-fc-mobile.mjs";
+import { lookupGoPayFreeFire } from "./providers/gopay-free-fire.mjs";
+import { lookupJawakerVerifyUser } from "./providers/jawaker-verify-user.mjs";
+import { lookupCodashopDirect } from "./providers/codashop-direct.mjs";
+import { lookupRapidApi } from "./providers/rapidapi.mjs";
+import { lookupIsan } from "./providers/isan.mjs";
+import { lookupWhoPlays } from "./providers/whoplays.mjs";
+import { lookupGoPayGames } from "./providers/gopay-games.mjs";
+import { resolveLookupWithFallbacks, selectLookupVerdict } from "./resolve-lookup.mjs";
+import { CODM_IDENTITY_PATTERN, classifyCodmInput } from "./providers/codm-input.mjs";
+
+const numericId = /^\d{3,24}$/;
+const riotName = /^[\p{L}\p{N} _.'-]{3,16}$/u;
+const riotTag = /^[A-Za-z0-9]{3,5}$/;
+const genshinServer = /^(asia|america|europa|china)$/;
+const mlbbPlayerId = /^\d{4,20}$/;
+const mlbbZoneId = /^\d{1,10}$/;
+
+function stringField(value, minLength, maxLength, pattern) {
+  const trimmed = typeof value === "string" ? value.trim() : "";
+  if (trimmed.length < minLength || trimmed.length > maxLength || !pattern.test(trimmed)) return null;
+  return trimmed;
+}
+
+function numericField(value) {
+  return stringField(value, 3, 24, numericId);
+}
+
+function validateFields(item, fields) {
+  const input = {};
+  for (const field of fields) {
+    const value = field.validate(item[field.key]);
+    if (value === null) return null;
+    input[field.key] = value;
+  }
+  return input;
+}
+
+function terminalOrFallback(primary, fallback) {
+  if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") {
+    return primary;
+  }
+  if (fallback.kind === "success" || fallback.kind === "not_found" || fallback.kind === "rate_limited") {
+    return fallback;
+  }
+  return primary;
+}
+
+async function keyedWithGoPayFallback(game, input, gopayCode) {
+  const primary = await lookupRapidApiGame(game, input);
+  if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") return primary;
+  const playerId = "playerId" in input ? input.playerId : "";
+  return terminalOrFallback(primary, await lookupGoPayGameFallback(gopayCode, playerId));
+}
+
+// Mirrors POST /api/lookup: CodaShop direct primary, then the four
+// live-swept fallbacks with the same verdict selection.
+async function lookupMlbb(input) {
+  const primary = await lookupCodashopDirect("mobile-legends", input.playerId, input.zoneId)
+    .then((attempt) => attempt.kind === "success"
+      ? { kind: "success", nickname: attempt.nickname, source: "codashop_direct" }
+      : attempt)
+    .catch(() => ({ kind: "unavailable" }));
+  const resolution = await resolveLookupWithFallbacks(
+    () => Promise.resolve(primary),
+    [
+      () => lookupRapidApi(input.playerId, input.zoneId).catch(() => ({ kind: "unavailable" })),
+      () => lookupIsan(input.playerId, input.zoneId).catch(() => ({ kind: "unavailable" })),
+      () => lookupWhoPlays(input.playerId, input.zoneId).catch(() => ({ kind: "unavailable" })),
+      () => lookupGoPayGames(input.playerId, input.zoneId).catch(() => ({ kind: "unavailable" })),
+    ],
+  );
+  const verdict = selectLookupVerdict(resolution.primary, resolution.fallbacks, resolution.confirmed);
+  if (verdict === "success" && resolution.confirmed?.kind === "success") return resolution.confirmed;
+  if (verdict === "not_found") return { kind: "not_found" };
+  if (verdict === "rate_limited") return { kind: "rate_limited" };
+  return { kind: "unavailable" };
+}
+
+const identityGame = (config) => ({
+  kind: "identity",
+  ...config,
+});
+
+const supercellGame = (lookup, label, notFoundCode) => ({
+  kind: "tag",
+  gameLabel: label,
+  publicSource: `eidren_${label.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`,
+  notFoundCode,
+  fields: [{ key: "tag", label: "Player tag", example: "#2PP" }],
+  validate: (item) => {
+    const tag = normalizeSupercellTag(typeof item?.tag === "string" ? item.tag : "");
+    return tag ? { tag } : null;
+  },
+  lookup: async (input) => lookup(input.tag),
+});
+
+export const BULK_MAX_ITEMS = 100;
+export const BULK_MAX_BYTES = 131072;
+export const BULK_CONCURRENCY = 10;
+
+export const BULK_GAMES = {
+  mlbb: {
+    kind: "identity",
+    gameLabel: "Mobile Legends: Bang Bang",
+    publicSource: "eidren_mlbb",
+    notFoundCode: "PLAYER_NOT_FOUND",
+    fields: [
+      { key: "playerId", label: "Player ID", example: "1114917746" },
+      { key: "zoneId", label: "Zone ID", example: "13486" },
+    ],
+    validate: (item) => {
+      const playerId = stringField(item?.playerId, 4, 20, mlbbPlayerId);
+      const zoneId = stringField(item?.zoneId, 1, 10, mlbbZoneId);
+      return playerId && zoneId ? { playerId, zoneId } : null;
+    },
+    lookup: lookupMlbb,
+  },
+  "pubg-mobile": identityGame({
+    gameLabel: "PUBG Mobile Global",
+    publicSource: "eidren_pubg_mobile",
+    notFoundCode: "PUBG_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Character ID", example: "5204837417" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupGoPayGameFallback("PUBGM", input.playerId),
+  }),
+  "call-of-duty-mobile": identityGame({
+    gameLabel: "Call of Duty: Mobile (Garena)",
+    publicSource: "eidren_call_of_duty_mobile",
+    notFoundCode: "CODM_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Player ID or nickname", example: "ShadowHex" }],
+    validate: (item) => validateFields(item, [{
+      key: "playerId",
+      validate: (value) => stringField(value, 3, 24, CODM_IDENTITY_PATTERN),
+    }]),
+    lookup: async (input) => (classifyCodmInput(input.playerId) !== "direct"
+      ? lookupRapidApiGame("cod-mobile-garena", input)
+      : lookupCodashopDirect("call-of-duty-mobile", input.playerId, "")),
+  }),
+  valorant: identityGame({
+    gameLabel: "VALORANT",
+    publicSource: "eidren_valorant",
+    notFoundCode: "VALORANT_PLAYER_NOT_FOUND",
+    fields: [
+      { key: "name", label: "Riot ID name", example: "ucup" },
+      { key: "tag", label: "Riot ID tag", example: "123" },
+    ],
+    validate: (item) => validateFields(item, [
+      { key: "name", validate: (value) => stringField(value, 3, 16, riotName) },
+      { key: "tag", validate: (value) => stringField(value, 3, 5, riotTag) },
+    ]),
+    lookup: async (input) => lookupRapidApiGame("valorant", input),
+  }),
+  "genshin-impact": identityGame({
+    gameLabel: "Genshin Impact",
+    publicSource: "eidren_genshin_impact",
+    notFoundCode: "GENSHIN_PLAYER_NOT_FOUND",
+    fields: [
+      { key: "playerId", label: "UID", example: "844335555" },
+      { key: "server", label: "Server", example: "asia" },
+    ],
+    validate: (item) => validateFields(item, [
+      { key: "playerId", validate: numericField },
+      { key: "server", validate: (value) => stringField(value, 4, 7, genshinServer) },
+    ]),
+    lookup: async (input) => {
+      const primary = await lookupRapidApiGame("genshin-impact", input);
+      if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") return primary;
+      return terminalOrFallback(primary, await lookupEnkaGenshin(input.playerId));
+    },
+  }),
+  "honkai-star-rail": identityGame({
+    gameLabel: "Honkai: Star Rail",
+    publicSource: "eidren_honkai_star_rail",
+    notFoundCode: "HONKAI_STAR_RAIL_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "UID", example: "800333000" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupEnkaIdentity("hsr", input.playerId),
+  }),
+  "zenless-zone-zero": identityGame({
+    gameLabel: "Zenless Zone Zero",
+    publicSource: "eidren_zenless_zone_zero",
+    notFoundCode: "ZENLESS_ZONE_ZERO_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "UID", example: "1317572318" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupEnkaIdentity("zzz", input.playerId),
+  }),
+  "honor-of-kings": identityGame({
+    gameLabel: "Honor of Kings",
+    publicSource: "eidren_honor_of_kings",
+    notFoundCode: "HONOR_OF_KINGS_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Player ID", example: "17960996468644334037" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupRapidApiGame("honor-of-kings", input),
+  }),
+  "arena-of-valor": identityGame({
+    gameLabel: "Arena of Valor",
+    publicSource: "eidren_arena_of_valor",
+    notFoundCode: "ARENA_OF_VALOR_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Player ID", example: "195293573153949" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => keyedWithGoPayFallback("arena-of-valor", input, "AOV"),
+  }),
+  "pubg-lite": identityGame({
+    gameLabel: "PUBG Mobile Lite",
+    publicSource: "eidren_pubg_lite",
+    notFoundCode: "PUBG_LITE_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Character ID", example: "7228395004" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => keyedWithGoPayFallback("pubg-lite", input, "PUBG_ID"),
+  }),
+  "teen-patti-gold": identityGame({
+    gameLabel: "Teen Patti Gold",
+    publicSource: "eidren_teen_patti_gold",
+    notFoundCode: "TEEN_PATTI_GOLD_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Player ID", example: "100439992784" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupRapidApiGame("teen-patti-gold", input),
+  }),
+  jawaker: identityGame({
+    gameLabel: "Jawaker",
+    publicSource: "eidren_jawaker",
+    notFoundCode: "JAWAKER_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Player ID", example: "1473084005" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => {
+      const primary = await lookupRapidApiGame("jawaker", input);
+      if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") return primary;
+      return terminalOrFallback(primary, await lookupJawakerVerifyUser(input.playerId));
+    },
+  }),
+  "fc-mobile": identityGame({
+    gameLabel: "FC Mobile",
+    publicSource: "eidren_fc_mobile",
+    notFoundCode: "FC_MOBILE_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "UID", example: "1856150661662899105" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupFcMobile(input.playerId),
+  }),
+  "free-fire": identityGame({
+    gameLabel: "Free Fire",
+    publicSource: "eidren_free_fire",
+    notFoundCode: "FREE_FIRE_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "UID", example: "1958604115" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupGoPayFreeFire(input.playerId),
+  }),
+  "free-fire-global": identityGame({
+    gameLabel: "Free Fire Global",
+    publicSource: "eidren_free_fire_global",
+    notFoundCode: "FREE_FIRE_GLOBAL_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "UID", example: "12341234" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupGoPayFreeFire(input.playerId),
+  }),
+  "bigo-live": identityGame({
+    gameLabel: "Bigo Live",
+    publicSource: "eidren_bigo_live",
+    notFoundCode: "BIGO_LIVE_USER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "BIGO ID", example: "901234567" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupRapidApiGame("bigo-live", input),
+  }),
+  "higgs-domino": identityGame({
+    gameLabel: "Higgs Domino",
+    publicSource: "eidren_higgs_domino",
+    notFoundCode: "HIGGS_DOMINO_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Player ID", example: "55666" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupRapidApiGame("higgs-domino", input),
+  }),
+  "brawl-stars": supercellGame(lookupBrawlStars, "Brawl Stars", "BS_PLAYER_NOT_FOUND"),
+  "clash-of-clans": supercellGame(lookupClashOfClans, "Clash of Clans", "COC_PLAYER_NOT_FOUND"),
+  "clash-royale": supercellGame(lookupClashRoyale, "Clash Royale", "CR_PLAYER_NOT_FOUND"),
+};
+
+export function bulkGameSlugs() {
+  return Object.keys(BULK_GAMES);
+}

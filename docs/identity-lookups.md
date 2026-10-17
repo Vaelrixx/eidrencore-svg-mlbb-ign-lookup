@@ -111,3 +111,23 @@ A sample account may stop resolving as game data changes. The service reports an
 | Bigo Live | `POST /api/lookup/bigo-live` | `{ "playerId": "901234567" }` | `eidren_bigo_live` |
 | Higgs Domino | `POST /api/lookup/higgs-domino` | `{ "playerId": "55666" }` | `eidren_higgs_domino` |
 PUBG Lite's keyless secondary covers the shared PUBG-family pool but stays behind the keyed primary, so Lite-pool-only IDs resolve through the primary while pool misses on the secondary degrade honestly instead of reporting not-found.
+
+## Bulk verification
+
+`POST /api/lookup/bulk` verifies up to 100 identities in one call across all 20 games. Each item names a game slug plus that game's lookup fields, and each item consumes one monthly quota unit (a 50-item batch needs 50 remaining units or the whole call is rejected with `429 API_QUOTA_EXCEEDED` before any lookup runs). Request bodies are capped at 128 KiB. Items resolve in pools of 10 so one slow upstream cannot stall the batch.
+
+```json
+{
+  "items": [
+    { "game": "mlbb", "playerId": "1114917746", "zoneId": "13486", "nickname": "optional claimed name" },
+    { "game": "free-fire", "playerId": "1958604115" },
+    { "game": "brawl-stars", "tag": "#2PP" }
+  ]
+}
+```
+
+Every item returns its own verdict; one bad item never fails the batch. `verified` items include the resolved nickname, the normalized input, the source label, and `nicknameMatch` (`true`/`false` when you supply a claimed `nickname`, `null` when you don't). Other per-item statuses are `not_found` (game-specific code, same as the single route), `invalid` (`INVALID_INPUT` or `UNKNOWN_GAME`), `unavailable` (`SERVICE_UNAVAILABLE`), and `rate_limited` (`SERVICE_RATE_LIMIT`). The response also carries a `summary` count block and a `requestId`.
+
+Game slugs: `mlbb`, `pubg-mobile`, `call-of-duty-mobile`, `valorant`, `genshin-impact`, `honkai-star-rail`, `zenless-zone-zero`, `honor-of-kings`, `arena-of-valor`, `pubg-lite`, `teen-patti-gold`, `jawaker`, `fc-mobile`, `free-fire`, `free-fire-global`, `bigo-live`, `higgs-domino`, `brawl-stars`, `clash-of-clans`, `clash-royale`. Field contracts match the single routes exactly. `GET /api/lookup/bulk` returns the live game list, limits, and an example without authentication.
+
+Bulk completions emit a `lookup.bulk.completed` webhook event (subscribe in the console) with the request ID, summary counts, and quota units consumed. Per-game health over the last hour is public at `GET /api/lookup/status` (`operational`, `degraded`, or `unknown` when fewer than 3 checks ran).
