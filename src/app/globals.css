@@ -980,3 +980,40 @@ body {
 @media (max-width: 720px) {
   .cm-tabbar a, .cm-tabbar button { font-size: 10.5px; }
 }
+
+.hok-profile-panel .console-panel-heading { margin-bottom: 1rem; }
+.hok-profile-warning { display: flex; align-items: flex-start; gap: .75rem; margin: 0 0 1.25rem; padding: .9rem 1rem; border: 1px solid var(--border); border-radius: 12px; background: var(--glass); color: var(--muted); }
+.hok-profile-warning svg { flex: none; margin-top: .1rem; color: var(--lime); }
+.hok-profile-warning p { margin: 0; font-size: .82rem; line-height: 1.6; }
+.hok-import-form { display: grid; gap: 1rem; }
+.hok-import-form > label:first-child { display: grid; gap: .5rem; color: var(--muted); font-size: .78rem; font-weight: 700; }
+.hok-import-form textarea { width: 100%; min-height: 7rem; resize: vertical; padding: .8rem .9rem; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); color: var(--text); font: inherit; font-size: .85rem; line-height: 1.5; }
+.hok-import-form textarea::placeholder { color: var(--muted); opacity: .72; }
+.hok-import-form textarea:hover { border-color: rgba(166,184,218,.34); }
+.hok-import-form textarea:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+.hok-attestation { display: flex; align-items: flex-start; gap: .7rem; color: var(--muted); font-size: .8rem; line-height: 1.55; cursor: pointer; }
+.hok-attestation input { flex: none; width: 1rem; height: 1rem; margin: .16rem 0 0; accent-color: var(--lime); }
+.hok-attestation input:focus-visible { outline: 2px solid var(--lime); outline-offset: 3px; }
+.hok-import-form .submit { justify-self: start; }
+.hok-import-form .submit:disabled { cursor: not-allowed; opacity: .55; }
+.hok-import-form .submit:not(:disabled):hover { filter: brightness(1.08); }
+.hok-import-form .submit:not(:disabled):active { transform: translateY(1px); }
+.hok-profile-snapshot { display: grid; gap: 1rem; }
+.hok-profile-snapshot-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.hok-profile-snapshot-head h3 { margin: .7rem 0 .2rem; color: var(--text); font-size: 1.35rem; }
+.hok-profile-snapshot-head p { margin: 0; color: var(--muted); font-size: .82rem; }
+.hok-profile-snapshot-head code { color: var(--text); overflow-wrap: anywhere; }
+.hok-profile-snapshot-head .console-danger-action { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; }
+.hok-profile-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; margin: 0; }
+.hok-profile-fields > div { display: grid; gap: .35rem; padding: .75rem .85rem; border: 1px solid var(--border); border-radius: 10px; }
+.hok-profile-fields dt { color: var(--muted); font-size: .72rem; }
+.hok-profile-fields dd { margin: 0; color: var(--text); font-size: .88rem; overflow-wrap: anywhere; }
+.hok-profile-panel .platform-alert { margin-bottom: 1rem; }
+@media (max-width: 720px) {
+  .hok-profile-snapshot-head { flex-direction: column; }
+  .hok-profile-snapshot-head .console-danger-action { width: 100%; }
+  .hok-profile-fields { grid-template-columns: 1fr; }
+  .hok-import-form .submit { width: 100%; min-height: 2.75rem; }
+}
+
+.hok-import-form > label:first-child small { color: var(--muted); font-size: .75rem; font-weight: 400; line-height: 1.5; }
