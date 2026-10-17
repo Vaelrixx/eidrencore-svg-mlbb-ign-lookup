@@ -110,11 +110,28 @@ A sample account may stop resolving as game data changes. The service reports an
 | FC Mobile | `POST /api/lookup/fc-mobile` | `{ "playerId": "1856150661662899105" }` | `eidren_fc_mobile` |
 | Bigo Live | `POST /api/lookup/bigo-live` | `{ "playerId": "901234567" }` | `eidren_bigo_live` |
 | Higgs Domino | `POST /api/lookup/higgs-domino` | `{ "playerId": "55666" }` | `eidren_higgs_domino` |
+| 8 Ball Pool | `POST /api/lookup/8-ball-pool` | `{ "playerId": "12345" }` | `eidren_8_ball_pool` |
+| Arena Breakout | `POST /api/lookup/arena-breakout` | `{ "playerId": "123456789" }` | `eidren_arena_breakout` |
+| Blood Strike | `POST /api/lookup/blood-strike` | `{ "playerId": "123456789" }` | `eidren_blood_strike` |
+| Delta Force | `POST /api/lookup/delta-force` | `{ "playerId": "123456789" }` | `eidren_delta_force` |
+| Delta Force (Garena) | `POST /api/lookup/delta-force-garena` | `{ "playerId": "123456789" }` | `eidren_delta_force_garena` |
+| Eggy Party | `POST /api/lookup/eggy-party` | `{ "playerId": "123456789", "server": "asia" }` | `eidren_eggy_party` |
+| Ace Racer | `POST /api/lookup/ace-racer` | `{ "playerId": "123456789", "server": "asia" }` | `eidren_ace_racer` |
+| Dragon Raja | `POST /api/lookup/dragon-raja` | `{ "playerId": "123456789" }` | `eidren_dragon_raja` |
+| Metal Slug | `POST /api/lookup/metal-slug` | `{ "playerId": "123456789" }` | `eidren_metal_slug` |
+| LifeAfter | `POST /api/lookup/lifeafter` | `{ "playerId": "123456789", "server": "asia" }` | `eidren_lifeafter` |
+| One Punch Man: The Strongest | `POST /api/lookup/one-punch-man` | `{ "playerId": "123456789", "server": "1" }` | `eidren_one_punch_man` |
+| Pokémon UNITE | `POST /api/lookup/pokemon-unite` | `{ "playerId": "123456789" }` | `eidren_pokemon_unite` |
+| Whiteout Survival | `POST /api/lookup/whiteout-survival` | `{ "playerId": "123456789" }` | `eidren_whiteout_survival` |
+| Hay Day | `POST /api/lookup/hay-day` | `{ "playerId": "123456789" }` | `eidren_hay_day` |
+| Magic Chess: Go Go | `POST /api/lookup/magic-chess` | `{ "playerId": "123456789", "server": "asia" }` | `eidren_magic_chess` |
+| Speed Drifters | `POST /api/lookup/speed-drifters` | `{ "playerId": "123456789" }` | `eidren_speed_drifters` |
+| Undawn | `POST /api/lookup/undawn` | `{ "playerId": "123456789" }` | `eidren_undawn` |
 PUBG Lite's keyless secondary covers the shared PUBG-family pool but stays behind the keyed primary, so Lite-pool-only IDs resolve through the primary while pool misses on the secondary degrade honestly instead of reporting not-found.
 
 ## Bulk verification
 
-`POST /api/lookup/bulk` verifies up to 100 identities in one call across all 20 games. Each item names a game slug plus that game's lookup fields, and each item consumes one monthly quota unit (a 50-item batch needs 50 remaining units or the whole call is rejected with `429 API_QUOTA_EXCEEDED` before any lookup runs). Request bodies are capped at 128 KiB. Items resolve in pools of 10 so one slow upstream cannot stall the batch.
+`POST /api/lookup/bulk` verifies up to 100 identities in one call across all 37 games. Each item names a game slug plus that game's lookup fields, and each item consumes one monthly quota unit (a 50-item batch needs 50 remaining units or the whole call is rejected with `429 API_QUOTA_EXCEEDED` before any lookup runs). Request bodies are capped at 128 KiB. Items resolve in pools of 10 so one slow upstream cannot stall the batch.
 
 ```json
 {
@@ -128,6 +145,6 @@ PUBG Lite's keyless secondary covers the shared PUBG-family pool but stays behin
 
 Every item returns its own verdict; one bad item never fails the batch. `verified` items include the resolved nickname, the normalized input, the source label, and `nicknameMatch` (`true`/`false` when you supply a claimed `nickname`, `null` when you don't). Other per-item statuses are `not_found` (game-specific code, same as the single route), `invalid` (`INVALID_INPUT` or `UNKNOWN_GAME`), `unavailable` (`SERVICE_UNAVAILABLE`), and `rate_limited` (`SERVICE_RATE_LIMIT`). The response also carries a `summary` count block and a `requestId`.
 
-Game slugs: `mlbb`, `pubg-mobile`, `call-of-duty-mobile`, `valorant`, `genshin-impact`, `honkai-star-rail`, `zenless-zone-zero`, `honor-of-kings`, `arena-of-valor`, `pubg-lite`, `teen-patti-gold`, `jawaker`, `fc-mobile`, `free-fire`, `free-fire-global`, `bigo-live`, `higgs-domino`, `brawl-stars`, `clash-of-clans`, `clash-royale`. Field contracts match the single routes exactly. `GET /api/lookup/bulk` returns the live game list, limits, and an example without authentication.
+Game slugs: `mlbb`, `pubg-mobile`, `call-of-duty-mobile`, `valorant`, `genshin-impact`, `honkai-star-rail`, `zenless-zone-zero`, `honor-of-kings`, `arena-of-valor`, `pubg-lite`, `teen-patti-gold`, `jawaker`, `fc-mobile`, `free-fire`, `free-fire-global`, `bigo-live`, `higgs-domino`, `brawl-stars`, `clash-of-clans`, `clash-royale`, `8-ball-pool`, `arena-breakout`, `blood-strike`, `delta-force`, `delta-force-garena`, `eggy-party`, `ace-racer`, `dragon-raja`, `metal-slug`, `lifeafter`, `one-punch-man`, `pokemon-unite`, `whiteout-survival`, `hay-day`, `magic-chess`, `speed-drifters`, `undawn`. Field contracts match the single routes exactly. `GET /api/lookup/bulk` returns the live game list, limits, and an example without authentication.
 
 Bulk completions emit a `lookup.bulk.completed` webhook event (subscribe in the console) with the request ID, summary counts, and quota units consumed. Per-game health over the last hour is public at `GET /api/lookup/status` (`operational`, `degraded`, or `unknown` when fewer than 3 checks ran).
