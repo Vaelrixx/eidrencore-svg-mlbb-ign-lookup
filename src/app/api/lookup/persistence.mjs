@@ -32,6 +32,23 @@ const LOG_SOURCES = new Set([
   "eidren_higgs_domino",
   "eidren_free_fire",
   "eidren_free_fire_global",
+  "eidren_8_ball_pool",
+  "eidren_arena_breakout",
+  "eidren_blood_strike",
+  "eidren_delta_force",
+  "eidren_delta_force_garena",
+  "eidren_eggy_party",
+  "eidren_ace_racer",
+  "eidren_dragon_raja",
+  "eidren_metal_slug",
+  "eidren_lifeafter",
+  "eidren_one_punch_man",
+  "eidren_pokemon_unite",
+  "eidren_whiteout_survival",
+  "eidren_hay_day",
+  "eidren_magic_chess",
+  "eidren_speed_drifters",
+  "eidren_undawn",
 ]);
 
 function configuration(env = process.env) {

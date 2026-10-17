@@ -7,12 +7,14 @@ import { lookupFcMobile } from "./providers/gopay-fc-mobile.mjs";
 import { lookupGoPayFreeFire } from "./providers/gopay-free-fire.mjs";
 import { lookupJawakerVerifyUser } from "./providers/jawaker-verify-user.mjs";
 import { lookupCodashopDirect } from "./providers/codashop-direct.mjs";
+import { lookupCodashopInitpay } from "./providers/codashop-initpay.mjs";
 import { CODM_IDENTITY_PATTERN, classifyCodmInput } from "./providers/codm-input.mjs";
 
 const numericId = /^\d{3,24}$/;
 const riotName = /^[\p{L}\p{N} _.'-]{3,16}$/u;
 const riotTag = /^[A-Za-z0-9]{3,5}$/;
 const genshinServer = /^(asia|america|europa|china)$/;
+const providerServer = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,31}$/;
 
 /**
  * Genshin chain: keyed primary first, then the keyless showcase fallback.
@@ -313,6 +315,215 @@ const configs: Record<string, { providerGame?: RapidApiGame; config: Omit<IdGame
       fields: [{ key: "playerId", label: "Player ID", example: "55666", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
+  // 8 Ball Pool: Coda initPayment direct leg only (self-reliant: zero
+  // third-party runtime). Live-verified 2026-10-18: 12345 resolves to a
+  // masked store nickname, bogus IDs give the explicit -100 User Not
+  // Found that gates not-found. No keyed leg on the current key.
+  "8-ball-pool": {
+    config: {
+      endpoint: "/api/lookup/8-ball-pool",
+      gameLabel: "8 Ball Pool",
+      publicSource: "eidren_8_ball_pool",
+      notFoundCode: "EIGHT_BALL_POOL_PLAYER_NOT_FOUND",
+      internalProvider: "eidren_8_ball_pool_direct",
+      fields: [{ key: "playerId", label: "Player ID", example: "12345", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
+  // Wave 1 expansion (primary-only: slugs from the key's published
+  // endpoint list, verified live 2026-10-18; honest degraded when the
+  // keyed feed misses). Server-suffixed games pass the provider's
+  // {server} segment straight through.
+  "arena-breakout": {
+    providerGame: "arena-breakout",
+    config: {
+      endpoint: "/api/lookup/arena-breakout",
+      gameLabel: "Arena Breakout",
+      publicSource: "eidren_arena_breakout",
+      notFoundCode: "ARENA_BREAKOUT_PLAYER_NOT_FOUND",
+      internalProvider: "rapidapi_id_game_checker_arena_breakout",
+      fields: [{ key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
+  "blood-strike": {
+    providerGame: "blood-strike",
+    config: {
+      endpoint: "/api/lookup/blood-strike",
+      gameLabel: "Blood Strike",
+      publicSource: "eidren_blood_strike",
+      notFoundCode: "BLOOD_STRIKE_PLAYER_NOT_FOUND",
+      internalProvider: "rapidapi_id_game_checker_blood_strike",
+      fields: [{ key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
+  "delta-force": {
+    providerGame: "delta-force",
+    config: {
+      endpoint: "/api/lookup/delta-force",
+      gameLabel: "Delta Force",
+      publicSource: "eidren_delta_force",
+      notFoundCode: "DELTA_FORCE_PLAYER_NOT_FOUND",
+      internalProvider: "rapidapi_id_game_checker_delta_force",
+      fields: [{ key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
+  "delta-force-garena": {
+    providerGame: "delta-force-garena",
+    config: {
+      endpoint: "/api/lookup/delta-force-garena",
+      gameLabel: "Delta Force (Garena)",
+      publicSource: "eidren_delta_force_garena",
+      notFoundCode: "DELTA_FORCE_GARENA_PLAYER_NOT_FOUND",
+      internalProvider: "rapidapi_id_game_checker_delta_force_garena",
+      fields: [{ key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
+  "eggy-party": {
+    providerGame: "eggy-party",
+    config: {
+      endpoint: "/api/lookup/eggy-party",
+      gameLabel: "Eggy Party",
+      publicSource: "eidren_eggy_party",
+      notFoundCode: "EGGY_PARTY_PLAYER_NOT_FOUND",
+      internalProvider: "rapidapi_id_game_checker_eggy_party",
+      fields: [
+        { key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId },
+        { key: "server", label: "Server", example: "asia", minLength: 1, maxLength: 32, pattern: providerServer },
+      ],
+    },
+  },
+  "ace-racer": {
+    providerGame: "ace-racer",
+    config: {
+      endpoint: "/api/lookup/ace-racer",
+      gameLabel: "Ace Racer",
+      publicSource: "eidren_ace_racer",
+      notFoundCode: "ACE_RACER_PLAYER_NOT_FOUND",
+      internalProvider: "rapidapi_id_game_checker_ace_racer",
+      fields: [
+        { key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId },
+        { key: "server", label: "Server", example: "asia", minLength: 1, maxLength: 32, pattern: providerServer },
+      ],
+    },
+  },
+  "dragon-raja": {
+    providerGame: "dragon-raja",
+    config: {
+      endpoint: "/api/lookup/dragon-raja",
+      gameLabel: "Dragon Raja",
+      publicSource: "eidren_dragon_raja",
+      notFoundCode: "DRAGON_RAJA_PLAYER_NOT_FOUND",
+      internalProvider: "rapidapi_id_game_checker_dragon_raja",
+      fields: [{ key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
+  "metal-slug": {
+    providerGame: "metal-slug",
+    config: {
+      endpoint: "/api/lookup/metal-slug",
+      gameLabel: "Metal Slug",
+      publicSource: "eidren_metal_slug",
+      notFoundCode: "METAL_SLUG_PLAYER_NOT_FOUND",
+      internalProvider: "rapidapi_id_game_checker_metal_slug",
+      fields: [{ key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
+  lifeafter: {
+    providerGame: "lifeafter",
+    config: {
+      endpoint: "/api/lookup/lifeafter",
+      gameLabel: "LifeAfter",
+      publicSource: "eidren_lifeafter",
+      notFoundCode: "LIFEAFTER_PLAYER_NOT_FOUND",
+      internalProvider: "rapidapi_id_game_checker_lifeafter",
+      fields: [
+        { key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId },
+        { key: "server", label: "Server", example: "asia", minLength: 1, maxLength: 32, pattern: providerServer },
+      ],
+    },
+  },
+  "one-punch-man": {
+    providerGame: "one-punch-man",
+    config: {
+      endpoint: "/api/lookup/one-punch-man",
+      gameLabel: "One Punch Man: The Strongest",
+      publicSource: "eidren_one_punch_man",
+      notFoundCode: "ONE_PUNCH_MAN_PLAYER_NOT_FOUND",
+      internalProvider: "rapidapi_id_game_checker_one_punch_man",
+      fields: [
+        { key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId },
+        { key: "server", label: "Zone ID", example: "1", minLength: 1, maxLength: 32, pattern: providerServer },
+      ],
+    },
+  },
+  "pokemon-unite": {
+    providerGame: "pokemon-unite",
+    config: {
+      endpoint: "/api/lookup/pokemon-unite",
+      gameLabel: "Pokémon UNITE",
+      publicSource: "eidren_pokemon_unite",
+      notFoundCode: "POKEMON_UNITE_PLAYER_NOT_FOUND",
+      internalProvider: "rapidapi_id_game_checker_pokemon_unite",
+      fields: [{ key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
+  "whiteout-survival": {
+    providerGame: "whiteout-survival",
+    config: {
+      endpoint: "/api/lookup/whiteout-survival",
+      gameLabel: "Whiteout Survival",
+      publicSource: "eidren_whiteout_survival",
+      notFoundCode: "WHITEOUT_SURVIVAL_PLAYER_NOT_FOUND",
+      internalProvider: "rapidapi_id_game_checker_whiteout_survival",
+      fields: [{ key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
+  "hay-day": {
+    providerGame: "hay-day",
+    config: {
+      endpoint: "/api/lookup/hay-day",
+      gameLabel: "Hay Day",
+      publicSource: "eidren_hay_day",
+      notFoundCode: "HAY_DAY_PLAYER_NOT_FOUND",
+      internalProvider: "rapidapi_id_game_checker_hay_day",
+      fields: [{ key: "playerId", label: "Player tag", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
+  "magic-chess": {
+    providerGame: "magic-chess",
+    config: {
+      endpoint: "/api/lookup/magic-chess",
+      gameLabel: "Magic Chess: Go Go",
+      publicSource: "eidren_magic_chess",
+      notFoundCode: "MAGIC_CHESS_PLAYER_NOT_FOUND",
+      internalProvider: "rapidapi_id_game_checker_magic_chess",
+      fields: [
+        { key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId },
+        { key: "server", label: "Server", example: "asia", minLength: 1, maxLength: 32, pattern: providerServer },
+      ],
+    },
+  },
+  "speed-drifters": {
+    providerGame: "speed-drifters",
+    config: {
+      endpoint: "/api/lookup/speed-drifters",
+      gameLabel: "Speed Drifters",
+      publicSource: "eidren_speed_drifters",
+      notFoundCode: "SPEED_DRIFTERS_PLAYER_NOT_FOUND",
+      internalProvider: "rapidapi_id_game_checker_speed_drifters",
+      fields: [{ key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
+  undawn: {
+    providerGame: "undawn",
+    config: {
+      endpoint: "/api/lookup/undawn",
+      gameLabel: "Undawn",
+      publicSource: "eidren_undawn",
+      notFoundCode: "UNDAWN_PLAYER_NOT_FOUND",
+      internalProvider: "rapidapi_id_game_checker_undawn",
+      fields: [{ key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
 };
 
 export function createRapidApiGameHandler(game: keyof typeof configs) {
@@ -323,6 +534,10 @@ export function createRapidApiGameHandler(game: keyof typeof configs) {
       if (game === "honkai-star-rail" || game === "zenless-zone-zero") {
         const enkaGame: EnkaIdentityGame = game === "honkai-star-rail" ? "hsr" : "zzz";
         return lookupEnkaIdentity(enkaGame, (input as { playerId: string }).playerId);
+      }
+      if (game === "8-ball-pool") {
+        const playerId = "playerId" in input ? (input as { playerId: string }).playerId : "";
+        return lookupCodashopInitpay("8-ball-pool", playerId);
       }
       const providerGame = entry.providerGame;
       if (!providerGame) return { kind: "unavailable", diagnostic: { reason: "missing_route_config" } };

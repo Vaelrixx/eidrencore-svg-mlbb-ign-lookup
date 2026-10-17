@@ -35,6 +35,24 @@ export const RAPIDAPI_GAME_ROUTES = Object.freeze({
   // provider's own docs; primary ships when a direct key lands in Railway.
   "free-fire": Object.freeze({ slug: "free-fire", fields: ["playerId"] }),
   "free-fire-global": Object.freeze({ slug: "ff-global", fields: ["playerId"] }),
+  // Wave 1 expansion (slugs from the key's published endpoint list,
+  // verified live 2026-10-18; server shapes per endpoint templates).
+  "arena-breakout": Object.freeze({ slug: "arena-breakout", fields: ["playerId"] }),
+  "blood-strike": Object.freeze({ slug: "blood-strike", fields: ["playerId"] }),
+  "delta-force": Object.freeze({ slug: "dfm", fields: ["playerId"] }),
+  "delta-force-garena": Object.freeze({ slug: "dfm-garena", fields: ["playerId"] }),
+  "eggy-party": Object.freeze({ slug: "eggy-party", fields: ["playerId", "server"] }),
+  "ace-racer": Object.freeze({ slug: "ace-racer", fields: ["playerId", "server"] }),
+  "dragon-raja": Object.freeze({ slug: "dragon-raja", fields: ["playerId"] }),
+  "metal-slug": Object.freeze({ slug: "metal-slug", fields: ["playerId"] }),
+  "lifeafter": Object.freeze({ slug: "lifeafter", fields: ["playerId", "server"] }),
+  "one-punch-man": Object.freeze({ slug: "opm-the-strongest", fields: ["playerId", "server"] }),
+  "pokemon-unite": Object.freeze({ slug: "pokemonunite", fields: ["playerId"] }),
+  "whiteout-survival": Object.freeze({ slug: "whiteoutsurvival", fields: ["playerId"] }),
+  "hay-day": Object.freeze({ slug: "hayday", fields: ["playerId"] }),
+  "magic-chess": Object.freeze({ slug: "mcgg", fields: ["playerId", "server"] }),
+  "speed-drifters": Object.freeze({ slug: "speed-drifters", fields: ["playerId"] }),
+  undawn: Object.freeze({ slug: "undawn", fields: ["playerId"] }),
 });
 
 function routePath(game, input) {

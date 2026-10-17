@@ -14,11 +14,28 @@ export type RapidApiGame =
   | "bigo-live"
   | "higgs-domino"
   | "free-fire"
-  | "free-fire-global";
+  | "free-fire-global"
+  | "arena-breakout"
+  | "blood-strike"
+  | "delta-force"
+  | "delta-force-garena"
+  | "eggy-party"
+  | "ace-racer"
+  | "dragon-raja"
+  | "metal-slug"
+  | "lifeafter"
+  | "one-punch-man"
+  | "pokemon-unite"
+  | "whiteout-survival"
+  | "hay-day"
+  | "magic-chess"
+  | "speed-drifters"
+  | "undawn";
 
 export type RapidApiGameInput =
   | { playerId: string }
   | { playerId: string; server: GenshinServer }
+  | { playerId: string; server: string }
   | { name: string; tag: string };
 
 export type RapidApiGameAttempt =

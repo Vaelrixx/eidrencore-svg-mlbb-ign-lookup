@@ -19,6 +19,7 @@ import { lookupFcMobile } from "./providers/gopay-fc-mobile.mjs";
 import { lookupGoPayFreeFire } from "./providers/gopay-free-fire.mjs";
 import { lookupJawakerVerifyUser } from "./providers/jawaker-verify-user.mjs";
 import { lookupCodashopDirect } from "./providers/codashop-direct.mjs";
+import { lookupCodashopInitpay } from "./providers/codashop-initpay.mjs";
 import { lookupRapidApi } from "./providers/rapidapi.mjs";
 import { lookupIsan } from "./providers/isan.mjs";
 import { lookupWhoPlays } from "./providers/whoplays.mjs";
@@ -30,6 +31,7 @@ const numericId = /^\d{3,24}$/;
 const riotName = /^[\p{L}\p{N} _.'-]{3,16}$/u;
 const riotTag = /^[A-Za-z0-9]{3,5}$/;
 const genshinServer = /^(asia|america|europa|china)$/;
+const providerServer = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,31}$/;
 const mlbbPlayerId = /^\d{4,20}$/;
 const mlbbZoneId = /^\d{1,10}$/;
 
@@ -289,6 +291,172 @@ export const BULK_GAMES = {
   "brawl-stars": supercellGame(lookupBrawlStars, "Brawl Stars", "BS_PLAYER_NOT_FOUND"),
   "clash-of-clans": supercellGame(lookupClashOfClans, "Clash of Clans", "COC_PLAYER_NOT_FOUND"),
   "clash-royale": supercellGame(lookupClashRoyale, "Clash Royale", "CR_PLAYER_NOT_FOUND"),
+  "8-ball-pool": identityGame({
+    gameLabel: "8 Ball Pool",
+    publicSource: "eidren_8_ball_pool",
+    notFoundCode: "EIGHT_BALL_POOL_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Player ID", example: "12345" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupCodashopInitpay("8-ball-pool", input.playerId),
+  }),
+  "arena-breakout": identityGame({
+    gameLabel: "Arena Breakout",
+    publicSource: "eidren_arena_breakout",
+    notFoundCode: "ARENA_BREAKOUT_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Player ID", example: "123456789" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupRapidApiGame("arena-breakout", input),
+  }),
+  "blood-strike": identityGame({
+    gameLabel: "Blood Strike",
+    publicSource: "eidren_blood_strike",
+    notFoundCode: "BLOOD_STRIKE_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Player ID", example: "123456789" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupRapidApiGame("blood-strike", input),
+  }),
+  "delta-force": identityGame({
+    gameLabel: "Delta Force",
+    publicSource: "eidren_delta_force",
+    notFoundCode: "DELTA_FORCE_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Player ID", example: "123456789" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupRapidApiGame("delta-force", input),
+  }),
+  "delta-force-garena": identityGame({
+    gameLabel: "Delta Force (Garena)",
+    publicSource: "eidren_delta_force_garena",
+    notFoundCode: "DELTA_FORCE_GARENA_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Player ID", example: "123456789" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupRapidApiGame("delta-force-garena", input),
+  }),
+  "eggy-party": identityGame({
+    gameLabel: "Eggy Party",
+    publicSource: "eidren_eggy_party",
+    notFoundCode: "EGGY_PARTY_PLAYER_NOT_FOUND",
+    fields: [
+      { key: "playerId", label: "Player ID", example: "123456789" },
+      { key: "server", label: "Server", example: "asia" },
+    ],
+    validate: (item) => validateFields(item, [
+      { key: "playerId", validate: numericField },
+      { key: "server", validate: (value) => stringField(value, 1, 32, providerServer) },
+    ]),
+    lookup: async (input) => lookupRapidApiGame("eggy-party", input),
+  }),
+  "ace-racer": identityGame({
+    gameLabel: "Ace Racer",
+    publicSource: "eidren_ace_racer",
+    notFoundCode: "ACE_RACER_PLAYER_NOT_FOUND",
+    fields: [
+      { key: "playerId", label: "Player ID", example: "123456789" },
+      { key: "server", label: "Server", example: "asia" },
+    ],
+    validate: (item) => validateFields(item, [
+      { key: "playerId", validate: numericField },
+      { key: "server", validate: (value) => stringField(value, 1, 32, providerServer) },
+    ]),
+    lookup: async (input) => lookupRapidApiGame("ace-racer", input),
+  }),
+  "dragon-raja": identityGame({
+    gameLabel: "Dragon Raja",
+    publicSource: "eidren_dragon_raja",
+    notFoundCode: "DRAGON_RAJA_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Player ID", example: "123456789" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupRapidApiGame("dragon-raja", input),
+  }),
+  "metal-slug": identityGame({
+    gameLabel: "Metal Slug",
+    publicSource: "eidren_metal_slug",
+    notFoundCode: "METAL_SLUG_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Player ID", example: "123456789" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupRapidApiGame("metal-slug", input),
+  }),
+  lifeafter: identityGame({
+    gameLabel: "LifeAfter",
+    publicSource: "eidren_lifeafter",
+    notFoundCode: "LIFEAFTER_PLAYER_NOT_FOUND",
+    fields: [
+      { key: "playerId", label: "Player ID", example: "123456789" },
+      { key: "server", label: "Server", example: "asia" },
+    ],
+    validate: (item) => validateFields(item, [
+      { key: "playerId", validate: numericField },
+      { key: "server", validate: (value) => stringField(value, 1, 32, providerServer) },
+    ]),
+    lookup: async (input) => lookupRapidApiGame("lifeafter", input),
+  }),
+  "one-punch-man": identityGame({
+    gameLabel: "One Punch Man: The Strongest",
+    publicSource: "eidren_one_punch_man",
+    notFoundCode: "ONE_PUNCH_MAN_PLAYER_NOT_FOUND",
+    fields: [
+      { key: "playerId", label: "Player ID", example: "123456789" },
+      { key: "server", label: "Zone ID", example: "1" },
+    ],
+    validate: (item) => validateFields(item, [
+      { key: "playerId", validate: numericField },
+      { key: "server", validate: (value) => stringField(value, 1, 32, providerServer) },
+    ]),
+    lookup: async (input) => lookupRapidApiGame("one-punch-man", input),
+  }),
+  "pokemon-unite": identityGame({
+    gameLabel: "Pokémon UNITE",
+    publicSource: "eidren_pokemon_unite",
+    notFoundCode: "POKEMON_UNITE_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Player ID", example: "123456789" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupRapidApiGame("pokemon-unite", input),
+  }),
+  "whiteout-survival": identityGame({
+    gameLabel: "Whiteout Survival",
+    publicSource: "eidren_whiteout_survival",
+    notFoundCode: "WHITEOUT_SURVIVAL_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Player ID", example: "123456789" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupRapidApiGame("whiteout-survival", input),
+  }),
+  "hay-day": identityGame({
+    gameLabel: "Hay Day",
+    publicSource: "eidren_hay_day",
+    notFoundCode: "HAY_DAY_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Player tag", example: "123456789" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupRapidApiGame("hay-day", input),
+  }),
+  "magic-chess": identityGame({
+    gameLabel: "Magic Chess: Go Go",
+    publicSource: "eidren_magic_chess",
+    notFoundCode: "MAGIC_CHESS_PLAYER_NOT_FOUND",
+    fields: [
+      { key: "playerId", label: "Player ID", example: "123456789" },
+      { key: "server", label: "Server", example: "asia" },
+    ],
+    validate: (item) => validateFields(item, [
+      { key: "playerId", validate: numericField },
+      { key: "server", validate: (value) => stringField(value, 1, 32, providerServer) },
+    ]),
+    lookup: async (input) => lookupRapidApiGame("magic-chess", input),
+  }),
+  "speed-drifters": identityGame({
+    gameLabel: "Speed Drifters",
+    publicSource: "eidren_speed_drifters",
+    notFoundCode: "SPEED_DRIFTERS_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Player ID", example: "123456789" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupRapidApiGame("speed-drifters", input),
+  }),
+  undawn: identityGame({
+    gameLabel: "Undawn",
+    publicSource: "eidren_undawn",
+    notFoundCode: "UNDAWN_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Player ID", example: "123456789" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupRapidApiGame("undawn", input),
+  }),
 };
 
 export function bulkGameSlugs() {
