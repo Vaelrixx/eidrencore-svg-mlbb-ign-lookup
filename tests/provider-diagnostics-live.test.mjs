@@ -2,8 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { performance } from "node:perf_hooks";
 import { confirmedNickname } from "../src/app/api/lookup/nickname-validation.mjs";
-import { lookupIsan } from "../src/app/api/lookup/providers/isan.mjs";
-import { lookupWhoPlays } from "../src/app/api/lookup/providers/whoplays.mjs";
 import { lookupGoPayGames } from "../src/app/api/lookup/providers/gopay-games.mjs";
 import { normalizeProviderOutcome } from "./helpers/provider-outcome-normalization.mjs";
 
@@ -120,29 +118,8 @@ function standardHeaders(origin, referer, contentType) {
 test("live provider sweep reports sanitized status for a known-valid test account", async () => {
   const results = [];
 
-  // This is the exact secondary adapter used by production. Never print its nickname.
-  const isanStartedAt = performance.now();
-  const isan = await lookupIsan(playerId, zoneId);
-  results.push({
-    provider: "isan_nickname_api",
-    ...normalizeProviderOutcome(isan.kind, isan.diagnostic?.reason),
-    ...(Number.isInteger(isan.diagnostic?.statusCode) ? { upstreamStatus: isan.diagnostic.statusCode } : {}),
-    durationMs: Math.round(performance.now() - isanStartedAt),
-  });
-  // This is the exact WhoPlays adapter used by production. Never print its nickname.
-  if (process.env.WHOPLAYS_API_KEY?.trim()) {
-    const whoPlaysStartedAt = performance.now();
-    const whoPlays = await lookupWhoPlays(playerId, zoneId);
-    results.push({
-      provider: "whoplays_check",
-      ...normalizeProviderOutcome(whoPlays.kind, whoPlays.diagnostic?.reason),
-      ...(Number.isInteger(whoPlays.diagnostic?.statusCode) ? { upstreamStatus: whoPlays.diagnostic.statusCode } : {}),
-      durationMs: Math.round(performance.now() - whoPlaysStartedAt),
-    });
-  } else {
-    results.push({ provider: "whoplays_check", outcome: "skipped_missing_ci_secret" });
-  }
-
+  // Community mirrors (isan, whoplays) removed 2026-10-18: unowned
+  // third-party runtime with no uptime contract.
   // This is the keyless direct-validation adapter used by the production chain.
   const goPayStartedAt = performance.now();
   const goPay = await lookupGoPayGames(playerId, zoneId);

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { normalizeSupercellTag, type LookupAttempt } from "./providers/supercell.mjs";
 import { logLookupSummary, observeProvider } from "./observability.mjs";
 import { enforceLookupRateLimit, enforcePlaygroundLimit, persistLookupLog } from "./persistence.mjs";
+import { ledgerPlayerKey, readIdentityLedger, recordIdentityLedgerHit, writeIdentityLedger } from "./identity-ledger.mjs";
 import { getUserFromRequest, getUserFromSession, requireUser } from "@/lib/platform";
 import { recordDeveloperRequest } from "@/lib/developer-events";
 
@@ -207,6 +208,36 @@ export function createGameLookupHandler(config: GameLookupConfig) {
     // Structured telemetry deliberately excludes tags, nicknames, upstream
     // payloads, headers, and credentials.
     const lookupStartedAt = Date.now();
+    // Owned answer layer: serve repeat tags from our ledger before touching
+    // any upstream. Misses fall through to the provider chain.
+    const playerKey = ledgerPlayerKey({ tag });
+    const ledgerHit = await readIdentityLedger(config.publicSource, playerKey);
+    if (ledgerHit) {
+      await recordDeveloperRequest({ ...developerAuth, endpoint: config.endpoint, requestId, status: 200, responseMs: Date.now() - requestStartedAt });
+      void persistLookupLog({
+        status: "success",
+        responseMs: Date.now() - requestStartedAt,
+        source: config.logSource,
+      });
+      void recordIdentityLedgerHit(config.publicSource, playerKey);
+      return NextResponse.json(
+        {
+          success: true,
+          data: {
+            nickname: ledgerHit.nickname,
+            tag,
+            source: config.publicSource,
+          },
+          meta: { servedFrom: "eidren_identity_ledger" },
+        },
+        {
+          headers: {
+            "Cache-Control": "no-store",
+            "X-Lookup-Request-Id": requestId,
+          },
+        },
+      );
+    }
     const attempt = await observeProvider({
       requestId,
       provider: config.provider,
@@ -228,6 +259,7 @@ export function createGameLookupHandler(config: GameLookupConfig) {
         responseMs: Date.now() - requestStartedAt,
         source: config.logSource,
       });
+      void writeIdentityLedger(config.publicSource, playerKey, attempt.nickname, config.publicSource);
       return jsonSuccess(config, attempt, tag, requestId);
     }
 

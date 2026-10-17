@@ -16,9 +16,10 @@ result before deciding not-found vs. unavailable.
 |---|---|---|---|
 | Primary | `providers/codashop-direct.mjs` | `codashop_direct` | None — CodaShop store's own `/validate`, called directly with our own request shape |
 | Fallback 1 | `providers/rapidapi.mjs` | `rapidapi_id_game_checker` | `RAPIDAPI_KEY` (or legacy `RAPIDAPI_APP_TOKEN`) |
-| Fallback 2 | `providers/isan.mjs` | `isan_nickname_api` | None — `https://api.isan.eu.org/nickname/ml` |
-| Fallback 3 | `providers/whoplays.mjs` | `whoplays_check` | `WHOPLAYS_API_KEY` from whoplays.doedja.com/dashboard (free: 30/min) |
-| Fallback 4 | `providers/gopay-games.mjs` | `gopay_games_validation` | None — direct JSON validation endpoint |
+| Fallback 2 | `providers/gopay-games.mjs` | `gopay_games_validation` | None — direct JSON validation endpoint |
+
+Community mirrors (`isan.mjs`, `whoplays.mjs`) removed 2026-10-18: unowned
+third-party runtime with no uptime contract.
 
 Contract notes:
 

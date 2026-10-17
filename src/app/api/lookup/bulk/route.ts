@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { BULK_CONCURRENCY, BULK_GAMES, BULK_MAX_BYTES, BULK_MAX_ITEMS, bulkGameSlugs } from "../bulk-games.mjs";
 import { logLookupSummary, observeProvider } from "../observability.mjs";
 import { enforceLookupRateLimit, enforcePlaygroundLimit, persistLookupLog } from "../persistence.mjs";
+import { ledgerPlayerKey, readIdentityLedger, recordIdentityLedgerHit, writeIdentityLedger } from "../identity-ledger.mjs";
 import { parseBoundedJson, RequestBodyTooLargeError } from "../limited-json.mjs";
 import { getUserFromRequest, getUserFromSession, requireUser } from "@/lib/platform";
 import { emitDeveloperEvent, recordDeveloperRequest } from "@/lib/developer-events";
@@ -40,6 +41,19 @@ async function resolveItem(game: string, raw: BulkItemInput, index: number, requ
   const claimed = typeof raw.nickname === "string" && raw.nickname.trim() ? raw.nickname.trim() : null;
 
   const lookupStartedAt = Date.now();
+  // Owned answer layer: serve repeat identities from our ledger before
+  // touching any upstream. Misses fall through to the provider chain.
+  const playerKey = ledgerPlayerKey(input);
+  const ledgerHit = await readIdentityLedger(entry.publicSource, playerKey);
+  if (ledgerHit) {
+    void persistLookupLog({ status: "success", responseMs: Date.now() - lookupStartedAt, source: entry.publicSource });
+    void recordIdentityLedgerHit(entry.publicSource, playerKey);
+    return {
+      index, game, status: "verified", nickname: ledgerHit.nickname, input,
+      nicknameMatch: claimed === null ? null : claimed.toLowerCase() === ledgerHit.nickname.toLowerCase(),
+      source: entry.publicSource,
+    };
+  }
   const attempt = await observeProvider({
     requestId: `${requestId}:bulk:${index}`,
     provider: entry.publicSource,
@@ -56,6 +70,7 @@ async function resolveItem(game: string, raw: BulkItemInput, index: number, requ
 
   if (attempt.kind === "success" && typeof attempt.nickname === "string") {
     void persistLookupLog({ status: "success", responseMs: Date.now() - lookupStartedAt, source: entry.publicSource });
+    void writeIdentityLedger(entry.publicSource, playerKey, attempt.nickname, entry.publicSource);
     return {
       index, game, status: "verified", nickname: attempt.nickname, input,
       nicknameMatch: claimed === null ? null : claimed.toLowerCase() === attempt.nickname.toLowerCase(),
