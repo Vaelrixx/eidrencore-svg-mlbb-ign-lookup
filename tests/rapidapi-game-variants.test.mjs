@@ -108,20 +108,42 @@ test("CODM rejects a nickname that exactly echoes the requested player ID", asyn
   assert.equal(JSON.stringify(result).includes(playerId), false);
 });
 
-test("numeric nicknames remain valid for games other than CODM", async () => {
-  const playerId = "8370310025568788000";
-  const result = await lookupRapidApiGame("honor-of-kings", { playerId }, {
+test("every keyed game rejects a nickname that echoes the requested identity", async () => {
+  // Live 2026-10-18: dfm-garena + speed-drifters returned the queried ID
+  // verbatim for any input including bogus IDs. Exact echoes are
+  // unverified on all games now, never success.
+  const cases = [
+    { game: "delta-force-garena", input: { playerId: "999999999999" }, echo: "999999999999" },
+    { game: "speed-drifters", input: { playerId: "999999999999" }, echo: "999999999999" },
+    { game: "honor-of-kings", input: { playerId: "17960996468644334037" }, echo: "17960996468644334037" },
+    { game: "valorant", input: { name: "TestPlayer", tag: "1234" }, echo: "TestPlayer" },
+  ];
+  for (const { game, input, echo } of cases) {
+    const result = await lookupRapidApiGame(game, input, {
+      apiKey: "test-key",
+      fetchImpl: async () => new Response(JSON.stringify({
+        error: false,
+        status: 200,
+        msg: "id_found",
+        data: { username: echo },
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    });
+    assert.deepEqual(result, { kind: "unavailable", diagnostic: { reason: "identity_echo" } }, game);
+  }
+});
+
+test("distinct numeric nicknames still resolve (echo guard needs an exact match)", async () => {
+  const result = await lookupRapidApiGame("honor-of-kings", { playerId: "17960996468644334037" }, {
     apiKey: "test-key",
     fetchImpl: async () => new Response(JSON.stringify({
       error: false,
       status: 200,
       msg: "id_found",
-      data: { username: playerId },
+      data: { username: "HonorPlayer88" },
     }), { status: 200, headers: { "Content-Type": "application/json" } }),
   });
-
   assert.equal(result.kind, "success");
-  assert.equal(result.nickname, playerId);
+  assert.equal(result.nickname, "HonorPlayer88");
 });
 
 test("shape labels expose structure without player values", () => {

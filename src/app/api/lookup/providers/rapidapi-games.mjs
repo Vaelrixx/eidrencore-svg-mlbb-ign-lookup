@@ -71,15 +71,18 @@ function routePath(game, input) {
 
 function classifyGameResponse(game, input, httpStatus, payload) {
   const result = classifyRapidApiGameResponse(httpStatus, payload);
-  // CODM has returned the queried numeric identifier in a name-like field.
-  // Treat exact echoes as unverified, but preserve numeric nicknames for other
-  // games where they may be legitimate. Never put the identifier in telemetry.
-  if (
-    game === "cod-mobile-garena" &&
-    result.kind === "success" &&
-    result.nickname === input.playerId
-  ) {
-    return { kind: "unavailable", diagnostic: { reason: "identity_echo" } };
+  // Upstream sometimes returns the queried identifier verbatim in a
+  // name-like field (CODM historically; dfm-garena + speed-drifters
+  // confirmed live 2026-10-18, resolving even bogus IDs). An exact echo
+  // is unverified on every game — never success. Never put the
+  // identifier in telemetry.
+  if (result.kind === "success" && typeof result.nickname === "string") {
+    const echoed = [input?.playerId, input?.name]
+      .filter((value) => typeof value === "string" && value.trim())
+      .some((value) => result.nickname === value.trim());
+    if (echoed) {
+      return { kind: "unavailable", diagnostic: { reason: "identity_echo" } };
+    }
   }
   return result;
 }
