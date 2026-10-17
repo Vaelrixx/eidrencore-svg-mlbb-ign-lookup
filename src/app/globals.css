@@ -1051,3 +1051,19 @@ body {
 @media (min-width: 760px) {
   .hok-dashboard-head { flex-direction: row; align-items: center; justify-content: space-between; }
 }
+
+.hok-profile-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
+.hok-profile-actions .quiet-button:active:not(:disabled) { transform: translateY(1px); }
+.hok-profile-actions .quiet-button:focus-visible, .hok-profile-actions .console-danger-action:focus-visible { outline: 2px solid var(--lime); outline-offset: 3px; }
+.hok-profile-actions button:disabled { cursor: not-allowed; opacity: .55; }
+.hok-import-form[hidden] { display: none; }
+.hok-profile-empty { display: flex; align-items: flex-start; gap: .8rem; padding: .9rem 1rem; border: 1px solid var(--border); border-radius: 11px; background: var(--glass); color: var(--muted); }
+.hok-profile-empty > svg { flex: none; color: var(--lime); }
+.hok-profile-empty strong { color: var(--text); font-size: .9rem; }
+.hok-profile-empty p, .hok-reimport-note { margin: .3rem 0 0; color: var(--muted); font-size: .78rem; line-height: 1.55; }
+.hok-reimport-note { margin: -.25rem 0 0; }
+.hok-import-form { margin-top: .25rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--glass); }
+@media (max-width: 720px) {
+  .hok-profile-actions { width: 100%; flex-direction: column; align-items: stretch; }
+  .hok-profile-actions button { justify-content: center; min-height: 2.7rem; }
+}
