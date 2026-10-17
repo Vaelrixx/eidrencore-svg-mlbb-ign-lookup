@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, ArrowDownRight, ArrowRight, Check, CircleHelp, Copy, CreditCard, KeyRound, LoaderCircle, Plus, RefreshCw, ShieldCheck, Trash2, Zap, Webhook, ScrollText } from "lucide-react";
+import { Activity, ArrowDownRight, ArrowRight, ArrowUpRight, Check, CircleHelp, Copy, CreditCard, Gamepad2, KeyRound, LoaderCircle, Plus, RefreshCw, ShieldCheck, Trash2, Zap, Webhook, ScrollText } from "lucide-react";
 import { ConsoleFrame } from "@/components/console-frame";
 
 type ApiKey = { id: string; name: string; key_prefix: string; plan_slug: string; created_at: string; last_used_at: string | null; revoked_at: string | null };
 type Plan = { slug: string; name: string; price_paise: number; monthly_limit: number; enabled: boolean; description: string };
 type Account = { user: { id: string; email?: string }; plan: string; status: string; currentPeriodEnd: string | null; monthlyUsage: number; monthlyLimit: number };
+type HokProfile = { game_uid: string; nickname: string; icon: string | null; grade: number | null; score: number | null; world_id: number | null; consented_at: string; updated_at: string };
 
 declare global { interface Window { Razorpay?: new (options: Record<string, unknown>) => { open: () => void }; } }
 
@@ -26,18 +27,27 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [copied, setCopied] = useState(false);
+  const [hokProfile, setHokProfile] = useState<HokProfile | null>(null);
+  const [hokStatus, setHokStatus] = useState<"loading" | "ready" | "error">("loading");
 
   const refresh = useCallback(async () => {
     setLoading(true); setError("");
     try {
-      const [keyResponse, planResponse, accountResponse] = await Promise.all([fetch("/api/keys"), fetch("/api/billing/plans"), fetch("/api/billing/me")]);
+      setHokStatus("loading");
+      const [keyResponse, planResponse, accountResponse, hokResponse] = await Promise.all([fetch("/api/keys"), fetch("/api/billing/plans"), fetch("/api/billing/me"), fetch("/api/account/hok-profile", { cache: "no-store" }).catch(() => null)]);
       const keyBody = await keyResponse.json(); const planBody = await planResponse.json(); const accountBody = await accountResponse.json();
       if (accountResponse.status === 401 || keyResponse.status === 401) { router.replace("/login?next=/dashboard"); return; }
       if (!keyResponse.ok) throw new Error(keyBody.error || "Could not load API keys.");
       setUserEmail(accountBody.user?.email || "Connected account");
       setKeys(keyBody.keys || []); setPlans(planBody.plans || []);
       if (accountResponse.ok) setAccount(accountBody);
-    } catch (e) { setError(e instanceof Error ? e.message : "Could not load your developer account."); }
+      if (hokResponse?.ok) {
+        try {
+          const hokBody = await hokResponse.json();
+          setHokProfile(hokBody.profile || null); setHokStatus("ready");
+        } catch { setHokStatus("error"); }
+      } else setHokStatus("error");
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not load your developer account."); setHokStatus("error"); }
     finally { setLoading(false); }
   }, [router]);
 
@@ -103,13 +113,20 @@ export default function DashboardPage() {
     <div className="overview-toolbar"><span className="account-chip"><i aria-hidden="true">{(userEmail || "?").charAt(0).toUpperCase()}</i><span className="account-email">{userEmail || "Signed in"}</span></span><button className="quiet-button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={15} className={loading ? "spin" : ""}/> Refresh</button></div>
     {error && <div className="platform-alert error" role="alert">{error}</div>}{notice && <div className="platform-alert success"><Check size={16}/>{notice}</div>}
     {loading ? <div className="loading-panel"><LoaderCircle className="spin" size={24}/> Loading developer account…</div> : <>
-      <section className="stats-grid">
+       <section className="stats-grid">
         <article className="stat-card"><span><Activity size={16}/> CURRENT PLAN</span><strong>{currentPlan?.name || "Free"}</strong><small>{account?.status === "active" ? "Subscription active" : "No paid subscription"}</small></article>
         <article className="stat-card"><span><Zap size={16}/> MONTHLY API CALLS</span><strong>{(account?.monthlyUsage || 0).toLocaleString("en-IN")}<em> / {(account?.monthlyLimit || currentPlan?.monthly_limit || 100).toLocaleString("en-IN")}</em></strong><div className="usage-track"><i style={{ width: `${percent}%` }}/></div><small>{Math.max(0, (account?.monthlyLimit || currentPlan?.monthly_limit || 100) - (account?.monthlyUsage || 0)).toLocaleString("en-IN")} requests remaining</small></article>
         <article className="stat-card"><span><KeyRound size={16}/> ACTIVE API KEYS</span><strong>{activeKeys}<em> / 10</em></strong><small>Revoke keys any time</small></article>
-        <article className="stat-card"><span><ShieldCheck size={16}/> QUOTA USED</span><strong>{percent}<em>%</em></strong><small>{percent >= 90 ? "Close to your monthly limit" : "Within your monthly limit"}</small></article>
-      </section>
-      <nav className="overview-quicklinks" aria-label="Quick links">
+         <article className="stat-card"><span><ShieldCheck size={16}/> QUOTA USED</span><strong>{percent}<em>%</em></strong><small>{percent >= 90 ? "Close to your monthly limit" : "Within your monthly limit"}</small></article>
+       </section>
+       <section className="hok-dashboard-card" aria-labelledby="hok-dashboard-title">
+         {hokStatus === "loading" ? <div className="hok-dashboard-loading"><LoaderCircle className="spin" size={17}/> Loading your HoK snapshot…</div> : hokStatus === "error" ? <div className="hok-dashboard-empty"><Gamepad2 size={20}/><div><h2 id="hok-dashboard-title">HoK profile unavailable</h2><p>We couldn’t load the saved snapshot. Your other dashboard data is unaffected.</p></div><Link href="/dashboard/account">Account settings <ArrowUpRight size={14}/></Link></div> : hokProfile ? <>
+           <div className="hok-dashboard-head"><div className="hok-dashboard-title"><span className="hok-dashboard-icon"><Gamepad2 size={19}/></span><div><span className="platform-eyebrow">HONOR OF KINGS</span><h2 id="hok-dashboard-title">{hokProfile.nickname}</h2><p>Game UID <code>{hokProfile.game_uid}</code></p></div></div><span className="hok-attested-tag">SELF-ATTESTED · NOT VERIFIED</span></div>
+           <div className="hok-dashboard-details"><div><span>WORLD ID</span><strong>{hokProfile.world_id ?? "Not included"}</strong></div><div><span>CAMP GRADE</span><strong>{hokProfile.grade ?? "Not included"}</strong></div><div><span>CAMP SCORE</span><strong>{hokProfile.score ?? "Not included"}</strong></div></div>
+           <div className="hok-dashboard-foot"><p>Snapshot imported {hokProfile.consented_at.slice(0, 10)} from your Camp invite link. This is not live game data.</p><Link href="/dashboard/account">Manage snapshot <ArrowRight size={14}/></Link></div>
+         </> : <div className="hok-dashboard-empty"><span className="hok-dashboard-icon"><Gamepad2 size={19}/></span><div><h2 id="hok-dashboard-title">Honor of Kings profile</h2><p>Import a Camp invite snapshot to see its UID and profile details here.</p></div><Link href="/dashboard/account">Import snapshot <ArrowRight size={14}/></Link></div>}
+       </section>
+       <nav className="overview-quicklinks" aria-label="Quick links">
         <Link href="/dashboard/docs"><CircleHelp size={18}/><span><strong>API reference</strong><small>Endpoints and examples</small></span></Link>
         <Link href="/dashboard/usage"><Zap size={18}/><span><strong>Usage &amp; analytics</strong><small>Requests over time</small></span></Link>
         <Link href="/dashboard/webhooks"><Webhook size={18}/><span><strong>Webhooks</strong><small>Event notifications</small></span></Link>
