@@ -32,14 +32,18 @@ class TransientUpstreamError extends Error {
  *   not-found: degrade, never false not-found)
  * Not-found verdict keys ONLY on the code-specific explicit miss envelope:
  * PUBGM misses say "Invalid user account"; every other code says
- * "Unknown User". PUBG_ID shares the PUBGM envelope but its miss pool
- * includes real Lite IDs the code does not carry, so PUBG_ID misses keep
- * degrading honestly instead of reporting not-found.
+ * "Unknown User"; ZENLESS_ZONE_ZERO misses say "Invalid game user
+ * credentials" (verified live 2026-10-18: 1317572318 resolves to a
+ * masked nickname on zone prod_gf_jp, bogus IDs 404 on every zone).
+ * PUBG_ID shares the PUBGM envelope but its miss pool includes real Lite
+ * IDs the code does not carry, so PUBG_ID misses keep degrading honestly
+ * instead of reporting not-found.
  * NOTE: PUBG_MOBILE (with underscore) echoes the ID back instead of
  * resolving — never use it. The echo guard also catches such codes.
  */
 const UNKNOWN_USER_PATTERN = /^Unknown User/i;
 const INVALID_ACCOUNT_PATTERN = /^Invalid user account$/i;
+const INVALID_CREDENTIALS_PATTERN = /^Invalid game user credentials$/i;
 
 function record(value) {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -64,9 +68,11 @@ function responseKind(payload) {
  * CODM, HONOR_OF_KINGS, and other codes). Echoed identities degrade to
  * unavailable, never success. The `gameCode` argument selects the
  * code-specific miss envelope: PUBGM reports misses as "Invalid user
- * account" while every other code reports "Unknown User" (verified live
- * 2026-10-17). PUBG_ID keeps degrading on its invalid-account envelope
- * because the same 404 also covers real Lite IDs the code does not carry.
+ * account", ZENLESS_ZONE_ZERO reports "Invalid game user credentials"
+ * (verified live 2026-10-18), while every other code reports "Unknown
+ * User" (verified live 2026-10-17). PUBG_ID keeps degrading on its
+ * invalid-account envelope because the same 404 also covers real Lite
+ * IDs the code does not carry.
   */
 export function classifyGoPayGameFallbackResponse(httpStatus, payload, requestIdentity = "", gameCode = "") {
   const root = record(payload);
@@ -87,6 +93,9 @@ export function classifyGoPayGameFallbackResponse(httpStatus, payload, requestId
   ) {
     const normalizedCode = typeof gameCode === "string" ? gameCode.trim().toUpperCase() : "";
     if (normalizedCode === "PUBGM" && INVALID_ACCOUNT_PATTERN.test(message)) {
+      return { kind: "not_found" };
+    }
+    if (normalizedCode === "ZENLESS_ZONE_ZERO" && INVALID_CREDENTIALS_PATTERN.test(message)) {
       return { kind: "not_found" };
     }
     if (normalizedCode !== "PUBGM" && normalizedCode !== "PUBG_ID" && UNKNOWN_USER_PATTERN.test(message)) {
@@ -143,7 +152,10 @@ export async function lookupGoPayGameFallback(gameCode, playerId, options = {}) 
   }
   const fetchImpl = options.fetchImpl ?? fetch;
   const cache = options.cache ?? providerCache;
-  const cacheKey = `gopay:identity:${gameCode.trim().toUpperCase()}:${playerId.trim()}`;
+  // Server-scoped codes (ZZZ) need the store zone; default keeps every
+  // existing caller unchanged.
+  const zoneId = typeof options.zoneId === "string" ? options.zoneId.trim() : "";
+  const cacheKey = `gopay:identity:${gameCode.trim().toUpperCase()}:${playerId.trim()}:${zoneId}`;
   try {
     const { value, cached } = await cache.getOrLoad(cacheKey, GOPAY_IDENTITY_CACHE_TTL_SECONDS, async () => {
       let attempt;
@@ -157,7 +169,7 @@ export async function lookupGoPayGameFallback(gameCode, playerId, options = {}) 
           },
           body: JSON.stringify({
             code: gameCode.trim(),
-            data: { userId: playerId.trim(), zoneId: "" },
+            data: { userId: playerId.trim(), zoneId },
           }),
           cache: "no-store",
           signal: AbortSignal.timeout(GOPAY_FETCH_TIMEOUT_MS),

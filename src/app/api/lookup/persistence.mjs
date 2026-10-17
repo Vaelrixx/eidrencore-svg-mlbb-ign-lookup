@@ -49,6 +49,8 @@ const LOG_SOURCES = new Set([
   "eidren_magic_chess",
   "eidren_speed_drifters",
   "eidren_undawn",
+  "eidren_super_sus",
+  "eidren_point_blank",
 ]);
 
 function configuration(env = process.env) {

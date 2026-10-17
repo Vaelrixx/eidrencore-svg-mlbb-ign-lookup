@@ -53,6 +53,11 @@ export const RAPIDAPI_GAME_ROUTES = Object.freeze({
   "magic-chess": Object.freeze({ slug: "mcgg", fields: ["playerId", "server"] }),
   "speed-drifters": Object.freeze({ slug: "speed-drifters", fields: ["playerId"] }),
   undawn: Object.freeze({ slug: "undawn", fields: ["playerId"] }),
+  // Point Blank: /point-blank/{id} on the key's published endpoint list.
+  // Keyed primary-only: the Coda initPayment leg echoes short input IDs
+  // back as username (verified live 2026-10-18), so it carries no
+  // distinguishable not-found gate and stays out.
+  "point-blank": Object.freeze({ slug: "point-blank", fields: ["playerId"] }),
 });
 
 function routePath(game, input) {

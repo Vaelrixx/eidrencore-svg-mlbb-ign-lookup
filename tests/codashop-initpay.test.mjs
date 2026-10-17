@@ -14,7 +14,7 @@ test("empty errorCode with a username resolves as success and decodes the name",
 });
 
 test("explicit miss messages resolve as not-found", () => {
-  for (const errorMsg of ["User Not Found", "account info not found", "User name not found"]) {
+  for (const errorMsg of ["User Not Found", "account info not found", "User name not found", "账号错误"]) {
     assert.deepEqual(classifyInitpayResponse(200, { errorCode: "-100", errorMsg }), { kind: "not_found" });
   }
 });
@@ -27,8 +27,10 @@ test("unfamiliar errors and empty payloads stay unavailable", () => {
 });
 
 test("only live-verified games are enabled", () => {
-  assert.deepEqual(Object.keys(INITPAY_GAMES), ["8-ball-pool"]);
+  assert.deepEqual(Object.keys(INITPAY_GAMES), ["8-ball-pool", "super-sus"]);
   assert.equal(INITPAY_GAMES["8-ball-pool"].voucherTypeName, "EIGHT_BALL_POOL");
+  assert.equal(INITPAY_GAMES["super-sus"].voucherTypeName, "SUPER_SUS");
+  assert.equal(INITPAY_GAMES["super-sus"].pricePointId, "266079");
 });
 
 test("lookup posts the form-encoded initPayment shape", async () => {
@@ -47,6 +49,22 @@ test("lookup posts the form-encoded initPayment shape", async () => {
   assert.equal(form.get("voucherTypeName"), "EIGHT_BALL_POOL");
   assert.equal(form.get("user.userId"), "12345");
   assert.equal(form.get("voucherPricePoint.id"), "272564");
+});
+
+test("super-sus posts its own voucher and price point (live-verified 2026-10-18)", async () => {
+  let captured;
+  const result = await lookupCodashopInitpay("super-sus", "163588582", "", {
+    fetchImpl: async (url, options) => {
+      captured = { url: String(url), options };
+      return new Response(JSON.stringify({ errorCode: "", confirmationFields: { username: "zoevii" } }), { status: 200 });
+    },
+    cache: { getOrLoad: async (_key, _ttl, loader) => ({ value: await loader(), cached: false }) },
+  });
+  assert.deepEqual(result, { kind: "success", nickname: "zoevii", source: "codashop_initpay" });
+  const form = new URLSearchParams(captured.options.body);
+  assert.equal(form.get("voucherTypeName"), "SUPER_SUS");
+  assert.equal(form.get("user.userId"), "163588582");
+  assert.equal(form.get("voucherPricePoint.id"), "266079");
 });
 
 test("unknown games and blank IDs fail closed without a network call", async () => {
