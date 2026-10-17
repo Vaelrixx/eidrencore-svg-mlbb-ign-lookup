@@ -4,14 +4,15 @@ import { BULK_CONCURRENCY, BULK_GAMES, BULK_MAX_BYTES, BULK_MAX_ITEMS, bulkGameS
 
 test("bulk registry covers every live lookup route", () => {
   const slugs = bulkGameSlugs();
-  assert.equal(slugs.length, 37);
+  assert.equal(slugs.length, 39);
   for (const slug of ["mlbb", "pubg-mobile", "call-of-duty-mobile", "valorant", "genshin-impact",
     "honkai-star-rail", "zenless-zone-zero", "honor-of-kings", "arena-of-valor", "pubg-lite",
     "teen-patti-gold", "jawaker", "fc-mobile", "free-fire", "free-fire-global", "bigo-live",
     "higgs-domino", "brawl-stars", "clash-of-clans", "clash-royale",
     "8-ball-pool", "arena-breakout", "blood-strike", "delta-force", "delta-force-garena",
     "eggy-party", "ace-racer", "dragon-raja", "metal-slug", "lifeafter", "one-punch-man",
-    "pokemon-unite", "whiteout-survival", "hay-day", "magic-chess", "speed-drifters", "undawn"]) {
+    "pokemon-unite", "whiteout-survival", "hay-day", "magic-chess", "speed-drifters", "undawn",
+    "super-sus", "point-blank"]) {
     assert.ok(slugs.includes(slug), `missing bulk game: ${slug}`);
   }
 });

@@ -52,6 +52,20 @@ test("PUBGM invalid-account 404 is not-found (live-verified 2026-10-17)", () => 
   assert.equal(classifyGoPayGameFallbackResponse(404, aovMissing, "", "PUBGM").kind, "unavailable");
 });
 
+test("ZZZ invalid-credentials 404 is not-found only on the ZZZ code (live-verified 2026-10-18)", () => {
+  const zzzMissing = { statusCode: 404, message: "Invalid game user credentials", error: "Not Found" };
+  assert.deepEqual(classifyGoPayGameFallbackResponse(404, zzzMissing, "", "ZENLESS_ZONE_ZERO"), { kind: "not_found" });
+  assert.deepEqual(classifyGoPayGameFallbackResponse(404, zzzMissing, "", "zenless_zone_zero"), { kind: "not_found" });
+  // Same envelope on other codes never reports not-found.
+  assert.equal(classifyGoPayGameFallbackResponse(404, zzzMissing, "", "AOV").kind, "unavailable");
+  assert.equal(classifyGoPayGameFallbackResponse(404, zzzMissing, "", "PUBGM").kind, "unavailable");
+  // ZZZ success schema resolves the masked store nickname.
+  assert.deepEqual(
+    classifyGoPayGameFallbackResponse(200, { message: "Success", data: { countryOrigin: "ID", username: "Z**y" } }, "1317572318", "ZENLESS_ZONE_ZERO"),
+    { kind: "success", nickname: "Z**y", source: "gopay_games_validation" },
+  );
+});
+
 test("rate limits and malformed bodies never become not-found", () => {
   assert.equal(classifyGoPayGameFallbackResponse(429, { message: "slow" }).kind, "rate_limited");
   assert.equal(classifyGoPayGameFallbackResponse(503, { message: "down" }).kind, "unavailable");
@@ -67,6 +81,19 @@ test("lookup sends the game code with no credentials", async () => {
     },
   });
   assert.deepEqual(requestBody, { code: "AOV", data: { userId: "195293573153949", zoneId: "" } });
+  assert.equal(result.kind, "success");
+});
+
+test("lookup passes the store zone for server-scoped codes", async () => {
+  let requestBody;
+  const result = await lookupGoPayGameFallback("ZENLESS_ZONE_ZERO", "1317572318", {
+    zoneId: "prod_gf_jp",
+    fetchImpl: async (_url, init) => {
+      requestBody = JSON.parse(init.body);
+      return new Response(JSON.stringify({ message: "Success", data: { countryOrigin: "ID", username: "Z**y" } }), { status: 200 });
+    },
+  });
+  assert.deepEqual(requestBody, { code: "ZENLESS_ZONE_ZERO", data: { userId: "1317572318", zoneId: "prod_gf_jp" } });
   assert.equal(result.kind, "success");
 });
 

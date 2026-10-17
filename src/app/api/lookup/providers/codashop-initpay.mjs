@@ -50,9 +50,19 @@ export const INITPAY_GAMES = Object.freeze({
     requiresZone: false,
     source: "codashop_initpay",
   }),
+  // Live-verified 2026-10-18: Space IDs 163588581-83 resolve to real
+  // nicknames, bogus IDs give -100 账号错误 (account error). Price point
+  // is the 100 Goldstar denom from the public top-up page.
+  "super-sus": Object.freeze({
+    voucherTypeName: "SUPER_SUS",
+    pricePointId: "266079",
+    pricePointPrice: "13000.0000",
+    requiresZone: false,
+    source: "codashop_initpay",
+  }),
 });
 
-const NOT_FOUND_MESSAGE_PATTERN = /(user\s*not\s*found|account\s*info\s*not\s*found|user\s*name\s*not\s*found|not\s*found|unknown\s*(user|player)|invalid\s*(user|player|id|zone))/i;
+const NOT_FOUND_MESSAGE_PATTERN = /(user\s*not\s*found|account\s*info\s*not\s*found|user\s*name\s*not\s*found|not\s*found|unknown\s*(user|player)|invalid\s*(user|player|id|zone)|\u8d26\u53f7\u9519\u8bef)/i;
 
 function record(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : null;

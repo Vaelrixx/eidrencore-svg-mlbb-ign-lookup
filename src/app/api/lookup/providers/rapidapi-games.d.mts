@@ -30,7 +30,8 @@ export type RapidApiGame =
   | "hay-day"
   | "magic-chess"
   | "speed-drifters"
-  | "undawn";
+  | "undawn"
+  | "point-blank";
 
 export type RapidApiGameInput =
   | { playerId: string }

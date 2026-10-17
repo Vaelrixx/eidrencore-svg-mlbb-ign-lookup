@@ -1,7 +1,7 @@
 import { createIdGameLookupHandler, type IdGameLookupConfig } from "./id-game-route";
 import { lookupRapidApiGame, type RapidApiGame, type RapidApiGameInput } from "./providers/rapidapi-games.mjs";
 import { lookupEnkaGenshin } from "./providers/enka-genshin.mjs";
-import { lookupEnkaIdentity, type EnkaIdentityGame } from "./providers/enka-identity.mjs";
+import { lookupEnkaIdentity } from "./providers/enka-identity.mjs";
 import { lookupGoPayGameFallback } from "./providers/gopay-game-fallback.mjs";
 import { lookupFcMobile } from "./providers/gopay-fc-mobile.mjs";
 import { lookupGoPayFreeFire } from "./providers/gopay-free-fire.mjs";
@@ -115,6 +115,38 @@ async function lookupJawakerWithFallback(
   if (fallback.kind === "success" || fallback.kind === "not_found" || fallback.kind === "rate_limited") {
     return fallback;
   }
+  return primary;
+}
+
+/**
+ * ZZZ chain: Enka (global, serverless) primary, GoPay server sweep
+ * secondary. The route stays UID-only: no server field, no breaking
+ * change. GoPay needs a store zone, so the secondary sweeps all four
+ * ZZZ servers in parallel — but only when Enka itself is degraded
+ * (Enka success/not_found/rate_limited are terminal). First success
+ * wins; not_found requires a unanimous invalid-credentials sweep
+ * (a UID lives on exactly one server, so one server's miss proves
+ * nothing); anything else degrades honestly to the Enka outcome.
+ * Live-verified 2026-10-18: 1317572318 resolves on prod_gf_jp,
+ * bogus IDs 404 on every zone.
+ */
+const ZZZ_GOPAY_SERVERS = ["prod_gf_us", "prod_gf_eu", "prod_gf_jp", "prod_gf_sg"] as const;
+
+async function lookupZzzWithFallback(playerId: string) {
+  const primary = await lookupEnkaIdentity("zzz", playerId);
+  if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") {
+    return primary;
+  }
+  const sweep = await Promise.all(
+    ZZZ_GOPAY_SERVERS.map((zoneId) =>
+      lookupGoPayGameFallback("ZENLESS_ZONE_ZERO", playerId, { zoneId }).catch(() => ({ kind: "unavailable" as const })),
+    ),
+  );
+  const hit = sweep.find((attempt) => attempt.kind === "success");
+  if (hit) return hit;
+  const limited = sweep.find((attempt) => attempt.kind === "rate_limited");
+  if (limited) return limited;
+  if (sweep.every((attempt) => attempt.kind === "not_found")) return { kind: "not_found" as const };
   return primary;
 }
 
@@ -329,6 +361,20 @@ const configs: Record<string, { providerGame?: RapidApiGame; config: Omit<IdGame
       fields: [{ key: "playerId", label: "Player ID", example: "12345", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
+  // Super Sus: Coda initPayment direct leg only (self-reliant: zero
+  // third-party runtime). Live-verified 2026-10-18: Space ID 163588582
+  // resolves to a real nickname, bogus IDs give the explicit -100
+  // account-error gate. /validate returns {} for this game.
+  "super-sus": {
+    config: {
+      endpoint: "/api/lookup/super-sus",
+      gameLabel: "Super Sus",
+      publicSource: "eidren_super_sus",
+      notFoundCode: "SUPER_SUS_PLAYER_NOT_FOUND",
+      internalProvider: "eidren_super_sus_direct",
+      fields: [{ key: "playerId", label: "Space ID", example: "163588582", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
   // Wave 1 expansion (primary-only: slugs from the key's published
   // endpoint list, verified live 2026-10-18; honest degraded when the
   // keyed feed misses). Server-suffixed games pass the provider's
@@ -524,6 +570,19 @@ const configs: Record<string, { providerGame?: RapidApiGame; config: Omit<IdGame
       fields: [{ key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
+  // Point Blank: keyed primary-only. No keyless leg: Coda initPayment
+  // echoes short IDs (verified live 2026-10-18), GoPay has no PB code.
+  "point-blank": {
+    providerGame: "point-blank",
+    config: {
+      endpoint: "/api/lookup/point-blank",
+      gameLabel: "Point Blank",
+      publicSource: "eidren_point_blank",
+      notFoundCode: "POINT_BLANK_PLAYER_NOT_FOUND",
+      internalProvider: "rapidapi_id_game_checker_point_blank",
+      fields: [{ key: "playerId", label: "Player ID", example: "123456789", minLength: 3, maxLength: 24, pattern: numericId }],
+    },
+  },
 };
 
 export function createRapidApiGameHandler(game: keyof typeof configs) {
@@ -531,13 +590,19 @@ export function createRapidApiGameHandler(game: keyof typeof configs) {
   const config: IdGameLookupConfig = {
     ...entry.config,
     lookup: async (input) => {
-      if (game === "honkai-star-rail" || game === "zenless-zone-zero") {
-        const enkaGame: EnkaIdentityGame = game === "honkai-star-rail" ? "hsr" : "zzz";
-        return lookupEnkaIdentity(enkaGame, (input as { playerId: string }).playerId);
+      if (game === "honkai-star-rail") {
+        return lookupEnkaIdentity("hsr", (input as { playerId: string }).playerId);
+      }
+      if (game === "zenless-zone-zero") {
+        return lookupZzzWithFallback((input as { playerId: string }).playerId);
       }
       if (game === "8-ball-pool") {
         const playerId = "playerId" in input ? (input as { playerId: string }).playerId : "";
         return lookupCodashopInitpay("8-ball-pool", playerId);
+      }
+      if (game === "super-sus") {
+        const playerId = "playerId" in input ? (input as { playerId: string }).playerId : "";
+        return lookupCodashopInitpay("super-sus", playerId);
       }
       const providerGame = entry.providerGame;
       if (!providerGame) return { kind: "unavailable", diagnostic: { reason: "missing_route_config" } };

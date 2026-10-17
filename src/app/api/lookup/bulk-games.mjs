@@ -72,6 +72,26 @@ async function keyedWithGoPayFallback(game, input, gopayCode) {
   return terminalOrFallback(primary, await lookupGoPayGameFallback(gopayCode, playerId));
 }
 
+// Mirrors the single route: Enka primary, GoPay four-server sweep only
+// when Enka is degraded. Unanimous invalid-credentials sweep = not_found.
+const ZZZ_GOPAY_SERVERS = ["prod_gf_us", "prod_gf_eu", "prod_gf_jp", "prod_gf_sg"];
+
+async function lookupZzz(input) {
+  const primary = await lookupEnkaIdentity("zzz", input.playerId);
+  if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") return primary;
+  const sweep = await Promise.all(
+    ZZZ_GOPAY_SERVERS.map((zoneId) =>
+      lookupGoPayGameFallback("ZENLESS_ZONE_ZERO", input.playerId, { zoneId }).catch(() => ({ kind: "unavailable" })),
+    ),
+  );
+  const hit = sweep.find((attempt) => attempt.kind === "success");
+  if (hit) return hit;
+  const limited = sweep.find((attempt) => attempt.kind === "rate_limited");
+  if (limited) return limited;
+  if (sweep.every((attempt) => attempt.kind === "not_found")) return { kind: "not_found" };
+  return primary;
+}
+
 // Mirrors POST /api/lookup: CodaShop direct primary, then the four
 // live-swept fallbacks with the same verdict selection.
 async function lookupMlbb(input) {
@@ -202,7 +222,7 @@ export const BULK_GAMES = {
     notFoundCode: "ZENLESS_ZONE_ZERO_PLAYER_NOT_FOUND",
     fields: [{ key: "playerId", label: "UID", example: "1317572318" }],
     validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
-    lookup: async (input) => lookupEnkaIdentity("zzz", input.playerId),
+    lookup: lookupZzz,
   }),
   "honor-of-kings": identityGame({
     gameLabel: "Honor of Kings",
@@ -456,6 +476,22 @@ export const BULK_GAMES = {
     fields: [{ key: "playerId", label: "Player ID", example: "123456789" }],
     validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
     lookup: async (input) => lookupRapidApiGame("undawn", input),
+  }),
+  "super-sus": identityGame({
+    gameLabel: "Super Sus",
+    publicSource: "eidren_super_sus",
+    notFoundCode: "SUPER_SUS_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Space ID", example: "163588582" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupCodashopInitpay("super-sus", input.playerId),
+  }),
+  "point-blank": identityGame({
+    gameLabel: "Point Blank",
+    publicSource: "eidren_point_blank",
+    notFoundCode: "POINT_BLANK_PLAYER_NOT_FOUND",
+    fields: [{ key: "playerId", label: "Player ID", example: "123456789" }],
+    validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
+    lookup: async (input) => lookupRapidApiGame("point-blank", input),
   }),
 };
 
