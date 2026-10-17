@@ -51,6 +51,7 @@ const LOG_SOURCES = new Set([
   "eidren_undawn",
   "eidren_super_sus",
   "eidren_point_blank",
+  "eidren_identity_ledger",
 ]);
 
 function configuration(env = process.env) {

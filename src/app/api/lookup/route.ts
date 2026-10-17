@@ -1,13 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveLookupWithFallbacks, selectLookupVerdict } from "./resolve-lookup.mjs";
-import { lookupIsan } from "./providers/isan.mjs";
 import { lookupRapidApi } from "./providers/rapidapi.mjs";
+import { lookupIsan } from "./providers/isan.mjs";
 import { lookupWhoPlays } from "./providers/whoplays.mjs";
 import { lookupGoPayGames } from "./providers/gopay-games.mjs";
 import { lookupCodashopDirect } from "./providers/codashop-direct.mjs";
 import { logLookupSummary, observeProvider } from "./observability.mjs";
 import { enforceLookupRateLimit, enforcePlaygroundLimit, persistLookupLog } from "./persistence.mjs";
+import { ledgerPlayerKey, readIdentityLedger, recordIdentityLedgerHit, writeIdentityLedger } from "./identity-ledger.mjs";
 import { getUserFromRequest, getUserFromSession, requireUser } from "@/lib/platform";
 import { recordDeveloperRequest } from "@/lib/developer-events";
 
@@ -217,6 +218,38 @@ export async function POST(request: NextRequest) {
   // upstream payloads, headers, and credentials.
   const lookupStartedAt = Date.now();
 
+  // Owned answer layer: serve repeat identities from our ledger before
+  // touching any upstream. Misses fall through to the provider chain.
+  const playerKey = ledgerPlayerKey({ playerId, zoneId });
+  const ledgerHit = await readIdentityLedger("eidren_mlbb", playerKey);
+  if (ledgerHit) {
+    await recordDeveloperRequest({ ...developerAuth, requestId, status: 200, responseMs: Date.now() - requestStartedAt });
+    void persistLookupLog({
+      status: "success",
+      responseMs: Date.now() - requestStartedAt,
+      source: "mlbb_lookup_api",
+    });
+    void recordIdentityLedgerHit("eidren_mlbb", playerKey);
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          nickname: ledgerHit.nickname,
+          playerId,
+          zoneId,
+          source: "eidren_mlbb",
+        },
+        meta: { servedFrom: "eidren_identity_ledger" },
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store",
+          "X-Lookup-Request-Id": requestId,
+        },
+      },
+    );
+  }
+
   // Primary-first lookup with deterministic, concurrent fallback takeover.
   const resolution = await resolveLookupWithFallbacks(
     () => observeProvider({
@@ -226,6 +259,7 @@ export async function POST(request: NextRequest) {
     }),
     [
       // Keep only the fallback adapters that passed the live provider sweep.
+      // Additive motto: community mirrors stay as extra legs for balance.
       () => observeProvider({ requestId, provider: "rapidapi_id_game_checker", lookup: () => lookupRapidApi(playerId, zoneId) }),
       () => observeProvider({ requestId, provider: "isan_nickname_api", lookup: () => lookupIsan(playerId, zoneId) }),
       () => observeProvider({ requestId, provider: "whoplays_check", lookup: () => lookupWhoPlays(playerId, zoneId) }),
@@ -250,6 +284,7 @@ export async function POST(request: NextRequest) {
       responseMs: Date.now() - requestStartedAt,
       source: confirmed.source,
     });
+    void writeIdentityLedger("eidren_mlbb", playerKey, confirmed.nickname, confirmed.source);
     return jsonSuccess(confirmed, playerId, zoneId, requestId);
   }
 
