@@ -213,9 +213,17 @@ export const BULK_GAMES = {
       key: "playerId",
       validate: (value) => stringField(value, 3, 24, CODM_IDENTITY_PATTERN),
     }]),
-    lookup: async (input) => (classifyCodmInput(input.playerId) !== "direct"
-      ? lookupRapidApiGame("cod-mobile-garena", input)
-      : lookupCodashopDirect("call-of-duty-mobile", input.playerId, "")),
+    // Mirrors the single route: nicknames go WL direct; numeric IDs try the
+    // keyed broker first, then the flag-gated initPayment secondary.
+    lookup: async (input) => {
+      if (classifyCodmInput(input.playerId) === "direct") {
+        return lookupCodashopDirect("call-of-duty-mobile", input.playerId, "");
+      }
+      const primary = await lookupRapidApiGame("cod-mobile-garena", input);
+      if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") return primary;
+      const direct = await lookupCodashopInitpay("call-of-duty-mobile", input.playerId);
+      return terminalOrFallback(primary, direct);
+    },
   }),
   valorant: identityGame({
     gameLabel: "VALORANT",

@@ -118,7 +118,7 @@ test("verified entries stay enabled and provisional candidates stay dormant behi
   // MLBB probe-envelopes test above).
   // Genshin stays out for the same reason: probed 2026-10-18, valid and
   // bogus UIDs are indistinguishable (see the Genshin probe-envelopes test).
-  assert.deepEqual(Object.keys(INITPAY_GAMES), ["8-ball-pool", "arena-of-valor", "super-sus", "point-blank", "dragon-raja", "metal-slug"]);
+  assert.deepEqual(Object.keys(INITPAY_GAMES), ["8-ball-pool", "arena-of-valor", "super-sus", "point-blank", "dragon-raja", "metal-slug", "call-of-duty-mobile"]);
   assert.equal(INITPAY_GAMES["8-ball-pool"].voucherTypeName, "EIGHT_BALL_POOL");
   assert.equal(INITPAY_GAMES["arena-of-valor"].voucherTypeName, "AOV");
   assert.equal(INITPAY_GAMES["arena-of-valor"].pricePointId, "270294");
@@ -138,6 +138,45 @@ test("verified entries stay enabled and provisional candidates stay dormant behi
   assert.equal(INITPAY_GAMES["metal-slug"].pricePointPrice, "1.2000");
   assert.equal(INITPAY_GAMES["metal-slug"].fallbackPricePointId, "868345");
   assert.equal(INITPAY_GAMES["metal-slug"].enabledEnv, "CODASHOP_METAL_SLUG_ENABLED");
+  assert.equal(INITPAY_GAMES["call-of-duty-mobile"].voucherTypeName, "CALL_OF_DUTY");
+  assert.equal(INITPAY_GAMES["call-of-duty-mobile"].pricePointId, "270251");
+  assert.equal(INITPAY_GAMES["call-of-duty-mobile"].pricePointPrice, "20000.0000");
+  assert.equal(INITPAY_GAMES["call-of-duty-mobile"].fallbackPricePointId, "46251");
+  assert.equal(INITPAY_GAMES["call-of-duty-mobile"].nicknameFrom, "roles");
+  assert.equal(INITPAY_GAMES["call-of-duty-mobile"].enabledEnv, "CODASHOP_CODM_INITPAY_ENABLED");
+});
+
+test("CODM initPayment flag stays off by default and prevents an upstream call", async () => {
+  let calls = 0;
+  const result = await lookupCodashopInitpay("call-of-duty-mobile", "0000000001", "", {
+    env: {},
+    fetchImpl: async () => { calls += 1; return new Response("{}", { status: 200 }); },
+  });
+  assert.deepEqual(result, { kind: "unavailable", diagnostic: { reason: "feature_disabled" } });
+  assert.equal(calls, 0);
+});
+
+test("enabled CODM leg uses the probed tuple and numeric-12 miss gate", async () => {
+  let captured;
+  const result = await lookupCodashopInitpay("call-of-duty-mobile", "0000000001", "", {
+    env: { CODASHOP_CODM_INITPAY_ENABLED: "true" },
+    fetchImpl: async (url, options) => {
+      captured = { url: String(url), options };
+      return new Response(JSON.stringify({
+        errorCode: 12,
+        errorMsg: "Wrong player id",
+        success: false,
+      }), { status: 200 });
+    },
+    cache: { getOrLoad: async (_key, _ttl, loader) => ({ value: await loader(), cached: false }) },
+  });
+  assert.deepEqual(result, { kind: "not_found" });
+  const form = new URLSearchParams(captured.options.body);
+  assert.equal(captured.url, "https://order-sg.codashop.com/initPayment.action");
+  assert.equal(form.get("voucherTypeName"), "CALL_OF_DUTY");
+  assert.equal(form.get("voucherPricePoint.id"), "270251");
+  assert.equal(form.get("user.userId"), "0000000001");
+  assert.equal(form.has("user.zoneId"), false);
 });
 
 test("Dragon Raja flag stays off by default and prevents an upstream call", async () => {

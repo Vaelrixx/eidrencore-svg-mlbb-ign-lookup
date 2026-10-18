@@ -124,7 +124,7 @@ rather than a key/gateway outage. The game classifier therefore accepts these va
   `envelope:data,error,msg,status|data:object:id,server,username`), so the retry
   targets HoK-class slowness and the message code targets Genshin-class degradation.
 
-## Point Blank, Dragon Raja, and Metal Slug direct candidates
+## Point Blank, Dragon Raja, Metal Slug, and CODM numeric direct candidates
 
 Point Blank retains its keyed broker primary in single and bulk routes. Its
 CodaShop `POINT_BLANK` candidate is dormant unless
@@ -154,6 +154,16 @@ bogus-ID gate (`errorCode:"-100"`, `errorMsg:"Verify User Failed"`,
 live-verified; keep the flag unset until one consenting Role ID resolves the
 expected nickname. A wrong price for the tuple gives opaque `RESULT_CODE 604`,
 never a nickname.
+
+CODM numeric mode keeps the keyed broker primary in single and bulk routes.
+Its CodaShop `CALL_OF_DUTY` initPayment candidate is dormant unless
+`CODASHOP_CODM_INITPAY_ENABLED=true`. The 2026-10-19 validation-only probe
+confirmed both tuples (`270251` / `20000.0000` primary, `46251` / `2000000.0`
+fallback) return the numeric-12 "Wrong player id" miss gate, matching AoV's
+contract with the nickname at `roles[0].role` per three MIT adapters. The
+success shape is not live-verified; keep the flag unset until one consenting
+valid numeric UID resolves the expected nickname. Nicknames and shortIds
+never touch this leg — they stay on the WL direct leg.
 
 ## Supercell lookups (`/api/lookup/{brawl-stars,clash-of-clans,clash-royale}`)
 
@@ -253,7 +263,8 @@ Notes:
 
 - Codashop `initPayment` is payment-adjacent: only the title-specific,
   validation-only calls described above are permitted. Never advance to an
-  order or payment step. Point Blank, Dragon Raja, and Metal Slug remain
+  order or payment step. Point Blank, Dragon Raja, Metal Slug, and CODM
+  numeric remain
   flag-disabled until their success shapes are verified with consenting IDs.
 - EliteDias / Smile.One / DuniaGames — failed the live sweep (invalid
   verdicts, bot redirects, HTTP 500); diagnostic-only.
