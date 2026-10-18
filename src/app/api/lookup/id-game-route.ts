@@ -4,6 +4,7 @@ import type { RapidApiGameAttempt } from "./providers/rapidapi-games.mjs";
 import { logLookupSummary, observeProvider } from "./observability.mjs";
 import { enforceLookupRateLimit, enforcePlaygroundLimit, persistLookupLog } from "./persistence.mjs";
 import { parseBoundedJson, RequestBodyTooLargeError } from "./limited-json.mjs";
+import { ledgerPlayerKey, readIdentityLedger, recordIdentityLedgerHit, writeIdentityLedger } from "./identity-ledger.mjs";
 import { getUserFromRequest, getUserFromSession, requireUser } from "@/lib/platform";
 import { recordDeveloperRequest } from "@/lib/developer-events";
 
@@ -126,6 +127,20 @@ export function createIdGameLookupHandler(config: IdGameLookupConfig) {
     }
 
     const lookupStartedAt = Date.now();
+    // Owned answer layer: serve repeat identities from our ledger before
+    // touching any upstream. Misses fall through to the provider chain.
+    const playerKey = ledgerPlayerKey(input);
+    const ledgerHit = await readIdentityLedger(config.publicSource, playerKey);
+    if (ledgerHit) {
+      await recordDeveloperRequest({ ...developerAuth, endpoint: config.endpoint, requestId, status: 200, responseMs: Date.now() - requestStartedAt });
+      void persistLookupLog({ status: "success", responseMs: Date.now() - requestStartedAt, source: config.publicSource });
+      void recordIdentityLedgerHit(config.publicSource, playerKey);
+      return NextResponse.json({
+        success: true,
+        data: { nickname: ledgerHit.nickname, ...input, source: config.publicSource },
+        meta: { servedFrom: "eidren_identity_ledger" },
+      }, { headers: { "Cache-Control": "no-store", "X-Lookup-Request-Id": requestId } });
+    }
     const attempt = await observeProvider({
       requestId,
       provider: config.internalProvider,
@@ -143,6 +158,7 @@ export function createIdGameLookupHandler(config: IdGameLookupConfig) {
     if (attempt.kind === "success") {
       await recordDeveloperRequest({ ...developerAuth, endpoint: config.endpoint, requestId, status: 200, responseMs: Date.now() - requestStartedAt });
       void persistLookupLog({ status: "success", responseMs: Date.now() - requestStartedAt, source: config.publicSource });
+      void writeIdentityLedger(config.publicSource, playerKey, attempt.nickname, config.publicSource);
       return NextResponse.json({
         success: true,
         data: { nickname: attempt.nickname, ...input, source: config.publicSource },

@@ -96,7 +96,8 @@ async function lookupZzz(input) {
 }
 
 // Mirrors POST /api/lookup: CodaShop direct primary, then the four
-// live-swept fallbacks with the same verdict selection.
+// live-swept fallbacks with the same verdict selection. Community mirrors
+// stay as extra legs per the additive motto.
 async function lookupMlbb(input) {
   const primary = await lookupCodashopDirect("mobile-legends", input.playerId, input.zoneId)
     .then((attempt) => attempt.kind === "success"
