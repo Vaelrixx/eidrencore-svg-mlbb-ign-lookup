@@ -131,6 +131,20 @@ async function lookupMetalSlugWithDirectLeg(input: RapidApiGameInput) {
   return primary;
 }
 
+/** Teen Patti Gold: RapidAPI stays primary; the provisional Coda validate leg is flag-gated. */
+async function lookupTeenPattiGoldWithDirectLeg(input: RapidApiGameInput) {
+  const primary = await lookupRapidApiGame("teen-patti-gold", input);
+  if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") {
+    return primary;
+  }
+  const playerId = "playerId" in input ? input.playerId : "";
+  const direct = await lookupCodashopDirect("teen-patti-gold", playerId, "");
+  if (direct.kind === "success" || direct.kind === "not_found" || direct.kind === "rate_limited") {
+    return direct;
+  }
+  return primary;
+}
+
 /**
  * Free Fire direct leg: keyless GoPay FREEFIRE only, no keyed leg in front
  * (self-reliant: zero third-party runtime). Live-verified 2026-10-13 and
@@ -696,6 +710,9 @@ export function createRapidApiGameHandler(game: keyof typeof configs) {
       }
       if (providerGame === "metal-slug") {
         return lookupMetalSlugWithDirectLeg(input as RapidApiGameInput);
+      }
+      if (providerGame === "teen-patti-gold") {
+        return lookupTeenPattiGoldWithDirectLeg(input as RapidApiGameInput);
       }
       if (providerGame === "pubg-lite") {
         return lookupWithGoPayFallback("pubg-lite", input as RapidApiGameInput, "PUBG_ID");

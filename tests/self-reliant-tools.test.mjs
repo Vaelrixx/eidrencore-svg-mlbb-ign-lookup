@@ -43,10 +43,13 @@ function jsonResponse(status, payload) {
 // --- CodaShop direct ---
 
 test("codashop table ships only live-verified games", () => {
-  assert.deepEqual(Object.keys(CODASHOP_GAMES), ["mobile-legends", "call-of-duty-mobile"]);
+  assert.deepEqual(Object.keys(CODASHOP_GAMES), ["mobile-legends", "call-of-duty-mobile", "teen-patti-gold"]);
   assert.equal(CODASHOP_GAMES["mobile-legends"].voucherTypeName, "9177-MOBILE_LEGENDS");
   assert.equal(CODASHOP_GAMES["call-of-duty-mobile"].voucherTypeName, "CALL_OF_DUTY_MOBILE_WL");
   assert.equal(CODASHOP_GAMES["call-of-duty-mobile"].whiteLabelId, "1");
+  // Bogus-only provisional: dormant unless its flag is set.
+  assert.equal(CODASHOP_GAMES["teen-patti-gold"].voucherTypeName, "TEEN_PATTI");
+  assert.equal(CODASHOP_GAMES["teen-patti-gold"].enabledEnv, "CODASHOP_TEEN_PATTI_ENABLED");
 });
 
 test("codashop success decodes plus-encoded usernames", () => {
@@ -65,12 +68,26 @@ test("codashop not-found keys on verified error codes", () => {
     classifyCodashopResponse(200, { success: false, errorCode: "-100", errorMsg: "-100: Error_InvalidZoneId" }),
     { kind: "not_found" },
   );
+  assert.deepEqual(
+    classifyCodashopResponse(200, { success: false, errorCode: -100, errorMsg: "Invalid PID" }),
+    { kind: "not_found" },
+  );
   assert.equal(classifyCodashopResponse(429, {}).kind, "rate_limited");
   assert.equal(classifyCodashopResponse(200, {}).kind, "unavailable");
   assert.equal(
     classifyCodashopResponse(200, { success: false, errorCode: "9999", errorMsg: "weird" }).kind,
     "unavailable",
   );
+});
+
+test("teen-patti-gold direct leg stays dormant unless its flag is set", async () => {
+  let calls = 0;
+  const fetchImpl = async () => { calls += 1; throw new Error("must not fetch"); };
+  assert.deepEqual(
+    await lookupCodashopDirect("teen-patti-gold", "100439992784", "", { fetchImpl, env: {} }),
+    { kind: "unavailable", diagnostic: { reason: "feature_disabled" } },
+  );
+  assert.equal(calls, 0);
 });
 
 test("codashop lookup posts the store validate shape", async () => {
