@@ -89,6 +89,34 @@ async function lookupAovWithDirectLegs(
   return primary;
 }
 
+/** Dragon Raja: RapidAPI stays primary; the provisional Coda leg is flag-gated. */
+async function lookupDragonRajaWithDirectLeg(input: RapidApiGameInput) {
+  const primary = await lookupRapidApiGame("dragon-raja", input);
+  if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") {
+    return primary;
+  }
+  const playerId = "playerId" in input ? input.playerId : "";
+  const direct = await lookupCodashopInitpay("dragon-raja", playerId);
+  if (direct.kind === "success" || direct.kind === "not_found" || direct.kind === "rate_limited") {
+    return direct;
+  }
+  return primary;
+}
+
+/** Point Blank: RapidAPI stays primary; Coda tries tuple B, then tuple A. */
+async function lookupPointBlankWithDirectLeg(input: RapidApiGameInput) {
+  const primary = await lookupRapidApiGame("point-blank", input);
+  if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") {
+    return primary;
+  }
+  const playerId = "playerId" in input ? input.playerId : "";
+  const direct = await lookupCodashopInitpay("point-blank", playerId);
+  if (direct.kind === "success" || direct.kind === "not_found" || direct.kind === "rate_limited") {
+    return direct;
+  }
+  return primary;
+}
+
 /**
  * Free Fire direct leg: keyless GoPay FREEFIRE only, no keyed leg in front
  * (self-reliant: zero third-party runtime). Live-verified 2026-10-13 and
@@ -634,6 +662,12 @@ export function createRapidApiGameHandler(game: keyof typeof configs) {
       }
       if (providerGame === "pubg-mobile") {
         return lookupPubgMobileDirect(input as RapidApiGameInput);
+      }
+      if (providerGame === "dragon-raja") {
+        return lookupDragonRajaWithDirectLeg(input as RapidApiGameInput);
+      }
+      if (providerGame === "point-blank") {
+        return lookupPointBlankWithDirectLeg(input as RapidApiGameInput);
       }
       if (providerGame === "pubg-lite") {
         return lookupWithGoPayFallback("pubg-lite", input as RapidApiGameInput, "PUBG_ID");

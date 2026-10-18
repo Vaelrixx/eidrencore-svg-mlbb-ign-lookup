@@ -87,6 +87,22 @@ async function lookupAovWithDirectLegs(input) {
   return terminalOrFallback(primary, await lookupGoPayGameFallback("AOV", playerId));
 }
 
+// Mirrors the single route: broker primary, provisional Coda secondary.
+async function lookupDragonRajaWithDirectLegs(input) {
+  const primary = await lookupRapidApiGame("dragon-raja", input);
+  if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") return primary;
+  const direct = await lookupCodashopInitpay("dragon-raja", input.playerId);
+  return terminalOrFallback(primary, direct);
+}
+
+// Mirrors the single route: broker primary, provisional Coda secondary.
+async function lookupPointBlankWithDirectLegs(input) {
+  const primary = await lookupRapidApiGame("point-blank", input);
+  if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") return primary;
+  const direct = await lookupCodashopInitpay("point-blank", input.playerId);
+  return terminalOrFallback(primary, direct);
+}
+
 // Mirrors the single route: Enka primary, GoPay four-server sweep only
 // when Enka is degraded. Unanimous invalid-credentials sweep = not_found.
 const ZZZ_GOPAY_SERVERS = ["prod_gf_us", "prod_gf_eu", "prod_gf_jp", "prod_gf_sg"];
@@ -394,7 +410,7 @@ export const BULK_GAMES = {
     notFoundCode: "DRAGON_RAJA_PLAYER_NOT_FOUND",
     fields: [{ key: "playerId", label: "Player ID", example: "123456789" }],
     validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
-    lookup: async (input) => lookupRapidApiGame("dragon-raja", input),
+    lookup: async (input) => lookupDragonRajaWithDirectLegs(input),
   }),
   "metal-slug": identityGame({
     gameLabel: "Metal Slug",
@@ -492,7 +508,7 @@ export const BULK_GAMES = {
     notFoundCode: "POINT_BLANK_PLAYER_NOT_FOUND",
     fields: [{ key: "playerId", label: "Zepetto ID", example: "123456789" }],
     validate: (item) => validateFields(item, [{ key: "playerId", validate: (value) => stringField(value, 3, 32, pointBlankId) }]),
-    lookup: async (input) => lookupRapidApiGame("point-blank", input),
+    lookup: async (input) => lookupPointBlankWithDirectLegs(input),
   }),
 };
 
