@@ -30,6 +30,25 @@ test("only the exact observed HTTP 404 invalid-account envelope is not-found", (
   assert.equal(classifyGoPayGamesResponse(404, null).kind, "unavailable");
 });
 
+test("live MLBB shapes 2026-10-18: HTTP 201 Success resolves, echo degrades, strict miss gate holds", () => {
+  // Valid pair returned HTTP 201 (not 200) with a real nickname.
+  assert.deepEqual(classifyGoPayGamesResponse(201, valid, "111491774613486"), {
+    kind: "success",
+    nickname: "Outrageous Dominance",
+    source: "gopay_games_validation",
+  });
+  // Echo guard: a username that merely repeats the queried identity is
+  // unavailable, never a confirmed nickname.
+  assert.equal(
+    classifyGoPayGamesResponse(200, { message: "Success", data: { username: "111491774613486" } }, "111491774613486").kind,
+    "unavailable",
+  );
+  assert.equal(
+    classifyGoPayGamesResponse(201, { message: "Success", data: { username: "1114917746 13486" } }, "111491774613486").kind,
+    "unavailable",
+  );
+});
+
 test("rate limits, malformed bodies, and upstream errors are not treated as missing players", () => {
   assert.equal(classifyGoPayGamesResponse(429, { message: "slow down" }).kind, "rate_limited");
   assert.equal(classifyGoPayGamesResponse(503, { message: "maintenance" }).kind, "unavailable");
