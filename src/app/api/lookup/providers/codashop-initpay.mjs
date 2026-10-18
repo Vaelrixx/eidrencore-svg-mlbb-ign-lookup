@@ -15,6 +15,16 @@
  * - Auto Chess bogus -> 200 `errorCode:"-100", errorMsg:"account info not found"`
  * - Azur Lane bogus -> 200 `errorCode:"-100", errorMsg:"User name not found"`
  *
+ * MLBB gate (probed live 2026-10-18, NOT enabled — no honest gate):
+ * - valid pair (1114917746/13486) with vpp 4150/1579.0 -> 200
+ *   `{"RESULT_CODE":239}` (opaque, no errorCode/errorMsg/confirmationFields)
+ * - same valid pair retried once with vpp 5199/68543.0000 -> identical
+ *   `{"RESULT_CODE":239}` (price point is not the cause)
+ * - bogus pair (1000000000/1000) -> 200 numeric `errorCode:-100`,
+ *   `errorMsg:"-100: Error_InvalidZoneId"` (zone complaint, not a player
+ *   verdict, and the valid pair never yields a nickname). Because the valid
+ *   pair cannot resolve, MOBILE_LEGENDS stays out of INITPAY_GAMES.
+ *
  * Only games verified live with distinct valid/bogus responses are enabled
  * (see INITPAY_GAMES). Price-point IDs come from the game's public top-up
  * page; they select the cheapest denomination and no order is ever placed.

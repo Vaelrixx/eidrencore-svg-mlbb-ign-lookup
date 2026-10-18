@@ -45,7 +45,33 @@ test("unfamiliar errors and empty payloads stay unavailable", () => {
   assert.equal(classifyInitpayResponse(429, {}).kind, "rate_limited");
 });
 
+test("MLBB probe envelopes stay unwired: opaque RESULT_CODE is transient, zone complaint is not a verdict (live 2026-10-18)", () => {
+  // Valid pair (1114917746/13486), vpp 4150 and once-retried 5199: both
+  // returned 200 {"RESULT_CODE":239} — no errorCode/errorMsg/nickname.
+  assert.deepEqual(classifyInitpayResponse(200, { RESULT_CODE: 239 }), {
+    kind: "unavailable",
+    diagnostic: { reason: "unrecognized_response", statusCode: 200 },
+  });
+  // Bogus pair (1000000000/1000) returned numeric -100 Error_InvalidZoneId,
+  // which the existing invalid-zone pattern already gates as a miss.
+  assert.deepEqual(classifyInitpayResponse(200, {
+    user: { userId: "1000000000", zoneId: "1000" },
+    result: "",
+    confirmation: false,
+    success: false,
+    errorCode: -100,
+    isThirdPartyMerchant: true,
+    errorMsg: "-100: Error_InvalidZoneId",
+  }), { kind: "not_found" });
+  // No MLBB leg: the valid pair never yields a nickname on either price
+  // point, so there is no honest valid-vs-bogus gate to freeze into
+  // INITPAY_GAMES.
+  assert.equal("mobile-legends" in INITPAY_GAMES, false);
+});
+
 test("only live-verified games are enabled", () => {
+  // MLBB stays out: probed 2026-10-18, no honest valid/bogus gate (see the
+  // MLBB probe-envelopes test above).
   assert.deepEqual(Object.keys(INITPAY_GAMES), ["8-ball-pool", "arena-of-valor", "super-sus"]);
   assert.equal(INITPAY_GAMES["8-ball-pool"].voucherTypeName, "EIGHT_BALL_POOL");
   assert.equal(INITPAY_GAMES["arena-of-valor"].voucherTypeName, "AOV");

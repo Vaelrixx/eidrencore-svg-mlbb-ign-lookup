@@ -23,6 +23,13 @@ function responseKind(payload) {
  * missing-player verdict: require the explicit account-not-recognized message
  * and matching error envelope. Unknown or changed responses stay unavailable.
  *
+ * Live-verified 2026-10-18 for MOBILE_LEGENDS: a valid pair returns HTTP 201
+ * (not 200) with `message:"Success"` + `data.username` (a real nickname, not
+ * an echo of the queried identity); a bogus pair returns the strict 404
+ * Invalid User Account envelope. Any 2xx Success schema is accepted, but
+ * only these two frozen shapes are trusted — everything else stays
+ * unavailable.
+ *
  * Echo guard: GoPay echoes the request identity back as `username` when a
  * game code is wrong or carries no data for the ID (observed live
  * 2026-10-17: PUBG_MOBILE returned the raw ID, MOBILE_LEGENDS_BANG_BANG
