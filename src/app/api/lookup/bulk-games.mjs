@@ -21,6 +21,7 @@ import { lookupJawakerVerifyUser } from "./providers/jawaker-verify-user.mjs";
 import { lookupCodashopDirect } from "./providers/codashop-direct.mjs";
 import { lookupCodashopInitpay } from "./providers/codashop-initpay.mjs";
 import { lookupRapidApi } from "./providers/rapidapi.mjs";
+import { lookupVolseverMlbb } from "./providers/volsever.mjs";
 import { lookupIsan } from "./providers/isan.mjs";
 import { lookupWhoPlays } from "./providers/whoplays.mjs";
 import { lookupGoPayGames } from "./providers/gopay-games.mjs";
@@ -119,6 +120,7 @@ async function lookupMlbb(input) {
     () => Promise.resolve(primary),
     [
       () => lookupRapidApi(input.playerId, input.zoneId).catch(() => ({ kind: "unavailable" })),
+      () => lookupVolseverMlbb(input.playerId, input.zoneId).catch(() => ({ kind: "unavailable" })),
       () => lookupIsan(input.playerId, input.zoneId).catch(() => ({ kind: "unavailable" })),
       () => lookupWhoPlays(input.playerId, input.zoneId).catch(() => ({ kind: "unavailable" })),
       () => lookupGoPayGames(input.playerId, input.zoneId).catch(() => ({ kind: "unavailable" })),

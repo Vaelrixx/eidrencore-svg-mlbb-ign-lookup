@@ -1,4 +1,5 @@
 import { confirmedNickname } from "../nickname-validation.mjs";
+import { rapidApiKeys } from "./rapidapi-keys.mjs";
 
 function record(value) {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -330,8 +331,8 @@ export function classifyRapidApiGameResponse(httpStatus, payload) {
 }
 
 export async function lookupRapidApi(playerId, zoneId) {
-  const apiKey = process.env.RAPIDAPI_KEY?.trim() || process.env.RAPIDAPI_APP_TOKEN?.trim();
-  if (!apiKey) {
+  const apiKeys = rapidApiKeys();
+  if (!apiKeys.length) {
     return { kind: "unavailable", diagnostic: { reason: "missing_config" } };
   }
 
@@ -341,23 +342,30 @@ export async function lookupRapidApi(playerId, zoneId) {
     "/" +
     encodeURIComponent(zoneId);
 
-  try {
-    const upstream = await fetch(endpoint, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "x-rapidapi-host": "id-game-checker.p.rapidapi.com",
-        "x-rapidapi-key": apiKey,
-      },
-      cache: "no-store",
-      signal: AbortSignal.timeout(7000),
-    });
+  let lastResult = { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
+  let sawRateLimit = false;
+  for (const apiKey of apiKeys) {
+    try {
+      const upstream = await fetch(endpoint, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "x-rapidapi-host": "id-game-checker.p.rapidapi.com",
+          "x-rapidapi-key": apiKey,
+        },
+        cache: "no-store",
+        signal: AbortSignal.timeout(7000),
+      });
 
-    // Read JSON even for HTTP 404 because this provider documents a structured
-    // id_not_found body. Parsing failures are swallowed and sanitized below.
-    const payload = await upstream.json().catch(() => null);
-    return classifyRapidApiResponse(upstream.status, payload);
-  } catch {
-    return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
+      // Read JSON even for HTTP 404 because this provider documents a structured
+      // id_not_found body. Parsing failures are swallowed and sanitized below.
+      const payload = await upstream.json().catch(() => null);
+      lastResult = classifyRapidApiResponse(upstream.status, payload);
+    } catch {
+      lastResult = { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
+    }
+    if (lastResult.kind === "not_found" || lastResult.kind === "success") return lastResult;
+    if (lastResult.kind === "rate_limited") sawRateLimit = true;
   }
+  return sawRateLimit ? { kind: "rate_limited", diagnostic: { reason: "http_error", statusCode: 429 } } : lastResult;
 }
