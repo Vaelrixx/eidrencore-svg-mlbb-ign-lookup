@@ -50,6 +50,18 @@ export const INITPAY_GAMES = Object.freeze({
     requiresZone: false,
     source: "codashop_initpay",
   }),
+  // Live-verified 2026-10-18: docs ID 195293573153949 resolves with a
+  // roles[0].role nickname; bogus IDs give 12 "Wrong player id" (numeric
+  // errorCode, no confirmationFields). Role-style game: nickname comes
+  // from roles[0].role, not username.
+  "arena-of-valor": Object.freeze({
+    voucherTypeName: "AOV",
+    pricePointId: "270294",
+    pricePointPrice: "10000.0000",
+    requiresZone: false,
+    nicknameFrom: "roles",
+    source: "codashop_initpay",
+  }),
   // Live-verified 2026-10-18: Space IDs 163588581-83 resolve to real
   // nicknames, bogus IDs give -100 账号错误 (account error). Price point
   // is the 100 Goldstar denom from the public top-up page.
@@ -62,7 +74,7 @@ export const INITPAY_GAMES = Object.freeze({
   }),
 });
 
-const NOT_FOUND_MESSAGE_PATTERN = /(user\s*not\s*found|account\s*info\s*not\s*found|user\s*name\s*not\s*found|not\s*found|unknown\s*(user|player)|invalid\s*(user|player|id|zone)|\u8d26\u53f7\u9519\u8bef)/i;
+const NOT_FOUND_MESSAGE_PATTERN = /(user\s*not\s*found|account\s*info\s*not\s*found|user\s*name\s*not\s*found|not\s*found|unknown\s*(user|player)|invalid\s*(user|player|id|zone)|wrong\s*(user|player|id|zone)|\u8d26\u53f7\u9519\u8bef)/i;
 
 function record(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : null;
@@ -73,7 +85,7 @@ function baseFor(env = process.env) {
   return `https://order-${region}.codashop.com`;
 }
 
-export function classifyInitpayResponse(httpStatus, payload) {
+export function classifyInitpayResponse(httpStatus, payload, options = {}) {
   if (httpStatus === 429) {
     return { kind: "rate_limited", diagnostic: { reason: "http_error", statusCode: 429 } };
   }
@@ -81,10 +93,19 @@ export function classifyInitpayResponse(httpStatus, payload) {
   if (!Number.isInteger(httpStatus) || httpStatus < 200 || httpStatus >= 300 || !root) {
     return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: Number.isInteger(httpStatus) ? httpStatus : 502 } };
   }
-  // Success: errorCode present and empty string, username in confirmationFields.
+  // Success: errorCode present and empty string, nickname in
+  // confirmationFields (username for most games, roles[0].role for
+  // role-style games like AoV).
   if (root.errorCode === "") {
     const confirmation = record(root.confirmationFields);
-    const rawName = typeof confirmation?.username === "string" ? confirmation.username : "";
+    let rawName;
+    if (options?.nicknameFrom === "roles") {
+      const roles = Array.isArray(confirmation?.roles) ? confirmation.roles : [];
+      const first = record(roles[0]);
+      rawName = typeof first?.role === "string" ? first.role : "";
+    } else {
+      rawName = typeof confirmation?.username === "string" ? confirmation.username : "";
+    }
     let nickname;
     try { nickname = decodeURIComponent(rawName); } catch { nickname = rawName; }
     const confirmed = confirmedNickname({ name: nickname });
@@ -92,6 +113,13 @@ export function classifyInitpayResponse(httpStatus, payload) {
     return { kind: "unavailable", diagnostic: { reason: "unrecognized_response", statusCode: httpStatus } };
   }
   if (typeof root.errorCode === "string" && root.errorCode !== "") {
+    const message = typeof root.errorMsg === "string" ? root.errorMsg : "";
+    if (NOT_FOUND_MESSAGE_PATTERN.test(message)) return { kind: "not_found" };
+    return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: httpStatus } };
+  }
+  // Some games (AoV) return numeric errorCodes: 12 "Wrong player id" is
+  // a miss, anything else (e.g. 5 "Mismatched signature") is transient.
+  if (typeof root.errorCode === "number" && root.errorCode !== 0) {
     const message = typeof root.errorMsg === "string" ? root.errorMsg : "";
     if (NOT_FOUND_MESSAGE_PATTERN.test(message)) return { kind: "not_found" };
     return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: httpStatus } };
@@ -138,7 +166,7 @@ export async function lookupCodashopInitpay(game, playerId, zoneId = "", {
           signal: AbortSignal.timeout(INITPAY_TIMEOUT_MS),
         });
         const payload = await upstream.json().catch(() => null);
-        attempt = classifyInitpayResponse(upstream.status, payload);
+        attempt = classifyInitpayResponse(upstream.status, payload, { nicknameFrom: config.nicknameFrom });
       } catch {
         attempt = { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
       }

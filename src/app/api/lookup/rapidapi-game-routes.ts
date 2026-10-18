@@ -66,6 +66,30 @@ async function lookupWithGoPayFallback(
 }
 
 /**
+ * Arena of Valor: keyed primary, then our own CodaShop initPayment leg,
+ * then GoPay. Additive: the broker stays; the direct leg adds balance.
+ * Live-verified 2026-10-18 (roles[0].role nickname, 12 = miss).
+ */
+async function lookupAovWithDirectLegs(
+  input: RapidApiGameInput,
+) {
+  const primary = await lookupRapidApiGame("arena-of-valor", input);
+  if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") {
+    return primary;
+  }
+  const playerId = "playerId" in input ? input.playerId : "";
+  const direct = await lookupCodashopInitpay("arena-of-valor", playerId);
+  if (direct.kind === "success" || direct.kind === "not_found" || direct.kind === "rate_limited") {
+    return direct;
+  }
+  const fallback = await lookupGoPayGameFallback("AOV", playerId);
+  if (fallback.kind === "success" || fallback.kind === "not_found" || fallback.kind === "rate_limited") {
+    return fallback;
+  }
+  return primary;
+}
+
+/**
  * Free Fire direct leg: keyless GoPay FREEFIRE only, no keyed leg in front
  * (self-reliant: zero third-party runtime). Live-verified 2026-10-13 and
  * re-verified 2026-10-17 (docs sample 1958604115 resolves; bogus IDs give
@@ -606,7 +630,7 @@ export function createRapidApiGameHandler(game: keyof typeof configs) {
         return lookupGenshinWithFallback(input as RapidApiGameInput);
       }
       if (providerGame === "arena-of-valor") {
-        return lookupWithGoPayFallback("arena-of-valor", input as RapidApiGameInput, "AOV");
+        return lookupAovWithDirectLegs(input as RapidApiGameInput);
       }
       if (providerGame === "pubg-mobile") {
         return lookupPubgMobileDirect(input as RapidApiGameInput);

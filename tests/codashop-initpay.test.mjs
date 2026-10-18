@@ -19,6 +19,25 @@ test("explicit miss messages resolve as not-found", () => {
   }
 });
 
+test("roles-style games read the nickname from roles[0].role (AoV, live 2026-10-18)", () => {
+  const result = classifyInitpayResponse(200, {
+    errorCode: "",
+    confirmationFields: { roles: [{ role: "creature.6's", server: "Baratayuda" }] },
+  }, { nicknameFrom: "roles" });
+  assert.equal(result.kind, "success");
+  assert.equal(result.nickname, "creature.6's");
+  // Same payload without the roles flag has no username: unrecognized.
+  assert.equal(classifyInitpayResponse(200, {
+    errorCode: "",
+    confirmationFields: { roles: [{ role: "creature.6's", server: "Baratayuda" }] },
+  }).kind, "unavailable");
+});
+
+test("numeric miss codes gate honestly, other numeric codes stay transient (AoV, live 2026-10-18)", () => {
+  assert.deepEqual(classifyInitpayResponse(200, { errorCode: 12, errorMsg: "Wrong player id" }), { kind: "not_found" });
+  assert.equal(classifyInitpayResponse(200, { errorCode: 5, errorMsg: "Mismatched signature" }).kind, "unavailable");
+});
+
 test("unfamiliar errors and empty payloads stay unavailable", () => {
   assert.equal(classifyInitpayResponse(200, { errorCode: "-1", errorMsg: "something else" }).kind, "unavailable");
   assert.equal(classifyInitpayResponse(200, {}).kind, "unavailable");
@@ -27,8 +46,11 @@ test("unfamiliar errors and empty payloads stay unavailable", () => {
 });
 
 test("only live-verified games are enabled", () => {
-  assert.deepEqual(Object.keys(INITPAY_GAMES), ["8-ball-pool", "super-sus"]);
+  assert.deepEqual(Object.keys(INITPAY_GAMES), ["8-ball-pool", "arena-of-valor", "super-sus"]);
   assert.equal(INITPAY_GAMES["8-ball-pool"].voucherTypeName, "EIGHT_BALL_POOL");
+  assert.equal(INITPAY_GAMES["arena-of-valor"].voucherTypeName, "AOV");
+  assert.equal(INITPAY_GAMES["arena-of-valor"].pricePointId, "270294");
+  assert.equal(INITPAY_GAMES["arena-of-valor"].nicknameFrom, "roles");
   assert.equal(INITPAY_GAMES["super-sus"].voucherTypeName, "SUPER_SUS");
   assert.equal(INITPAY_GAMES["super-sus"].pricePointId, "266079");
 });
