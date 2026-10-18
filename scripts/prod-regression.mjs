@@ -22,23 +22,44 @@ if (!BASE || !KEY.startsWith("eid_")) {
   process.exit(2);
 }
 
+// Upstream providers (CodaShop/GoPay) throttle bursts and surface as 429s
+// through our API. Pace authed lookups and retry a 429 once after the
+// server's Retry-After so the sweep measures verdicts, not throttle windows.
+const PACE_BETWEEN_LOOKUPS_MS = 8000;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const results = [];
 async function check(name, method, path, body, expect) {
   const init = { method, headers: {}, signal: AbortSignal.timeout(60000) };
   if (body !== null) {
     init.headers = { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` };
     init.body = JSON.stringify(body);
+    await sleep(PACE_BETWEEN_LOOKUPS_MS);
   }
   let status;
   let code;
+  let retryAfterSeconds;
   try {
     const res = await fetch(`${BASE}${path}`, init);
     status = res.status;
     const payload = await res.json().catch(() => ({}));
     code = typeof payload.code === "string" ? payload.code : (payload.success ? "OK" : "");
+    retryAfterSeconds = Number.parseInt(res.headers.get("retry-after") || "", 10);
   } catch (error) {
     results.push({ name, pass: false, detail: `fetch failed: ${error.cause?.code || error.message}` });
     return;
+  }
+  if (status === 429 && body !== null) {
+    await sleep(Math.min(Math.max(Number.isFinite(retryAfterSeconds) ? retryAfterSeconds : 30, 1), 60) * 1000);
+    try {
+      const res = await fetch(`${BASE}${path}`, { ...init, signal: AbortSignal.timeout(60000) });
+      status = res.status;
+      const payload = await res.json().catch(() => ({}));
+      code = typeof payload.code === "string" ? payload.code : (payload.success ? "OK" : "");
+    } catch (error) {
+      results.push({ name, pass: false, detail: `retry fetch failed: ${error.cause?.code || error.message}` });
+      return;
+    }
   }
   const pass = status === expect.status && (expect.code === undefined || code === expect.code);
   results.push({ name, pass, detail: pass ? `HTTP ${status}` : `want ${expect.status}/${expect.code || "*"} got ${status}/${code || "?"}` });
