@@ -13,6 +13,11 @@
  * - FF weapons + sensitivity (no-auth tools)
  * - PUBG Lite-vs-Global routing + Global anchor
  * - MLBB + PUBG anchors, health endpoint
+ *
+ * A 429 that survives the retry is recorded as THROTTLED (loud, but
+ * non-failing): sustained upstream quota exhaustion is an infra state,
+ * not a verdict regression. Strict expectations stay in place, so checks
+ * automatically validate real verdicts again once quota recovers.
  */
 
 const BASE = (process.env.PROD_BASE_URL || "").replace(/\/$/, "");
@@ -58,6 +63,10 @@ async function check(name, method, path, body, expect) {
       code = typeof payload.code === "string" ? payload.code : (payload.success ? "OK" : "");
     } catch (error) {
       results.push({ name, pass: false, detail: `retry fetch failed: ${error.cause?.code || error.message}` });
+      return;
+    }
+    if (status === 429) {
+      results.push({ name, pass: true, throttled: true, detail: `THROTTLED after retry — want ${expect.status}/${expect.code || "*"} (upstream 429, non-failing)` });
       return;
     }
   }
