@@ -32,10 +32,17 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+          # Secrets pasted with trailing whitespace/newlines make curl reject
+          # the URL ("Malformed input to a URL function"); trim and validate.
+          WEBHOOK="$(printf '%s' "$DISCORD_WEBHOOK_URL" | tr -d '[:space:]')"
+          if [ -z "$WEBHOOK" ]; then
             echo "DISCORD_WEBHOOK_URL not set; skipping notification."
             exit 0
           fi
+          case "$WEBHOOK" in
+            https://discord.com/api/webhooks/*|https://discordapp.com/api/webhooks/*) ;;
+            *) echo "DISCORD_WEBHOOK_URL has an unexpected shape; skipping notification."; exit 0 ;;
+          esac
           curl -fsS -m 15 -H 'Content-Type: application/json' \
             -d "{\"content\": \"❌ Production regression failed on ${{ github.ref_name }} — see ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
-            "$DISCORD_WEBHOOK_URL"
+            "$WEBHOOK"
