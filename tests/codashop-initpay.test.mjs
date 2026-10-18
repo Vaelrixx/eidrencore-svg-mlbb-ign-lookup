@@ -113,12 +113,12 @@ test("Genshin probe envelopes stay unwired: valid and bogus UIDs both return opa
   assert.equal("genshin-impact" in INITPAY_GAMES, false);
 });
 
-test("verified entries stay enabled and Wave A candidates stay dormant behind flags", () => {
+test("verified entries stay enabled and provisional candidates stay dormant behind flags", () => {
   // MLBB stays out: probed 2026-10-18, no honest valid/bogus gate (see the
   // MLBB probe-envelopes test above).
   // Genshin stays out for the same reason: probed 2026-10-18, valid and
   // bogus UIDs are indistinguishable (see the Genshin probe-envelopes test).
-  assert.deepEqual(Object.keys(INITPAY_GAMES), ["8-ball-pool", "arena-of-valor", "super-sus", "point-blank", "dragon-raja"]);
+  assert.deepEqual(Object.keys(INITPAY_GAMES), ["8-ball-pool", "arena-of-valor", "super-sus", "point-blank", "dragon-raja", "metal-slug"]);
   assert.equal(INITPAY_GAMES["8-ball-pool"].voucherTypeName, "EIGHT_BALL_POOL");
   assert.equal(INITPAY_GAMES["arena-of-valor"].voucherTypeName, "AOV");
   assert.equal(INITPAY_GAMES["arena-of-valor"].pricePointId, "270294");
@@ -133,6 +133,11 @@ test("verified entries stay enabled and Wave A candidates stay dormant behind fl
   assert.equal(INITPAY_GAMES["dragon-raja"].voucherTypeName, "ZULONG_DRAGON_RAJA");
   assert.equal(INITPAY_GAMES["dragon-raja"].pricePointId, "75648");
   assert.equal(INITPAY_GAMES["dragon-raja"].enabledEnv, "CODASHOP_DRAGON_RAJA_ENABLED");
+  assert.equal(INITPAY_GAMES["metal-slug"].voucherTypeName, "VNG_METAL_SLUG");
+  assert.equal(INITPAY_GAMES["metal-slug"].pricePointId, "868343");
+  assert.equal(INITPAY_GAMES["metal-slug"].pricePointPrice, "1.2000");
+  assert.equal(INITPAY_GAMES["metal-slug"].fallbackPricePointId, "868345");
+  assert.equal(INITPAY_GAMES["metal-slug"].enabledEnv, "CODASHOP_METAL_SLUG_ENABLED");
 });
 
 test("Dragon Raja flag stays off by default and prevents an upstream call", async () => {
@@ -172,6 +177,41 @@ test("Point Blank tries tuple B then tuple A only after an unavailable response"
     { url: "https://order-sg.codashop.com/initPayment.action", id: "344845", price: "11000.0000", zone: null },
     { url: "https://order-sg.codashop.com/initPayment.action", id: "54790", price: "550000.0", zone: null },
   ]);
+});
+
+test("Metal Slug flag stays off by default and prevents an upstream call", async () => {
+  let calls = 0;
+  const result = await lookupCodashopInitpay("metal-slug", "00000000", "", {
+    env: {},
+    fetchImpl: async () => { calls += 1; return new Response("{}", { status: 200 }); },
+  });
+  assert.deepEqual(result, { kind: "unavailable", diagnostic: { reason: "feature_disabled" } });
+  assert.equal(calls, 0);
+});
+
+test("enabled Metal Slug leg uses the probed tuple and Verify User Failed gate", async () => {
+  let captured;
+  const result = await lookupCodashopInitpay("metal-slug", "00000000", "", {
+    env: { CODASHOP_METAL_SLUG_ENABLED: "true" },
+    fetchImpl: async (url, options) => {
+      captured = { url: String(url), options };
+      return new Response(JSON.stringify({
+        errorCode: "-100",
+        is_publisher_validate_error: true,
+        success: true,
+        errorMsg: "Verify User Failed",
+        confirmationFields: { userId: "00000000", productName: "Metal Slug" },
+      }), { status: 200 });
+    },
+    cache: { getOrLoad: async (_key, _ttl, loader) => ({ value: await loader(), cached: false }) },
+  });
+  assert.deepEqual(result, { kind: "not_found" });
+  const form = new URLSearchParams(captured.options.body);
+  assert.equal(captured.url, "https://order-sg.codashop.com/initPayment.action");
+  assert.equal(form.get("voucherTypeName"), "VNG_METAL_SLUG");
+  assert.equal(form.get("voucherPricePoint.id"), "868343");
+  assert.equal(form.get("user.userId"), "00000000");
+  assert.equal(form.has("user.zoneId"), false);
 });
 
 test("enabled Dragon Raja leg uses the probed ID-only tuple and strict bogus gate", async () => {
