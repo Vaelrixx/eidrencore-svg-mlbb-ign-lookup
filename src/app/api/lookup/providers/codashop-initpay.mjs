@@ -26,9 +26,9 @@
  *   pair cannot resolve, MOBILE_LEGENDS stays out of INITPAY_GAMES.
  *
  * Only games verified live with distinct valid/bogus responses are active.
- * Point Blank and Dragon Raja are registered but default-off until consenting
- * valid IDs prove their success shapes. Price points are validation-only; no
- * order or payment is submitted.
+ * Point Blank, Dragon Raja, and Metal Slug are registered but default-off
+ * until consenting valid IDs prove their success shapes. Price points are
+ * validation-only; no order or payment is submitted.
  * Nicknames arrive URL-encoded and masked by the store (e.g. B****t%20A);
  * decode but never unmask.
  *
@@ -95,14 +95,28 @@ export const INITPAY_GAMES = Object.freeze({
     enabledEnv: "CODASHOP_POINT_BLANK_ENABLED",
     source: "codashop_initpay",
   }),
-  // Bogus-only live probe confirmed the -100 publisher-validation gate;
-  // keep disabled until one consenting valid SEA ID proves nickname success.
-  "dragon-raja": Object.freeze({
-    voucherTypeName: "ZULONG_DRAGON_RAJA",
-    pricePointId: "75648",
-    pricePointPrice: "1000000.0",
+ // Bogus-only live probe confirmed the -100 publisher-validation gate;
+ // keep disabled until one consenting valid SEA ID proves nickname success.
+ "dragon-raja": Object.freeze({
+   voucherTypeName: "ZULONG_DRAGON_RAJA",
+   pricePointId: "75648",
+   pricePointPrice: "1000000.0",
+   requiresZone: false,
+   enabledEnv: "CODASHOP_DRAGON_RAJA_ENABLED",
+   publisherValidationMiss: true,
+   source: "codashop_initpay",
+ }),
+  // Bogus-only live probe 2026-10-19: vpp 868343/868345 + 1.2000 both give
+  // -100 "Verify User Failed" with is_publisher_validate_error and no
+  // username. Keep disabled until a consenting valid Role ID proves success.
+  "metal-slug": Object.freeze({
+    voucherTypeName: "VNG_METAL_SLUG",
+    pricePointId: "868343",
+    pricePointPrice: "1.2000",
+    fallbackPricePointId: "868345",
+    fallbackPricePointPrice: "1.2000",
     requiresZone: false,
-    enabledEnv: "CODASHOP_DRAGON_RAJA_ENABLED",
+    enabledEnv: "CODASHOP_METAL_SLUG_ENABLED",
     publisherValidationMiss: true,
     source: "codashop_initpay",
   }),

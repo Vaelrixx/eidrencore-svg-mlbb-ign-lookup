@@ -70,11 +70,12 @@ Contract notes:
 - Missing keyed-provider keys degrade to `missing_config` without fetching.
 - Customer-facing source is always `eidren_mlbb` regardless of adapter.
 
-## Identity lookups (`/api/lookup/{pubg-mobile,call-of-duty-mobile,valorant,genshin-impact,honor-of-kings,point-blank,dragon-raja}`)
+## Identity lookups (`/api/lookup/{pubg-mobile,call-of-duty-mobile,valorant,genshin-impact,honor-of-kings,point-blank,dragon-raja,metal-slug}`)
 
 Every game retains its RapidAPI broker leg through `providers/rapidapi-games.mjs`,
-classified by `classifyRapidApiGameResponse`; Point Blank and Dragon Raja also
-have default-off validation-only CodaShop candidates documented below.
+classified by `classifyRapidApiGameResponse`; Point Blank, Dragon Raja, and
+Metal Slug also have default-off validation-only CodaShop candidates
+documented below.
 Customer-facing sources are `eidren_*` per game.
 HoK/Genshin went 502 on HTTP 200 `id_game_checker_schema` bodies in production on
 2026-10-12 while PUBG/CODM succeeded, which pointed at per-game envelope variants
@@ -123,7 +124,7 @@ rather than a key/gateway outage. The game classifier therefore accepts these va
   `envelope:data,error,msg,status|data:object:id,server,username`), so the retry
   targets HoK-class slowness and the message code targets Genshin-class degradation.
 
-## Point Blank and Dragon Raja direct candidates
+## Point Blank, Dragon Raja, and Metal Slug direct candidates
 
 Point Blank retains its keyed broker primary in single and bulk routes. Its
 CodaShop `POINT_BLANK` candidate is dormant unless
@@ -143,6 +144,16 @@ success shape is not yet live-verified. Keep the flag unset until one consenting
 valid SEA test ID resolves the expected nickname; never submit an order or
 payment. The direct leg is unofficial storefront reuse and currently scoped to
 SEA accounts only.
+
+Metal Slug keeps its keyed broker primary in single and bulk routes. Its
+CodaShop `VNG_METAL_SLUG` candidate is dormant unless
+`CODASHOP_METAL_SLUG_ENABLED=true`. The 2026-10-19 validation-only probe
+confirmed the 60-Ruby tuple (`868343` / `1.2000`, fallback `868345`) and a
+bogus-ID gate (`errorCode:"-100"`, `errorMsg:"Verify User Failed"`,
+`is_publisher_validate_error:true`, no username). The success shape is not
+live-verified; keep the flag unset until one consenting Role ID resolves the
+expected nickname. A wrong price for the tuple gives opaque `RESULT_CODE 604`,
+never a nickname.
 
 ## Supercell lookups (`/api/lookup/{brawl-stars,clash-of-clans,clash-royale}`)
 
@@ -242,8 +253,8 @@ Notes:
 
 - Codashop `initPayment` is payment-adjacent: only the title-specific,
   validation-only calls described above are permitted. Never advance to an
-  order or payment step. Point Blank and Dragon Raja remain flag-disabled
-  until their success shapes are verified with consenting IDs.
+  order or payment step. Point Blank, Dragon Raja, and Metal Slug remain
+  flag-disabled until their success shapes are verified with consenting IDs.
 - EliteDias / Smile.One / DuniaGames — failed the live sweep (invalid
   verdicts, bot redirects, HTTP 500); diagnostic-only.
 - REDX Game — its public checker was exercised through the normal browser form
