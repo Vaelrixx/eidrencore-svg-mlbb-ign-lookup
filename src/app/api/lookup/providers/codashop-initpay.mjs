@@ -26,7 +26,8 @@
  *   pair cannot resolve, MOBILE_LEGENDS stays out of INITPAY_GAMES.
  *
  * Only games verified live with distinct valid/bogus responses are active.
- * Point Blank, Dragon Raja, and Metal Slug are registered but default-off
+ * Point Blank, Dragon Raja, Metal Slug, and CODM numeric are registered but
+ * default-off
  * until consenting valid IDs prove their success shapes. Price points are
  * validation-only; no order or payment is submitted.
  * Nicknames arrive URL-encoded and masked by the store (e.g. B****t%20A);
@@ -118,6 +119,22 @@ export const INITPAY_GAMES = Object.freeze({
     requiresZone: false,
     enabledEnv: "CODASHOP_METAL_SLUG_ENABLED",
     publisherValidationMiss: true,
+    source: "codashop_initpay",
+  }),
+  // Bogus-only live probe 2026-10-19: tuples 270251/20000.0000 and
+  // 46251/2000000.0 both give numeric 12 "Wrong player id" (same gate as
+  // AoV). Role-style nickname at roles[0].role per 3 MIT adapters. Keep
+  // disabled until a consenting valid numeric UID proves nickname success.
+  // Numeric-mode fallback only: nicknames stay on the WL direct leg.
+  "call-of-duty-mobile": Object.freeze({
+    voucherTypeName: "CALL_OF_DUTY",
+    pricePointId: "270251",
+    pricePointPrice: "20000.0000",
+    fallbackPricePointId: "46251",
+    fallbackPricePointPrice: "2000000.0",
+    requiresZone: false,
+    nicknameFrom: "roles",
+    enabledEnv: "CODASHOP_CODM_INITPAY_ENABLED",
     source: "codashop_initpay",
   }),
 });

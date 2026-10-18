@@ -161,11 +161,22 @@ async function lookupPubgMobileDirect(input: RapidApiGameInput) {
  * "UID invalid", so sniffing on all-digits keeps both modes honest.
  * Live-verified 2026-10-17 (ShadowHex → BG redirect → profile; bogus
  * nicknames give the explicit No-openId 404 that gates not-found).
+ * Numeric mode gains a flag-gated CodaShop initPayment secondary (bogus
+ * gate live-verified 2026-10-19: numeric 12 "Wrong player id" on both
+ * tuples); nicknames never touch it.
  */
 async function lookupCodmSplit(input: RapidApiGameInput) {
   const playerId = "playerId" in input ? input.playerId : "";
   if (classifyCodmInput(playerId) !== "direct") {
-    return lookupRapidApiGame("cod-mobile-garena", input);
+    const primary = await lookupRapidApiGame("cod-mobile-garena", input);
+    if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") {
+      return primary;
+    }
+    const direct = await lookupCodashopInitpay("call-of-duty-mobile", playerId);
+    if (direct.kind === "success" || direct.kind === "not_found" || direct.kind === "rate_limited") {
+      return direct;
+    }
+    return primary;
   }
   return lookupCodashopDirect("call-of-duty-mobile", playerId, "");
 }
