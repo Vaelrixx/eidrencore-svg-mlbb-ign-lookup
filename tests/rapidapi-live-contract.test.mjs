@@ -9,6 +9,10 @@ test("live RapidAPI contract matches the known-valid fixture nickname", async (t
   }
 
   const result = await lookupRapidApi("1114917746", "13486");
+  if (result.kind === "rate_limited") {
+    t.skip("RapidAPI is throttling the configured key; live identity assertion deferred until quota is available");
+    return;
+  }
   assert.equal(result.kind === "success", true, "RapidAPI did not return a confirmed nickname for the known-valid fixture");
   assert.equal(result.nickname === "Outrageous Dominance", true, "RapidAPI response did not match the expected fixture nickname");
   assert.equal(result.source === "rapidapi_id_game_checker", true, "RapidAPI returned an unexpected provider source");
