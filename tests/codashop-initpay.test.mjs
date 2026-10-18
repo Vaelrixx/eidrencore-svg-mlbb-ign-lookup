@@ -38,8 +38,37 @@ test("numeric miss codes gate honestly, other numeric codes stay transient (AoV,
   assert.equal(classifyInitpayResponse(200, { errorCode: 5, errorMsg: "Mismatched signature" }).kind, "unavailable");
 });
 
+test("Dragon Raja publisher -100 is a miss only with its strict observed gate", () => {
+  const bogus = {
+    errorCode: "-100",
+    is_publisher_validate_error: true,
+    success: true,
+    errorMsg: "common error",
+    confirmationFields: { userId: "00000000", productName: "Dragon Raja" },
+  };
+  assert.deepEqual(classifyInitpayResponse(200, bogus, { publisherValidationMiss: true }), { kind: "not_found" });
+  assert.equal(classifyInitpayResponse(200, bogus).kind, "unavailable");
+  assert.equal(classifyInitpayResponse(200, {
+    ...bogus,
+    confirmationFields: { username: "a real name" },
+  }, { publisherValidationMiss: true }).kind, "unavailable");
+});
+
+test("Point Blank's observed -100 phrase is not-found even though success is true", () => {
+  assert.deepEqual(classifyInitpayResponse(200, {
+    errorCode: "-100",
+    is_publisher_validate_error: true,
+    success: true,
+    errorMsg: "User is not valid (Validation process was successfully completed, but user was not found).",
+    confirmationFields: { userId: "00000000", productName: "Point Blank" },
+  }), { kind: "not_found" });
+});
+
 test("unfamiliar errors and empty payloads stay unavailable", () => {
   assert.equal(classifyInitpayResponse(200, { errorCode: "-1", errorMsg: "something else" }).kind, "unavailable");
+  assert.equal(classifyInitpayResponse(200, { errorCode: "-200", errorMsg: "restricted" }).kind, "unavailable");
+  assert.equal(classifyInitpayResponse(200, { RESULT_CODE: 10001 }).kind, "rate_limited");
+  assert.equal(classifyInitpayResponse(200, { RESULT_CODE: "10001" }).kind, "rate_limited");
   assert.equal(classifyInitpayResponse(200, {}).kind, "unavailable");
   assert.equal(classifyInitpayResponse(200, { errorCode: "" }).kind, "unavailable");
   assert.equal(classifyInitpayResponse(429, {}).kind, "rate_limited");
@@ -84,18 +113,90 @@ test("Genshin probe envelopes stay unwired: valid and bogus UIDs both return opa
   assert.equal("genshin-impact" in INITPAY_GAMES, false);
 });
 
-test("only live-verified games are enabled", () => {
+test("verified entries stay enabled and Wave A candidates stay dormant behind flags", () => {
   // MLBB stays out: probed 2026-10-18, no honest valid/bogus gate (see the
   // MLBB probe-envelopes test above).
   // Genshin stays out for the same reason: probed 2026-10-18, valid and
   // bogus UIDs are indistinguishable (see the Genshin probe-envelopes test).
-  assert.deepEqual(Object.keys(INITPAY_GAMES), ["8-ball-pool", "arena-of-valor", "super-sus"]);
+  assert.deepEqual(Object.keys(INITPAY_GAMES), ["8-ball-pool", "arena-of-valor", "super-sus", "point-blank", "dragon-raja"]);
   assert.equal(INITPAY_GAMES["8-ball-pool"].voucherTypeName, "EIGHT_BALL_POOL");
   assert.equal(INITPAY_GAMES["arena-of-valor"].voucherTypeName, "AOV");
   assert.equal(INITPAY_GAMES["arena-of-valor"].pricePointId, "270294");
   assert.equal(INITPAY_GAMES["arena-of-valor"].nicknameFrom, "roles");
   assert.equal(INITPAY_GAMES["super-sus"].voucherTypeName, "SUPER_SUS");
   assert.equal(INITPAY_GAMES["super-sus"].pricePointId, "266079");
+  assert.equal(INITPAY_GAMES["point-blank"].voucherTypeName, "POINT_BLANK");
+  assert.equal(INITPAY_GAMES["point-blank"].pricePointId, "344845");
+  assert.equal(INITPAY_GAMES["point-blank"].pricePointPrice, "11000.0000");
+  assert.equal(INITPAY_GAMES["point-blank"].fallbackPricePointId, "54790");
+  assert.equal(INITPAY_GAMES["point-blank"].enabledEnv, "CODASHOP_POINT_BLANK_ENABLED");
+  assert.equal(INITPAY_GAMES["dragon-raja"].voucherTypeName, "ZULONG_DRAGON_RAJA");
+  assert.equal(INITPAY_GAMES["dragon-raja"].pricePointId, "75648");
+  assert.equal(INITPAY_GAMES["dragon-raja"].enabledEnv, "CODASHOP_DRAGON_RAJA_ENABLED");
+});
+
+test("Dragon Raja flag stays off by default and prevents an upstream call", async () => {
+  let calls = 0;
+  const result = await lookupCodashopInitpay("dragon-raja", "00000000", "", {
+    env: {},
+    fetchImpl: async () => { calls += 1; return new Response("{}", { status: 200 }); },
+  });
+  assert.deepEqual(result, { kind: "unavailable", diagnostic: { reason: "feature_disabled" } });
+  assert.equal(calls, 0);
+});
+
+test("Point Blank flag stays off by default and prevents an upstream call", async () => {
+  let calls = 0;
+  const result = await lookupCodashopInitpay("point-blank", "zepetto-test", "", {
+    env: {},
+    fetchImpl: async () => { calls += 1; return new Response("{}", { status: 200 }); },
+  });
+  assert.deepEqual(result, { kind: "unavailable", diagnostic: { reason: "feature_disabled" } });
+  assert.equal(calls, 0);
+});
+
+test("Point Blank tries tuple B then tuple A only after an unavailable response", async () => {
+  const seen = [];
+  const result = await lookupCodashopInitpay("point-blank", "zepetto-test", "", {
+    env: { CODASHOP_POINT_BLANK_ENABLED: "true" },
+    fetchImpl: async (url, options) => {
+      const form = new URLSearchParams(options.body);
+      seen.push({ url: String(url), id: form.get("voucherPricePoint.id"), price: form.get("voucherPricePoint.price"), zone: form.get("user.zoneId") });
+      if (seen.length === 1) return new Response(JSON.stringify({ RESULT_CODE: 239 }), { status: 200 });
+      return new Response(JSON.stringify({ errorCode: "", confirmationFields: { username: "Test%20Player" } }), { status: 200 });
+    },
+    cache: { getOrLoad: async (_key, _ttl, loader) => ({ value: await loader(), cached: false }) },
+  });
+  assert.deepEqual(result, { kind: "success", nickname: "Test Player", source: "codashop_initpay" });
+  assert.deepEqual(seen, [
+    { url: "https://order-sg.codashop.com/initPayment.action", id: "344845", price: "11000.0000", zone: null },
+    { url: "https://order-sg.codashop.com/initPayment.action", id: "54790", price: "550000.0", zone: null },
+  ]);
+});
+
+test("enabled Dragon Raja leg uses the probed ID-only tuple and strict bogus gate", async () => {
+  let captured;
+  const result = await lookupCodashopInitpay("dragon-raja", "00000000", "", {
+    env: { CODASHOP_DRAGON_RAJA_ENABLED: "true" },
+    fetchImpl: async (url, options) => {
+      captured = { url: String(url), options };
+      return new Response(JSON.stringify({
+        errorCode: "-100",
+        is_publisher_validate_error: true,
+        success: true,
+        errorMsg: "common error",
+        confirmationFields: { userId: "00000000", productName: "Dragon Raja" },
+      }), { status: 200 });
+    },
+    cache: { getOrLoad: async (_key, _ttl, loader) => ({ value: await loader(), cached: false }) },
+  });
+  assert.deepEqual(result, { kind: "not_found" });
+  const form = new URLSearchParams(captured.options.body);
+  assert.equal(captured.url, "https://order-sg.codashop.com/initPayment.action");
+  assert.equal(form.get("voucherTypeName"), "ZULONG_DRAGON_RAJA");
+  assert.equal(form.get("voucherPricePoint.id"), "75648");
+  assert.equal(form.get("user.userId"), "00000000");
+  assert.equal(form.has("user.zoneId"), false);
 });
 
 test("lookup posts the form-encoded initPayment shape", async () => {

@@ -70,10 +70,12 @@ Contract notes:
 - Missing keyed-provider keys degrade to `missing_config` without fetching.
 - Customer-facing source is always `eidren_mlbb` regardless of adapter.
 
-## Identity lookups (`/api/lookup/{pubg-mobile,call-of-duty-mobile,valorant,genshin-impact,honor-of-kings}`)
+## Identity lookups (`/api/lookup/{pubg-mobile,call-of-duty-mobile,valorant,genshin-impact,honor-of-kings,point-blank,dragon-raja}`)
 
-Single RapidAPI adapter per game through `providers/rapidapi-games.mjs`, classified by
-`classifyRapidApiGameResponse`. Customer-facing sources are `eidren_*` per game.
+Every game retains its RapidAPI broker leg through `providers/rapidapi-games.mjs`,
+classified by `classifyRapidApiGameResponse`; Point Blank and Dragon Raja also
+have default-off validation-only CodaShop candidates documented below.
+Customer-facing sources are `eidren_*` per game.
 HoK/Genshin went 502 on HTTP 200 `id_game_checker_schema` bodies in production on
 2026-10-12 while PUBG/CODM succeeded, which pointed at per-game envelope variants
 rather than a key/gateway outage. The game classifier therefore accepts these variants:
@@ -120,6 +122,27 @@ rather than a key/gateway outage. The game classifier therefore accepts these va
   `id_game_checker_schema` body (`provider_error`, shape
   `envelope:data,error,msg,status|data:object:id,server,username`), so the retry
   targets HoK-class slowness and the message code targets Genshin-class degradation.
+
+## Point Blank and Dragon Raja direct candidates
+
+Point Blank retains its keyed broker primary in single and bulk routes. Its
+CodaShop `POINT_BLANK` candidate is dormant unless
+`CODASHOP_POINT_BLANK_ENABLED=true`. The 2026-10-19 validation-only probe
+confirmed tuple B (`344845` / `11000.0000`) and tuple A (`54790` / `550000.0`),
+with empty zone, both produce the same observed bogus-ID gate. Tuple A is tried
+only if tuple B is unavailable. The success shape is not live-verified; keep the
+flag unset until one consenting Zepetto ID resolves the expected nickname.
+
+Dragon Raja keeps `lookupRapidApiGame("dragon-raja", input)` as primary in
+single and bulk routes. The CodaShop `ZULONG_DRAGON_RAJA` initPayment leg is
+registered as a secondary but is dormant unless
+`CODASHOP_DRAGON_RAJA_ENABLED=true`. The 2026-10-19 validation-only probe
+confirmed the ID-only tuple (`75648` / `1000000.0`) and a bogus-ID gate
+(`errorCode:"-100"`, `is_publisher_validate_error:true`, no nickname). The
+success shape is not yet live-verified. Keep the flag unset until one consenting
+valid SEA test ID resolves the expected nickname; never submit an order or
+payment. The direct leg is unofficial storefront reuse and currently scoped to
+SEA accounts only.
 
 ## Supercell lookups (`/api/lookup/{brawl-stars,clash-of-clans,clash-royale}`)
 
@@ -217,8 +240,10 @@ Notes:
 
 ## Deliberately excluded
 
-- Codashop `initPayment` — can create a checkout session; diagnostic and
-  production paths must not call it.
+- Codashop `initPayment` is payment-adjacent: only the title-specific,
+  validation-only calls described above are permitted. Never advance to an
+  order or payment step. Point Blank and Dragon Raja remain flag-disabled
+  until their success shapes are verified with consenting IDs.
 - EliteDias / Smile.One / DuniaGames — failed the live sweep (invalid
   verdicts, bot redirects, HTTP 500); diagnostic-only.
 - REDX Game — its public checker was exercised through the normal browser form

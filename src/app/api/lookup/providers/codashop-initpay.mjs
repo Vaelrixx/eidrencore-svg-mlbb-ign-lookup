@@ -25,9 +25,10 @@
  *   verdict, and the valid pair never yields a nickname). Because the valid
  *   pair cannot resolve, MOBILE_LEGENDS stays out of INITPAY_GAMES.
  *
- * Only games verified live with distinct valid/bogus responses are enabled
- * (see INITPAY_GAMES). Price-point IDs come from the game's public top-up
- * page; they select the cheapest denomination and no order is ever placed.
+ * Only games verified live with distinct valid/bogus responses are active.
+ * Point Blank and Dragon Raja are registered but default-off until consenting
+ * valid IDs prove their success shapes. Price points are validation-only; no
+ * order or payment is submitted.
  * Nicknames arrive URL-encoded and masked by the store (e.g. B****t%20A);
  * decode but never unmask.
  *
@@ -82,6 +83,29 @@ export const INITPAY_GAMES = Object.freeze({
     requiresZone: false,
     source: "codashop_initpay",
   }),
+  // Both tuples reach the same live bogus gate; no valid Zepetto ID exists
+  // in public fixtures, so this candidate remains dormant until one consents.
+  "point-blank": Object.freeze({
+    voucherTypeName: "POINT_BLANK",
+    pricePointId: "344845",
+    pricePointPrice: "11000.0000",
+    fallbackPricePointId: "54790",
+    fallbackPricePointPrice: "550000.0",
+    requiresZone: false,
+    enabledEnv: "CODASHOP_POINT_BLANK_ENABLED",
+    source: "codashop_initpay",
+  }),
+  // Bogus-only live probe confirmed the -100 publisher-validation gate;
+  // keep disabled until one consenting valid SEA ID proves nickname success.
+  "dragon-raja": Object.freeze({
+    voucherTypeName: "ZULONG_DRAGON_RAJA",
+    pricePointId: "75648",
+    pricePointPrice: "1000000.0",
+    requiresZone: false,
+    enabledEnv: "CODASHOP_DRAGON_RAJA_ENABLED",
+    publisherValidationMiss: true,
+    source: "codashop_initpay",
+  }),
 });
 
 const NOT_FOUND_MESSAGE_PATTERN = /(user\s*not\s*found|account\s*info\s*not\s*found|user\s*name\s*not\s*found|not\s*found|unknown\s*(user|player)|invalid\s*(user|player|id|zone)|wrong\s*(user|player|id|zone)|\u8d26\u53f7\u9519\u8bef)/i;
@@ -102,6 +126,17 @@ export function classifyInitpayResponse(httpStatus, payload, options = {}) {
   const root = record(payload);
   if (!Number.isInteger(httpStatus) || httpStatus < 200 || httpStatus >= 300 || !root) {
     return { kind: "unavailable", diagnostic: { reason: "http_error", statusCode: Number.isInteger(httpStatus) ? httpStatus : 502 } };
+  }
+  if (root.RESULT_CODE === 10001 || root.RESULT_CODE === "10001") {
+    return { kind: "rate_limited", diagnostic: { reason: "http_error", statusCode: httpStatus } };
+  }
+  if (
+    options?.publisherValidationMiss === true &&
+    root.errorCode === "-100" &&
+    root.is_publisher_validate_error === true &&
+    !confirmedNickname({ name: record(root.confirmationFields)?.username })
+  ) {
+    return { kind: "not_found" };
   }
   // Success: errorCode present and empty string, nickname in
   // confirmationFields (username for most games, roles[0].role for
@@ -144,6 +179,9 @@ export async function lookupCodashopInitpay(game, playerId, zoneId = "", {
 } = {}) {
   const config = INITPAY_GAMES[game];
   if (!config) return { kind: "unavailable", diagnostic: { reason: "provider_error" } };
+  if (config.enabledEnv && env[config.enabledEnv] !== "true") {
+    return { kind: "unavailable", diagnostic: { reason: "feature_disabled" } };
+  }
   if (typeof playerId !== "string" || !playerId.trim()) {
     return { kind: "unavailable", diagnostic: { reason: "provider_error" } };
   }
@@ -153,32 +191,42 @@ export async function lookupCodashopInitpay(game, playerId, zoneId = "", {
   const cacheKey = `initpay:${game}:${playerId.trim()}:${config.requiresZone ? zoneId.trim() : ""}`;
   try {
     const { value } = await cache.getOrLoad(cacheKey, INITPAY_CACHE_TTL_SECONDS, async () => {
-      const form = new URLSearchParams({
-        "voucherPricePoint.id": config.pricePointId,
-        "voucherPricePoint.price": config.pricePointPrice,
-        "voucherPricePoint.variablePrice": "0",
-        "user.userId": playerId.trim(),
-        voucherTypeName: config.voucherTypeName,
-        shopLang: "id_ID",
-      });
-      if (config.requiresZone) form.set("user.zoneId", zoneId.trim());
+      const pricePoints = [{ id: config.pricePointId, price: config.pricePointPrice }];
+      if (config.fallbackPricePointId && config.fallbackPricePointPrice) {
+        pricePoints.push({ id: config.fallbackPricePointId, price: config.fallbackPricePointPrice });
+      }
       let attempt;
-      try {
-        const upstream = await fetchImpl(`${baseFor(env)}/initPayment.action`, {
-          method: "POST",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/x-www-form-urlencoded",
-            "User-Agent": "Mozilla/5.0 (compatible; EidrenIdentityLookup/1.0)",
-          },
-          body: form.toString(),
-          cache: "no-store",
-          signal: AbortSignal.timeout(INITPAY_TIMEOUT_MS),
+      for (const pricePoint of pricePoints) {
+        const form = new URLSearchParams({
+          "voucherPricePoint.id": pricePoint.id,
+          "voucherPricePoint.price": pricePoint.price,
+          "voucherPricePoint.variablePrice": "0",
+          "user.userId": playerId.trim(),
+          voucherTypeName: config.voucherTypeName,
+          shopLang: "id_ID",
         });
-        const payload = await upstream.json().catch(() => null);
-        attempt = classifyInitpayResponse(upstream.status, payload, { nicknameFrom: config.nicknameFrom });
-      } catch {
-        attempt = { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
+        if (config.requiresZone) form.set("user.zoneId", zoneId.trim());
+        try {
+          const upstream = await fetchImpl(`${baseFor(env)}/initPayment.action`, {
+            method: "POST",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/x-www-form-urlencoded",
+              "User-Agent": "Mozilla/5.0 (compatible; EidrenIdentityLookup/1.0)",
+            },
+            body: form.toString(),
+            cache: "no-store",
+            signal: AbortSignal.timeout(INITPAY_TIMEOUT_MS),
+          });
+          const payload = await upstream.json().catch(() => null);
+          attempt = classifyInitpayResponse(upstream.status, payload, {
+            nicknameFrom: config.nicknameFrom,
+            publisherValidationMiss: config.publisherValidationMiss,
+          });
+        } catch {
+          attempt = { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
+        }
+        if (attempt.kind !== "unavailable") return attempt;
       }
       if (attempt?.kind === "unavailable") throw new TransientUpstreamError(attempt);
       return attempt;
