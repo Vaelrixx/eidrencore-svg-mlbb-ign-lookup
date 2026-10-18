@@ -69,9 +69,26 @@ test("MLBB probe envelopes stay unwired: opaque RESULT_CODE is transient, zone c
   assert.equal("mobile-legends" in INITPAY_GAMES, false);
 });
 
+test("Genshin probe envelopes stay unwired: valid and bogus UIDs both return opaque RESULT_CODE (live 2026-10-18)", () => {
+  // Probed validation-only POSTs to order-sg.codashop.com/initPayment.action
+  // (GENSHIN_IMPACT, vpp 338498/16500.0000, >=6s apart, 7 calls total):
+  // valid 618285856/os_usa (Enka-doc example, Enka-confirmed), valid
+  // 844335555/os_asia, valid 800123456/os_asia, bogus 000000000/os_asia,
+  // bogus 99999999999/os_asia, plus re-probes of 618285856/os_usa and
+  // 000000000/os_asia — ALL returned 200 {"RESULT_CODE":239} with no
+  // errorCode/errorMsg/confirmationFields. No honest gate, so no leg.
+  assert.deepEqual(classifyInitpayResponse(200, { RESULT_CODE: 239 }), {
+    kind: "unavailable",
+    diagnostic: { reason: "unrecognized_response", statusCode: 200 },
+  });
+  assert.equal("genshin-impact" in INITPAY_GAMES, false);
+});
+
 test("only live-verified games are enabled", () => {
   // MLBB stays out: probed 2026-10-18, no honest valid/bogus gate (see the
   // MLBB probe-envelopes test above).
+  // Genshin stays out for the same reason: probed 2026-10-18, valid and
+  // bogus UIDs are indistinguishable (see the Genshin probe-envelopes test).
   assert.deepEqual(Object.keys(INITPAY_GAMES), ["8-ball-pool", "arena-of-valor", "super-sus"]);
   assert.equal(INITPAY_GAMES["8-ball-pool"].voucherTypeName, "EIGHT_BALL_POOL");
   assert.equal(INITPAY_GAMES["arena-of-valor"].voucherTypeName, "AOV");
