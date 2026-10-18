@@ -75,6 +75,17 @@ async function keyedWithGoPayFallback(game, input, gopayCode) {
   return terminalOrFallback(primary, await lookupGoPayGameFallback(gopayCode, playerId));
 }
 
+// Mirrors the single route: keyed primary, then our own CodaShop
+// initPayment leg, then GoPay. Broker stays; direct leg adds balance.
+async function lookupAovWithDirectLegs(input) {
+  const primary = await lookupRapidApiGame("arena-of-valor", input);
+  if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") return primary;
+  const playerId = "playerId" in input ? input.playerId : "";
+  const direct = await lookupCodashopInitpay("arena-of-valor", playerId);
+  if (direct.kind === "success" || direct.kind === "not_found" || direct.kind === "rate_limited") return direct;
+  return terminalOrFallback(primary, await lookupGoPayGameFallback("AOV", playerId));
+}
+
 // Mirrors the single route: Enka primary, GoPay four-server sweep only
 // when Enka is degraded. Unanimous invalid-credentials sweep = not_found.
 const ZZZ_GOPAY_SERVERS = ["prod_gf_us", "prod_gf_eu", "prod_gf_jp", "prod_gf_sg"];
@@ -242,7 +253,7 @@ export const BULK_GAMES = {
     notFoundCode: "ARENA_OF_VALOR_PLAYER_NOT_FOUND",
     fields: [{ key: "playerId", label: "Player ID", example: "195293573153949" }],
     validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
-    lookup: async (input) => keyedWithGoPayFallback("arena-of-valor", input, "AOV"),
+    lookup: async (input) => lookupAovWithDirectLegs(input),
   }),
   "pubg-lite": identityGame({
     gameLabel: "PUBG Mobile Lite",

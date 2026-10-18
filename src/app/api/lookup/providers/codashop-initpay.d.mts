@@ -8,9 +8,10 @@ export declare const INITPAY_GAMES: Readonly<Record<string, {
   pricePointId: string;
   pricePointPrice: string;
   requiresZone: boolean;
+  nicknameFrom?: string;
   source: string;
 }>>;
-export declare function classifyInitpayResponse(httpStatus: number, payload: unknown): InitpayAttempt;
+export declare function classifyInitpayResponse(httpStatus: number, payload: unknown, options?: { nicknameFrom?: string }): InitpayAttempt;
 export declare function lookupCodashopInitpay(
   game: string,
   playerId: string,
