@@ -7,6 +7,12 @@ export function classifyVolseverResponse(httpStatus, payload, playerId) {
   if (httpStatus === 429) {
     return { kind: "rate_limited", diagnostic: { reason: "http_error", statusCode: 429 } };
   }
+  // Live-verified 2026-10-19: bogus MLBB IDs return exactly
+  // {status:false, code:404, message:"ID not found"} (distinct from the
+  // docs' "Game not found" route error, which stays unavailable).
+  if (root?.status === false && root?.code === 404 && root?.message === "ID not found") {
+    return { kind: "not_found" };
+  }
   if (httpStatus === 200 && root?.status === true && root?.code === 200) {
     const nickname = confirmedNickname(root);
     if (nickname && nickname !== playerId) {

@@ -17,6 +17,7 @@ test("classifies only Volsever's documented confirmed MLBB envelope as success",
 
 test("does not call a 404 or an echoed ID a verified missing/success verdict", () => {
   assert.equal(classifyVolseverResponse(404, { status: false, code: 404, message: "Game not found" }, "12345678").kind, "unavailable");
+  assert.deepEqual(classifyVolseverResponse(404, { status: false, code: 404, message: "ID not found" }, "12345678"), { kind: "not_found" });
   assert.equal(classifyVolseverResponse(200, {
     status: true, code: 200, data: { username: "12345678" },
   }, "12345678").kind, "unavailable");

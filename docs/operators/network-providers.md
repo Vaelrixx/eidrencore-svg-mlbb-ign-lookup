@@ -50,9 +50,10 @@ Contract notes:
 - Volsever MLBB uses the published `GET
   https://gate.volsever.com/proxy/api/game/mobile-legends?id=...&zone=...`
   contract and `X-API-KEY`. Only HTTP 200 plus `status: true`, `code: 200`,
-  and a confirmed non-echo username can succeed. Public docs do not
-  distinguish an invalid player from an invalid route on 400/404, so those
-  responses remain unavailable until live evidence supports a narrower gate.
+  and a confirmed non-echo username can succeed. Not-found is the
+  live-verified `status:false, code:404, message:"ID not found"` envelope
+  (2026-10-19). Other 400/404 bodies (e.g. "Game not found") remain
+  unavailable.
 - WhoPlays: only `error: "not_found"` (HTTP 422) counts as not-found.
   `unauthorized` / `parse` / `upstream` degrade to unavailable so a bad key
   never poisons the all-not-found verdict.
