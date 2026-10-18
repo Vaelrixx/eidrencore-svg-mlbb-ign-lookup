@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-// Additive-motto guard: the MLBB chain must keep all five live-swept legs.
+// Additive-motto guard: the MLBB chain must keep every verified and new leg.
 // Catches accidental removal of any leg (especially the RapidAPI broker)
 // from either the single route or its bulk mirror.
 const routeSrc = readFileSync(
@@ -33,10 +33,11 @@ test("single route keeps the RapidAPI broker leg in the MLBB fallback pool", () 
   );
 });
 
-test("single route keeps the full 5-leg MLBB chain (primary + 4 fallbacks)", () => {
+test("single route keeps the full additive MLBB chain", () => {
   for (const leg of [
     'lookupCodashopDirect("mobile-legends"',
     "lookupRapidApi(playerId, zoneId)",
+    "lookupVolseverMlbb(playerId, zoneId)",
     "lookupIsan(playerId, zoneId)",
     "lookupWhoPlays(playerId, zoneId)",
     "lookupGoPayGames(playerId, zoneId)",
@@ -53,11 +54,12 @@ test("bulk mirror keeps the RapidAPI broker leg for MLBB", () => {
   );
 });
 
-test("bulk mirror keeps the full 5-leg MLBB chain", () => {
+test("bulk mirror keeps the full additive MLBB chain", () => {
   const region = lookupMlbbRegion();
   for (const leg of [
     'lookupCodashopDirect("mobile-legends"',
     "lookupRapidApi(input.playerId, input.zoneId)",
+    "lookupVolseverMlbb(input.playerId, input.zoneId)",
     "lookupIsan(input.playerId, input.zoneId)",
     "lookupWhoPlays(input.playerId, input.zoneId)",
     "lookupGoPayGames(input.playerId, input.zoneId)",

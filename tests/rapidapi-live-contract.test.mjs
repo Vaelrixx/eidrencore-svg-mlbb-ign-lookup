@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { lookupRapidApi } from "../src/app/api/lookup/providers/rapidapi.mjs";
 
 test("live RapidAPI contract matches the known-valid fixture nickname", async (t) => {
-  if (!(process.env.RAPIDAPI_KEY?.trim() || process.env.RAPIDAPI_APP_TOKEN?.trim())) {
+  if (!(process.env.RAPIDAPI_KEY_NEW?.trim() || process.env.RAPIDAPI_KEY?.trim() || process.env.RAPIDAPI_APP_TOKEN?.trim())) {
     t.skip("RapidAPI credentials are not configured for this workflow");
     return;
   }

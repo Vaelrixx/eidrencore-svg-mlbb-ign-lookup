@@ -153,7 +153,7 @@ test("live provider sweep reports sanitized status for a known-valid test accoun
     durationMs: Math.round(performance.now() - goPayStartedAt),
   });
 
-  const rapidApiKey = process.env.RAPIDAPI_KEY?.trim() || process.env.RAPIDAPI_APP_TOKEN?.trim();
+  const rapidApiKey = process.env.RAPIDAPI_KEY_NEW?.trim() || process.env.RAPIDAPI_KEY?.trim() || process.env.RAPIDAPI_APP_TOKEN?.trim();
   if (rapidApiKey) {
     results.push(await probeHttp({
       provider: "rapidapi_id_game_checker",

@@ -1,4 +1,5 @@
 import { classifyRapidApiGameResponse } from "./rapidapi.mjs";
+import { rapidApiKeys } from "./rapidapi-keys.mjs";
 
 const RAPIDAPI_HOST = "id-game-checker.p.rapidapi.com";
 const GENSHIN_SERVERS = new Set(["asia", "america", "europa", "china"]);
@@ -109,28 +110,35 @@ async function fetchWithRetry(url, init, fetchImpl, sleepImpl) {
 }
 
 export async function lookupRapidApiGame(game, input, options = {}) {
-  const apiKey = options.apiKey ?? process.env.RAPIDAPI_KEY?.trim() ?? process.env.RAPIDAPI_APP_TOKEN?.trim();
-  if (!apiKey) return { kind: "unavailable", diagnostic: { reason: "missing_config" } };
+  const apiKeys = rapidApiKeys(options);
+  if (!apiKeys.length) return { kind: "unavailable", diagnostic: { reason: "missing_config" } };
   const path = routePath(game, input);
   if (!path) return { kind: "unavailable", diagnostic: { reason: "invalid_input" } };
 
   const fetchImpl = options.fetchImpl ?? fetch;
   const sleepImpl = options.sleepImpl;
-  try {
-    const upstream = await fetchWithRetry(`https://${RAPIDAPI_HOST}${path}`, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "x-rapidapi-host": RAPIDAPI_HOST,
-        "x-rapidapi-key": apiKey,
-      },
-      cache: "no-store",
-    }, fetchImpl, sleepImpl);
-    const payload = await upstream.json().catch(() => null);
-    return classifyGameResponse(game, input, upstream.status, payload);
-  } catch {
-    return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
+  let lastResult = { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
+  let sawRateLimit = false;
+  for (const apiKey of apiKeys) {
+    try {
+      const upstream = await fetchWithRetry(`https://${RAPIDAPI_HOST}${path}`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "x-rapidapi-host": RAPIDAPI_HOST,
+          "x-rapidapi-key": apiKey,
+        },
+        cache: "no-store",
+      }, fetchImpl, sleepImpl);
+      const payload = await upstream.json().catch(() => null);
+      lastResult = classifyGameResponse(game, input, upstream.status, payload);
+    } catch {
+      lastResult = { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
+    }
+    if (lastResult.kind === "success" || lastResult.kind === "not_found") return lastResult;
+    if (lastResult.kind === "rate_limited") sawRateLimit = true;
   }
+  return sawRateLimit ? { kind: "rate_limited", diagnostic: { reason: "http_error", statusCode: 429 } } : lastResult;
 }
 
 export { routePath as rapidApiGamePath };

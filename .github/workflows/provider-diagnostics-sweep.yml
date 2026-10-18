@@ -33,6 +33,8 @@ jobs:
           node-version: 20
       - name: Probe independent identity providers
         env:
+          VOLSEVER_API_KEY: ${{ secrets.VOLSEVER_API_KEY }}
+          RAPIDAPI_KEY_NEW: ${{ secrets.RAPIDAPI_KEY_NEW }}
           RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
           RAPIDAPI_APP_TOKEN: ${{ secrets.RAPIDAPI_APP_TOKEN }}
         run: npm run test:provider-sweep:live

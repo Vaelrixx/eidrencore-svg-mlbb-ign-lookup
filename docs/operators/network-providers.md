@@ -15,10 +15,11 @@ result before deciding not-found vs. unavailable.
 | Role | Adapter | Server labels | Auth |
 |---|---|---|---|
 | Primary | `providers/codashop-direct.mjs` | `codashop_direct` | None — CodaShop store's own `/validate`, called directly with our own request shape |
-| Fallback 1 | `providers/rapidapi.mjs` | `rapidapi_id_game_checker` | `RAPIDAPI_KEY` (or legacy `RAPIDAPI_APP_TOKEN`) |
-| Fallback 2 | `providers/isan.mjs` | `isan_nickname_api` | None — `https://api.isan.eu.org/nickname/ml` |
-| Fallback 3 | `providers/whoplays.mjs` | `whoplays_check` | `WHOPLAYS_API_KEY` from whoplays.doedja.com/dashboard (free: 30/min) |
-| Fallback 4 | `providers/gopay-games.mjs` | `gopay_games_validation` | None — direct JSON validation endpoint |
+| Fallback 1 | `providers/rapidapi.mjs` | `rapidapi_id_game_checker` | `RAPIDAPI_KEY_NEW` primary; `RAPIDAPI_KEY` then legacy `RAPIDAPI_APP_TOKEN` remain credential fallbacks |
+| Fallback 2 (MLBB) | `providers/volsever.mjs` | `volsever_game_checker` | `VOLSEVER_API_KEY` via `X-API-KEY` |
+| Fallback 3 | `providers/isan.mjs` | `isan_nickname_api` | None — `https://api.isan.eu.org/nickname/ml` |
+| Fallback 4 | `providers/whoplays.mjs` | `whoplays_check` | `WHOPLAYS_API_KEY` from whoplays.doedja.com/dashboard (free: 30/min) |
+| Fallback 5 | `providers/gopay-games.mjs` | `gopay_games_validation` | None — direct JSON validation endpoint |
 
 Contract notes:
 
@@ -43,6 +44,15 @@ Contract notes:
   Verified live 2026-10-17 (`ShadowHex` → BG → profile).
 - RapidAPI uses the documented `mobile-legends` slug. Only the structured
   `id_not_found` body counts as not-found; `no_content_0` is unavailable.
+  `RAPIDAPI_KEY_NEW` is tried first; existing `RAPIDAPI_KEY` and legacy
+  `RAPIDAPI_APP_TOKEN` are retained as fallbacks on unavailable/rate-limited
+  outcomes. Explicit not-found remains terminal.
+- Volsever MLBB uses the published `GET
+  https://gate.volsever.com/proxy/api/game/mobile-legends?id=...&zone=...`
+  contract and `X-API-KEY`. Only HTTP 200 plus `status: true`, `code: 200`,
+  and a confirmed non-echo username can succeed. Public docs do not
+  distinguish an invalid player from an invalid route on 400/404, so those
+  responses remain unavailable until live evidence supports a narrower gate.
 - WhoPlays: only `error: "not_found"` (HTTP 422) counts as not-found.
   `unauthorized` / `parse` / `upstream` degrade to unavailable so a bad key
   never poisons the all-not-found verdict.

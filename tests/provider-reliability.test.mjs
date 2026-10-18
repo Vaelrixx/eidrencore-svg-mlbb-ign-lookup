@@ -4,9 +4,11 @@ import { classifyRapidApiResponse, lookupRapidApi } from "../src/app/api/lookup/
 import { resolveLookupWithFallbacks, selectLookupVerdict } from "../src/app/api/lookup/resolve-lookup.mjs";
 
 async function withRapidApiEnv(run, fetchImpl) {
+  const previousNewKey = process.env.RAPIDAPI_KEY_NEW;
   const previousKey = process.env.RAPIDAPI_KEY;
   const previousToken = process.env.RAPIDAPI_APP_TOKEN;
   const previousFetch = globalThis.fetch;
+  delete process.env.RAPIDAPI_KEY_NEW;
   process.env.RAPIDAPI_KEY = "unit-test-key";
   delete process.env.RAPIDAPI_APP_TOKEN;
   globalThis.fetch = fetchImpl;
@@ -14,6 +16,8 @@ async function withRapidApiEnv(run, fetchImpl) {
     return await run();
   } finally {
     globalThis.fetch = previousFetch;
+    if (previousNewKey === undefined) delete process.env.RAPIDAPI_KEY_NEW;
+    else process.env.RAPIDAPI_KEY_NEW = previousNewKey;
     if (previousKey === undefined) delete process.env.RAPIDAPI_KEY;
     else process.env.RAPIDAPI_KEY = previousKey;
     if (previousToken === undefined) delete process.env.RAPIDAPI_APP_TOKEN;

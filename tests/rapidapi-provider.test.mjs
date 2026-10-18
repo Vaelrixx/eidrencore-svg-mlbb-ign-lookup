@@ -88,12 +88,14 @@ test("HTTP 429 remains rate limited", () => {
 });
 
 test("lookupRapidApi parses a structured 404 body rather than discarding it", async () => {
+  const previousNewKey = process.env.RAPIDAPI_KEY_NEW;
   const previousKey = process.env.RAPIDAPI_KEY;
   const previousToken = process.env.RAPIDAPI_APP_TOKEN;
   const previousFetch = globalThis.fetch;
   let requestedUrl = "";
   let requestedKey = "";
 
+  delete process.env.RAPIDAPI_KEY_NEW;
   process.env.RAPIDAPI_KEY = "unit-test-key";
   delete process.env.RAPIDAPI_APP_TOKEN;
   globalThis.fetch = async (input, init) => {
@@ -116,6 +118,8 @@ test("lookupRapidApi parses a structured 404 body rather than discarding it", as
     assert.equal(requestedKey, "unit-test-key");
   } finally {
     globalThis.fetch = previousFetch;
+    if (previousNewKey === undefined) delete process.env.RAPIDAPI_KEY_NEW;
+    else process.env.RAPIDAPI_KEY_NEW = previousNewKey;
     if (previousKey === undefined) delete process.env.RAPIDAPI_KEY;
     else process.env.RAPIDAPI_KEY = previousKey;
     if (previousToken === undefined) delete process.env.RAPIDAPI_APP_TOKEN;
@@ -124,10 +128,12 @@ test("lookupRapidApi parses a structured 404 body rather than discarding it", as
 });
 
 test("lookupRapidApi does not return an upstream body on failures", async () => {
+  const previousNewKey = process.env.RAPIDAPI_KEY_NEW;
   const previousKey = process.env.RAPIDAPI_KEY;
   const previousToken = process.env.RAPIDAPI_APP_TOKEN;
   const previousFetch = globalThis.fetch;
 
+  delete process.env.RAPIDAPI_KEY_NEW;
   process.env.RAPIDAPI_KEY = "unit-test-key";
   delete process.env.RAPIDAPI_APP_TOKEN;
   globalThis.fetch = async () => new Response(JSON.stringify({
@@ -149,6 +155,8 @@ test("lookupRapidApi does not return an upstream body on failures", async () => 
     assert.equal(JSON.stringify(result).includes("unit-test-key"), false);
   } finally {
     globalThis.fetch = previousFetch;
+    if (previousNewKey === undefined) delete process.env.RAPIDAPI_KEY_NEW;
+    else process.env.RAPIDAPI_KEY_NEW = previousNewKey;
     if (previousKey === undefined) delete process.env.RAPIDAPI_KEY;
     else process.env.RAPIDAPI_KEY = previousKey;
     if (previousToken === undefined) delete process.env.RAPIDAPI_APP_TOKEN;
@@ -157,9 +165,11 @@ test("lookupRapidApi does not return an upstream body on failures", async () => 
 });
 
 test("RapidAPI lookup reports missing configuration without fetching", async () => {
+  const previousNewKey = process.env.RAPIDAPI_KEY_NEW;
   const previousKey = process.env.RAPIDAPI_KEY;
   const previousToken = process.env.RAPIDAPI_APP_TOKEN;
   const previousFetch = globalThis.fetch;
+  delete process.env.RAPIDAPI_KEY_NEW;
   delete process.env.RAPIDAPI_KEY;
   delete process.env.RAPIDAPI_APP_TOKEN;
   let fetchCalled = false;
@@ -176,6 +186,8 @@ test("RapidAPI lookup reports missing configuration without fetching", async () 
     assert.equal(fetchCalled, false);
   } finally {
     globalThis.fetch = previousFetch;
+    if (previousNewKey === undefined) delete process.env.RAPIDAPI_KEY_NEW;
+    else process.env.RAPIDAPI_KEY_NEW = previousNewKey;
     if (previousKey === undefined) delete process.env.RAPIDAPI_KEY;
     else process.env.RAPIDAPI_KEY = previousKey;
     if (previousToken === undefined) delete process.env.RAPIDAPI_APP_TOKEN;
