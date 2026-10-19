@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Crosshair, Gamepad2, Radio, Shield, Sparkles, Spade, Swords, Trophy, type LucideIcon } from "lucide-react";
 import { ConsoleFrame } from "@/components/console-frame";
 import { PlayerLookupTool } from "@/components/player-lookup-tool";
 import { IdGameLookupTool } from "@/components/id-game-lookup-tool";
@@ -31,6 +32,29 @@ const GAME_TABS: { key: GameKey; label: string }[] = [
   { key: "clash-of-clans", label: "Clash of Clans" },
   { key: "clash-royale", label: "Clash Royale" },
 ];
+
+const GAME_ICONS: Partial<Record<GameKey, LucideIcon>> = {
+  mlbb: Swords,
+  "pubg-mobile": Shield,
+  "call-of-duty-mobile": Crosshair,
+  valorant: Crosshair,
+  "genshin-impact": Sparkles,
+  "honkai-star-rail": Sparkles,
+  "zenless-zone-zero": Sparkles,
+  "honor-of-kings": Swords,
+  "arena-of-valor": Swords,
+  "pubg-lite": Shield,
+  "teen-patti-gold": Spade,
+  jawaker: Spade,
+  "fc-mobile": Trophy,
+  "bigo-live": Radio,
+  "higgs-domino": Spade,
+  "free-fire": Shield,
+  "free-fire-global": Shield,
+  "brawl-stars": Gamepad2,
+  "clash-of-clans": Swords,
+  "clash-royale": Trophy,
+};
 
 function gameFromParam(value: string | null): GameKey {
   if (value && GAME_TABS.some((tab) => tab.key === value)) return value as GameKey;
@@ -62,17 +86,18 @@ function PlaygroundContent() {
     <section className="console-panel">
       <div className="console-panel-heading"><div><h2>Player lookup</h2><p>Run a live request and inspect the raw response. Your API keys use the same endpoints.</p></div></div>
       <div className="pg-game-tabs" role="tablist" aria-label="Game">
-        {GAME_TABS.map((tab) => (
-          <button
+        {GAME_TABS.map((tab) => {
+          const Icon = GAME_ICONS[tab.key] || Gamepad2;
+          return <button
             key={tab.key}
             role="tab"
             aria-selected={game === tab.key}
             className={game === tab.key ? "pg-game-tab is-active" : "pg-game-tab"}
             onClick={() => selectGame(tab.key)}
           >
-            {tab.label}
-          </button>
-        ))}
+            <Icon size={14} aria-hidden="true" /> {tab.label}
+          </button>;
+        })}
       </div>
       {game === "mlbb"
         ? <PlayerLookupTool />
