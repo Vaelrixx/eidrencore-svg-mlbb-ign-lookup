@@ -828,6 +828,27 @@ body {
 .lp-tool h3 { margin: 6px 0 0; font-family: Outfit, Manrope, sans-serif; font-weight: 600; font-size: 22px; }
 .lp-tool p { margin: 0; font-size: 14.5px; line-height: 1.6; color: #aebbd3; }
 .lp-tool-link { margin-top: 8px; display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: #a5f3fc; font-size: 14.5px; }
+.lp-tool-groups { display: grid; gap: clamp(28px, 4vw, 44px); }
+.lp-catalog-group { display: grid; gap: 16px; }
+.lp-catalog-heading { display: flex; align-items: center; gap: 12px; }
+.lp-catalog-heading > div { min-width: 0; }
+.lp-catalog-heading h3 { margin: 0; font: 600 19px Outfit, Manrope, sans-serif; letter-spacing: -.025em; }
+.lp-catalog-heading p { margin: 4px 0 0; color: #9fb0cc; font-size: 13px; line-height: 1.5; }
+.lp-catalog-icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border: 1px solid rgba(34,211,238,.3); border-radius: 13px; background: rgba(34,211,238,.08); color: #67e8f9; }
+.lp-catalog-icon.is-planned { border-color: rgba(255,255,255,.14); background: rgba(255,255,255,.04); color: #b3bfd6; }
+.lp-catalog-count { margin-left: auto; color: #9fb0cc; font: 10px 'JetBrains Mono', monospace; letter-spacing: .08em; white-space: nowrap; }
+.lp-tool-top { justify-content: space-between; }
+.lp-tool-context { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.lp-tool-icon { display: grid; place-items: center; flex: none; width: 38px; height: 38px; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; background: rgba(255,255,255,.05); color: #c6d0ff; }
+.lp-tool.is-live .lp-tool-icon { border-color: rgba(34,211,238,.28); background: rgba(34,211,238,.08); color: #67e8f9; }
+.lp-status { display: inline-flex; align-items: center; gap: 5px; }
+.lp-tool.is-primary { border-color: rgba(34,211,238,.55); background: linear-gradient(145deg, rgba(124,140,255,.25), rgba(34,211,238,.11)); }
+.lp-tool.is-primary .lp-tool-icon { width: 44px; height: 44px; }
+.lp-tool.is-primary h3 { font-size: 25px; }
+.lp-tool.is-live:focus-visible { outline: 2px solid #67e8f9; outline-offset: 4px; }
+.lp-tool.is-live:active { transform: translateY(-1px); }
+.lp-catalog-planned .lp-tool { opacity: .68; }
+@media (min-width: 760px) { .lp-tool.is-primary { grid-column: span 2; } }
 
 .lp-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px; padding: clamp(22px, 4vw, 36px); border-radius: 30px; border: 1px solid rgba(255,255,255,.18); background: linear-gradient(135deg, rgba(124,140,255,.22), rgba(34,211,238,.1)); -webkit-backdrop-filter: blur(26px); backdrop-filter: blur(26px); box-shadow: 0 24px 60px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.22); }
 .lp-banner h2 { margin: 0; font-family: Outfit, Manrope, sans-serif; font-size: clamp(24px, 3.4vw, 34px); letter-spacing: -.03em; }
@@ -860,9 +881,12 @@ body {
 .pg-panel pre { margin: 0; padding: 16px; overflow-x: auto; font-family: "JetBrains Mono", monospace; font-size: 12.5px; line-height: 1.75; color: #c9d3ea; min-height: 96px; }
 .pg-panel code { font-family: "JetBrains Mono", monospace; }
 .pg-game-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 20px; }
-.pg-game-tab { padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.16); background: transparent; color: #9fb0cc; font-size: 13px; font-weight: 600; cursor: pointer; }
+.pg-game-tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.16); background: transparent; color: #9fb0cc; font-size: 13px; font-weight: 600; cursor: pointer; transition: color .18s, border-color .18s, background .18s, transform .12s; }
+.pg-game-tab svg { flex: none; opacity: .78; }
 .pg-game-tab:hover { color: #dfe4ff; border-color: rgba(255,255,255,.3); }
 .pg-game-tab.is-active { border-color: rgba(34,211,238,.4); background: linear-gradient(110deg, rgba(124,140,255,.25), rgba(34,211,238,.1)); color: #e8edf9; }
+.pg-game-tab.is-active svg { color: #67e8f9; opacity: 1; }
+.pg-game-tab:active { transform: translateY(1px); }
 .pg-game-tab:focus-visible { outline: 2px solid #7c8cff; outline-offset: 2px; }
 .pg-sample { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin: 14px 0 4px; padding: 10px 14px; border-radius: 14px; border: 1px dashed rgba(34,211,238,.45); background: rgba(34,211,238,.08); color: #a5f3fc; font-size: 13px; font-weight: 700; cursor: pointer; }
 .pg-sample:hover:not(:disabled) { background: rgba(34,211,238,.16); border-style: solid; }

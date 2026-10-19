@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Activity, ArrowRight, Building2, Check, CreditCard, KeyRound, LayoutDashboard, ScrollText, Terminal, Webhook, Zap } from "lucide-react";
+import { Activity, ArrowRight, Building2, Check, CheckCircle2, Clock3, CreditCard, KeyRound, LayoutDashboard, Search, ScrollText, Swords, Terminal, Trophy, Users, Webhook, Zap } from "lucide-react";
 import { SiteShell } from "@/components/site-shell";
-import { platformTools } from "@/lib/tools";
+import { platformTools, type PlatformTool } from "@/lib/tools";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PLAN_FALLBACKS } from "@/lib/platform";
 import { resolveRailwayBackendOrigin } from "@/lib/deployment-routing.mjs";
@@ -60,8 +60,30 @@ const price = (paise: number) => paise === 0 ? "Free" : `${new Intl.NumberFormat
 
 const bars = [38, 52, 44, 66, 58, 82, 74, 96, 88, 70, 92, 80];
 
+function ToolCard({ tool }: { tool: PlatformTool }) {
+  const live = tool.status === "live" && tool.href;
+  const Icon = tool.name === "Rankings" ? Trophy : tool.name === "Battle history" || tool.name === "War log" ? Swords : tool.name === "Club lookup" || tool.name === "Clan lookup" ? Users : Search;
+  const body = (
+    <>
+      <div className="lp-tool-top">
+        <span className="lp-tool-context"><span className="lp-tool-icon" aria-hidden="true"><Icon size={18} strokeWidth={1.8} /></span><span className="lp-tool-game">{tool.game}</span></span>
+        <span className={`lp-status${live ? " is-live" : ""}`}>{live ? <><CheckCircle2 size={12} /> LIVE</> : <><Clock3 size={12} /> PLANNED</>}</span>
+      </div>
+      <h3>{tool.name}</h3>
+      <p>{tool.description}</p>
+      {live && <span className="lp-tool-link">Get access <ArrowRight size={15} /></span>}
+    </>
+  );
+  const className = `lp-tool${live ? " is-live" : ""}${tool.id === "mlbb-player-lookup" ? " is-primary" : ""}`;
+  return live
+    ? <Link key={tool.id} href={tool.href!} className={className}>{body}</Link>
+    : <article key={tool.id} className={className}>{body}</article>;
+}
+
 export default async function Home() {
   const plans = await loadPlans();
+  const liveTools = platformTools.filter((tool) => tool.status === "live");
+  const plannedTools = platformTools.filter((tool) => tool.status === "planned");
   return (
     <SiteShell>
       <section className="x-hero lp-hero">
@@ -89,7 +111,7 @@ export default async function Home() {
                 <div><small>ACTIVE KEYS</small><b className="lp-skel" /></div>
                 <div><small>QUOTA</small><b className="lp-skel" /></div>
               </div>
-              <div className="lp-chart" aria-hidden="true">{bars.map((h, i) => <i key={i} style={{ height: `${h}%` }} />)}</div>
+              <div className="lp-chart" aria-hidden="true">{bars.map((h) => <i key={h} style={{ height: `${h}%` }} />)}</div>
               <div className="lp-code"><Terminal size={14} /><code>POST /api/lookup</code><i className="lp-pill lp-pill-ok">200</i></div>
             </div>
           </div>
@@ -97,22 +119,16 @@ export default async function Home() {
       </section>
 
       <section className="x-section" id="tools" aria-labelledby="tools-title">
-        <div className="x-section-head"><span className="x-eyebrow">TOOLS</span><h2 id="tools-title">One platform. More tools coming.</h2><p>Every tool shares the same keys, usage and billing. New games land here as they ship.</p></div>
-        <div className="lp-tools">
-          {platformTools.map((t) => {
-            const live = t.status === "live" && t.href;
-            const body = (
-              <>
-                <div className="lp-tool-top"><span className="lp-tool-game">{t.game}</span><span className={`lp-status${live ? " is-live" : ""}`}>{live ? "LIVE" : "PLANNED"}</span></div>
-                <h3>{t.name}</h3>
-                <p>{t.description}</p>
-                {live && <span className="lp-tool-link">Get access <ArrowRight size={15} /></span>}
-              </>
-            );
-            return live
-              ? <Link key={t.id} href={t.href!} className="lp-tool is-live">{body}</Link>
-              : <article key={t.id} className="lp-tool">{body}</article>;
-          })}
+        <div className="x-section-head"><span className="x-eyebrow">TOOLS</span><h2 id="tools-title">Live tools, clearly listed.</h2><p>Every tool shares the same keys, usage and billing. New games land here as they ship.</p></div>
+        <div className="lp-tool-groups">
+          <div className="lp-catalog-group">
+            <div className="lp-catalog-heading"><span className="lp-catalog-icon" aria-hidden="true"><CheckCircle2 size={18} /></span><div><h3>Available now</h3><p>Run these tools in the playground today.</p></div><span className="lp-catalog-count">{liveTools.length} tools</span></div>
+            <div className="lp-tools">{liveTools.map((tool) => <ToolCard key={tool.id} tool={tool} />)}</div>
+          </div>
+          {plannedTools.length > 0 && <div className="lp-catalog-group lp-catalog-planned">
+            <div className="lp-catalog-heading"><span className="lp-catalog-icon is-planned" aria-hidden="true"><Clock3 size={18} /></span><div><h3>In development</h3><p>Planned additions. These are not available yet.</p></div><span className="lp-catalog-count">{plannedTools.length} tools</span></div>
+            <div className="lp-tools">{plannedTools.map((tool) => <ToolCard key={tool.id} tool={tool} />)}</div>
+          </div>}
         </div>
       </section>
 
