@@ -51,6 +51,15 @@ export const CODASHOP_GAMES = Object.freeze({
     followCountryRedirect: true,
     source: "codashop_direct",
   }),
+  // Bogus-only live probe confirmed the -100 "Invalid PID" gate on SG+US;
+  // keep disabled until one consenting valid PID proves nickname success.
+  "teen-patti-gold": Object.freeze({
+    voucherTypeName: "TEEN_PATTI",
+    country: "SG",
+    requiresZone: false,
+    enabledEnv: "CODASHOP_TEEN_PATTI_ENABLED",
+    source: "codashop_direct",
+  }),
 });
 
 const NOT_FOUND_CODE_PATTERN = /^(1003|-100)$/;
@@ -116,6 +125,9 @@ export async function lookupCodashopDirect(game, playerId, zoneId = "", {
   const config = CODASHOP_GAMES[game];
   if (!config) {
     return { kind: "unavailable", diagnostic: { reason: "provider_error" } };
+  }
+  if (config.enabledEnv && env[config.enabledEnv] !== "true") {
+    return { kind: "unavailable", diagnostic: { reason: "feature_disabled" } };
   }
   if (typeof playerId !== "string" || !playerId.trim()) {
     return { kind: "unavailable", diagnostic: { reason: "provider_error" } };

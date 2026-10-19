@@ -111,6 +111,14 @@ async function lookupMetalSlugWithDirectLegs(input) {
   return terminalOrFallback(primary, direct);
 }
 
+// Mirrors the single route: broker primary, provisional Coda validate secondary.
+async function lookupTeenPattiGoldWithDirectLegs(input) {
+  const primary = await lookupRapidApiGame("teen-patti-gold", input);
+  if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") return primary;
+  const direct = await lookupCodashopDirect("teen-patti-gold", input.playerId, "");
+  return terminalOrFallback(primary, direct);
+}
+
 // Mirrors the single route: Enka primary, GoPay four-server sweep only
 // when Enka is degraded. Unanimous invalid-credentials sweep = not_found.
 const ZZZ_GOPAY_SERVERS = ["prod_gf_us", "prod_gf_eu", "prod_gf_jp", "prod_gf_sg"];
@@ -303,7 +311,7 @@ export const BULK_GAMES = {
     notFoundCode: "TEEN_PATTI_GOLD_PLAYER_NOT_FOUND",
     fields: [{ key: "playerId", label: "Player ID", example: "100439992784" }],
     validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
-    lookup: async (input) => lookupRapidApiGame("teen-patti-gold", input),
+    lookup: async (input) => lookupTeenPattiGoldWithDirectLegs(input),
   }),
   jawaker: identityGame({
     gameLabel: "Jawaker",

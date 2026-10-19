@@ -124,7 +124,7 @@ rather than a key/gateway outage. The game classifier therefore accepts these va
   `envelope:data,error,msg,status|data:object:id,server,username`), so the retry
   targets HoK-class slowness and the message code targets Genshin-class degradation.
 
-## Point Blank, Dragon Raja, Metal Slug, and CODM numeric direct candidates
+## Point Blank, Dragon Raja, Metal Slug, CODM numeric, and TPG direct candidates
 
 Point Blank retains its keyed broker primary in single and bulk routes. Its
 CodaShop `POINT_BLANK` candidate is dormant unless
@@ -164,7 +164,16 @@ contract with the nickname at `roles[0].role` per three MIT adapters. The
 success shape is not live-verified; keep the flag unset until one consenting
 valid numeric UID resolves the expected nickname. Nicknames and shortIds
 never touch this leg — they stay on the WL direct leg.
-
+Teen Patti Gold keeps its keyed broker primary in single and bulk routes.
+Its CodaShop `TEEN_PATTI` validate candidate is dormant unless
+`CODASHOP_TEEN_PATTI_ENABLED=true`. The 2026-10-19 validation-only probe
+confirmed the bogus-PID gate (`errorCode:-100`, `errorMsg:"Invalid PID"`) is
+consistent across 8/12/14-digit PIDs on SG+US hosts, mapping to `not_found`
+in the existing classifier. Unlike Wave B games, TPG price-point ids are
+redacted in SSR, so this leg uses `/validate` (no tuple needed). The success
+shape is not live-verified; keep the flag unset until one consenting valid
+PID resolves the expected nickname. Bigo Live returned opaque empty `{}` for
+bogus IDs, so it has no leg — quarterly re-check only.
 ## Supercell lookups (`/api/lookup/{brawl-stars,clash-of-clans,clash-royale}`)
 
 Hardened primary/secondary chain per game (Phase 1): official direct host

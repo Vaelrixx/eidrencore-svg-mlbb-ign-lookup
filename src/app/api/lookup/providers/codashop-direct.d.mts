@@ -3,6 +3,9 @@ export type CodashopGameConfig = {
   country: string;
   requiresZone: boolean;
   source: string;
+  whiteLabelId?: string;
+  followCountryRedirect?: boolean;
+  enabledEnv?: string;
 };
 
 export declare const CODASHOP_GAMES: Record<string, CodashopGameConfig>;
