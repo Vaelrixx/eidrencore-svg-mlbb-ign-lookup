@@ -46,6 +46,15 @@ test("single route keeps the full additive MLBB chain", () => {
   }
 });
 
+test("identity-ledger hits are logged separately from provider health checks", () => {
+  const start = routeSrc.indexOf("if (ledgerHit) {");
+  const end = routeSrc.indexOf("\n  // Primary-first lookup", start);
+  assert.ok(start >= 0 && end > start, "ledger-hit region must be bounded");
+  const region = routeSrc.slice(start, end);
+  assert.ok(region.includes('source: "eidren_identity_ledger"'));
+  assert.ok(!region.includes('source: "mlbb_lookup_api"'));
+});
+
 test("bulk mirror keeps the RapidAPI broker leg for MLBB", () => {
   const region = lookupMlbbRegion();
   assert.ok(

@@ -228,7 +228,7 @@ export async function POST(request: NextRequest) {
     void persistLookupLog({
       status: "success",
       responseMs: Date.now() - requestStartedAt,
-      source: "mlbb_lookup_api",
+      source: "eidren_identity_ledger",
     });
     void recordIdentityLedgerHit("eidren_mlbb", playerKey);
     return NextResponse.json(
