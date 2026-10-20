@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { BULK_GAMES } from "../src/app/api/lookup/bulk-games.mjs";
 import { lookupRapidApiGame, rapidApiGamePath } from "../src/app/api/lookup/providers/rapidapi-games.mjs";
 
 const largeHonorOfKingsId = "17960996468644334037";
@@ -273,4 +275,63 @@ test("keeps the documented ambiguous can't-find message unavailable, not confirm
     },
   });
   assert.equal(JSON.stringify(result).includes(playerId), false);
+});
+
+test("GoPay-primary bulk routes use the matching RapidAPI route only after unavailability", async () => {
+  const previousFetch = globalThis.fetch;
+  const previousNewKey = process.env.RAPIDAPI_KEY_NEW;
+  const previousKey = process.env.RAPIDAPI_KEY;
+  const previousToken = process.env.RAPIDAPI_APP_TOKEN;
+  process.env.RAPIDAPI_KEY_NEW = "unit-test-key";
+  delete process.env.RAPIDAPI_KEY;
+  delete process.env.RAPIDAPI_APP_TOKEN;
+
+  try {
+    const cases = [
+      { slug: "pubg-mobile", playerId: "5204837421", code: "PUBGM", path: "/pubgm-global/5204837421", nickname: "PubgFallback" },
+      { slug: "free-fire", playerId: "1958604121", code: "FREEFIRE", path: "/free-fire/1958604121", nickname: "FreeFireFallback" },
+      { slug: "free-fire-global", playerId: "12341239", code: "FREEFIRE", path: "/ff-global/12341239", nickname: "GlobalFallback" },
+    ];
+    for (const fixture of cases) {
+      const calls = [];
+      globalThis.fetch = async (url, init) => {
+        const requestUrl = new URL(String(url));
+        calls.push(requestUrl);
+        if (requestUrl.hostname === "gopay.co.id") {
+          assert.equal(JSON.parse(init.body).code, fixture.code);
+          return new Response(JSON.stringify({ message: "temporarily unavailable" }), { status: 503 });
+        }
+        assert.equal(requestUrl.hostname, "id-game-checker.p.rapidapi.com");
+        assert.equal(requestUrl.pathname, fixture.path);
+        assert.equal(init.headers["x-rapidapi-key"], "unit-test-key");
+        return new Response(JSON.stringify({
+          success: true,
+          data: { game: fixture.slug, userId: fixture.playerId, username: fixture.nickname },
+        }), { status: 200 });
+      };
+
+      const result = await BULK_GAMES[fixture.slug].lookup({ playerId: fixture.playerId });
+      assert.deepEqual(result, {
+        kind: "success",
+        nickname: fixture.nickname,
+        source: "rapidapi_id_game_checker",
+      });
+      assert.deepEqual(calls.map(({ hostname }) => hostname), ["gopay.co.id", "id-game-checker.p.rapidapi.com"]);
+    }
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousNewKey === undefined) delete process.env.RAPIDAPI_KEY_NEW;
+    else process.env.RAPIDAPI_KEY_NEW = previousNewKey;
+    if (previousKey === undefined) delete process.env.RAPIDAPI_KEY;
+    else process.env.RAPIDAPI_KEY = previousKey;
+    if (previousToken === undefined) delete process.env.RAPIDAPI_APP_TOKEN;
+    else process.env.RAPIDAPI_APP_TOKEN = previousToken;
+  }
+});
+
+test("single lookup routes use the same GoPay-primary RapidAPI fallback helper", () => {
+  const source = readFileSync(new URL("../src/app/api/lookup/rapidapi-game-routes.ts", import.meta.url), "utf8");
+  assert.match(source, /resolveUnavailableFallback\(lookupGoPay, \(\) => lookupRapidApiGame\(providerGame, input\)\)/);
+  assert.match(source, /lookupFreeFireWithFallback\(input as RapidApiGameInput, providerGame\)/);
+  assert.match(source, /lookupPubgMobileWithFallback\(input as RapidApiGameInput\)/);
 });

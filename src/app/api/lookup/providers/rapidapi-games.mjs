@@ -32,8 +32,8 @@ export const RAPIDAPI_GAME_ROUTES = Object.freeze({
   // FC Mobile has no RapidAPI slug on the current key; the route entry keeps
   // the handler map total while the lookup itself runs on the keyless leg.
   "fc-mobile": Object.freeze({ slug: "fc-mobile", fields: ["playerId"] }),
-  // Free Fire key-ready (case 20261013-ffown): slugs docs-verified on the
-  // provider's own docs; primary ships when a direct key lands in Railway.
+  // Free Fire slugs are docs-verified; these routes are secondary to GoPay
+  // and run only when the matching GoPay lookup is unavailable.
   "free-fire": Object.freeze({ slug: "free-fire", fields: ["playerId"] }),
   "free-fire-global": Object.freeze({ slug: "ff-global", fields: ["playerId"] }),
   // Wave 1 expansion (slugs from the key's published endpoint list,

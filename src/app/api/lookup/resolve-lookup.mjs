@@ -55,6 +55,22 @@ export async function resolveLookupWithFallbacks(primaryLookup, fallbackLookups)
   };
 }
 
+export function terminalOrFallback(primary, fallback) {
+  if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") {
+    return primary;
+  }
+  if (fallback.kind === "success" || fallback.kind === "not_found" || fallback.kind === "rate_limited") {
+    return fallback;
+  }
+  return primary;
+}
+
+export async function resolveUnavailableFallback(primaryLookup, fallbackLookup) {
+  const primary = await primaryLookup();
+  if (primary.kind !== "unavailable") return primary;
+  return terminalOrFallback(primary, await fallbackLookup());
+}
+
 /**
  * Decide the route verdict from a completed resolution. Any confirmed
  * nickname wins; otherwise the primary's explicit not-found is authoritative

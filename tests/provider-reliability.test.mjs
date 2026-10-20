@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { classifyRapidApiResponse, lookupRapidApi } from "../src/app/api/lookup/providers/rapidapi.mjs";
-import { resolveLookupWithFallbacks, selectLookupVerdict } from "../src/app/api/lookup/resolve-lookup.mjs";
+import { resolveLookupWithFallbacks, resolveUnavailableFallback, selectLookupVerdict } from "../src/app/api/lookup/resolve-lookup.mjs";
 
 async function withRapidApiEnv(run, fetchImpl) {
   const previousNewKey = process.env.RAPIDAPI_KEY_NEW;
@@ -70,6 +70,33 @@ test("resolver keeps a confirmed primary and ignores fallback successes", async 
   assert.equal(result.confirmed, confirmedPrimary);
   assert.equal(fallbackCalls, 0);
   assert.deepEqual(result.fallbacks, []);
+});
+
+test("sequential fallback runs only on unavailable and preserves terminal outcomes", async () => {
+  const fallbackSuccess = { kind: "success", nickname: "Broker IGN", source: "rapidapi_id_game_checker" };
+  for (const primary of [
+    { kind: "success", nickname: "GoPay IGN", source: "gopay_games_validation" },
+    { kind: "not_found" },
+    { kind: "rate_limited" },
+  ]) {
+    let fallbackCalls = 0;
+    const result = await resolveUnavailableFallback(
+      async () => primary,
+      async () => { fallbackCalls += 1; return fallbackSuccess; },
+    );
+    assert.deepEqual(result, primary);
+    assert.equal(fallbackCalls, 0);
+  }
+
+  const primaryUnavailable = { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
+  assert.deepEqual(
+    await resolveUnavailableFallback(async () => primaryUnavailable, async () => fallbackSuccess),
+    fallbackSuccess,
+  );
+  assert.deepEqual(
+    await resolveUnavailableFallback(async () => primaryUnavailable, async () => ({ kind: "unavailable" })),
+    primaryUnavailable,
+  );
 });
 
 test("fallback resolver never treats unavailable or not-found as a nickname", async () => {

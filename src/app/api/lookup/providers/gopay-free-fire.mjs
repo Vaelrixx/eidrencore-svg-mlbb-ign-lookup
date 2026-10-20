@@ -14,8 +14,9 @@ class TransientUpstreamError extends Error {
 }
 
 /**
- * Free Fire via keyless GoPay Games (code FREEFIRE). Wired as the fallback
- * leg behind the keyed primary on both FF routes. Contract verified live
+ * Free Fire via keyless GoPay Games (code FREEFIRE). This remains primary;
+ * the game-matched RapidAPI route is secondary only on an unavailable result.
+ * Contract verified live
  * 2026-10-13 (re-verified at build time):
  * - docs sample 1958604115 -> 200 Success + real nickname
  * - bogus 000000000000001 -> 404 {"statusCode":404,"message":"Unknown User"}
