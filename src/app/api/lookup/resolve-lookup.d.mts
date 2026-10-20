@@ -4,6 +4,13 @@ export type LookupAttempt =
   | { kind: "rate_limited" }
   | { kind: "unavailable" };
 
+export function terminalOrFallback(primary: LookupAttempt, fallback: LookupAttempt): LookupAttempt;
+
+export function resolveUnavailableFallback(
+  primaryLookup: () => Promise<LookupAttempt>,
+  fallbackLookup: () => Promise<LookupAttempt>,
+): Promise<LookupAttempt>;
+
 export function resolveLookupWithFallbacks(
   primaryLookup: () => Promise<LookupAttempt>,
   fallbackLookups: Array<() => Promise<LookupAttempt>>,

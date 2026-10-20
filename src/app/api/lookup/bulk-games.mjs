@@ -25,7 +25,7 @@ import { lookupVolseverMlbb } from "./providers/volsever.mjs";
 import { lookupIsan } from "./providers/isan.mjs";
 import { lookupWhoPlays } from "./providers/whoplays.mjs";
 import { lookupGoPayGames } from "./providers/gopay-games.mjs";
-import { resolveLookupWithFallbacks, selectLookupVerdict } from "./resolve-lookup.mjs";
+import { resolveLookupWithFallbacks, resolveUnavailableFallback, selectLookupVerdict, terminalOrFallback } from "./resolve-lookup.mjs";
 import { CODM_IDENTITY_PATTERN, classifyCodmInput } from "./providers/codm-input.mjs";
 
 const numericId = /^\d{3,24}$/;
@@ -59,21 +59,15 @@ function validateFields(item, fields) {
   return input;
 }
 
-function terminalOrFallback(primary, fallback) {
-  if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") {
-    return primary;
-  }
-  if (fallback.kind === "success" || fallback.kind === "not_found" || fallback.kind === "rate_limited") {
-    return fallback;
-  }
-  return primary;
-}
-
 async function keyedWithGoPayFallback(game, input, gopayCode) {
   const primary = await lookupRapidApiGame(game, input);
   if (primary.kind === "success" || primary.kind === "not_found" || primary.kind === "rate_limited") return primary;
   const playerId = "playerId" in input ? input.playerId : "";
   return terminalOrFallback(primary, await lookupGoPayGameFallback(gopayCode, playerId));
+}
+
+async function lookupGoPayPrimaryWithRapidApiFallback(game, input, lookupGoPay) {
+  return resolveUnavailableFallback(lookupGoPay, () => lookupRapidApiGame(game, input));
 }
 
 // Mirrors the single route: keyed primary, then our own CodaShop
@@ -210,7 +204,11 @@ export const BULK_GAMES = {
     notFoundCode: "PUBG_PLAYER_NOT_FOUND",
     fields: [{ key: "playerId", label: "Character ID", example: "5204837417" }],
     validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
-    lookup: async (input) => lookupGoPayGameFallback("PUBGM", input.playerId),
+    lookup: async (input) => lookupGoPayPrimaryWithRapidApiFallback(
+      "pubg-mobile",
+      input,
+      () => lookupGoPayGameFallback("PUBGM", input.playerId),
+    ),
   }),
   "call-of-duty-mobile": identityGame({
     gameLabel: "Call of Duty: Mobile (Garena)",
@@ -339,7 +337,11 @@ export const BULK_GAMES = {
     notFoundCode: "FREE_FIRE_PLAYER_NOT_FOUND",
     fields: [{ key: "playerId", label: "UID", example: "1958604115" }],
     validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
-    lookup: async (input) => lookupGoPayFreeFire(input.playerId),
+    lookup: async (input) => lookupGoPayPrimaryWithRapidApiFallback(
+      "free-fire",
+      input,
+      () => lookupGoPayFreeFire(input.playerId),
+    ),
   }),
   "free-fire-global": identityGame({
     gameLabel: "Free Fire Global",
@@ -347,7 +349,11 @@ export const BULK_GAMES = {
     notFoundCode: "FREE_FIRE_GLOBAL_PLAYER_NOT_FOUND",
     fields: [{ key: "playerId", label: "UID", example: "12341234" }],
     validate: (item) => validateFields(item, [{ key: "playerId", validate: numericField }]),
-    lookup: async (input) => lookupGoPayFreeFire(input.playerId),
+    lookup: async (input) => lookupGoPayPrimaryWithRapidApiFallback(
+      "free-fire-global",
+      input,
+      () => lookupGoPayFreeFire(input.playerId),
+    ),
   }),
   "bigo-live": identityGame({
     gameLabel: "Bigo Live",

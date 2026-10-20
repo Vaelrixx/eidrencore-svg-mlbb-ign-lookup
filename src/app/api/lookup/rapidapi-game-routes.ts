@@ -9,6 +9,7 @@ import { lookupJawakerVerifyUser } from "./providers/jawaker-verify-user.mjs";
 import { lookupCodashopDirect } from "./providers/codashop-direct.mjs";
 import { lookupCodashopInitpay } from "./providers/codashop-initpay.mjs";
 import { CODM_IDENTITY_PATTERN, classifyCodmInput } from "./providers/codm-input.mjs";
+import { resolveUnavailableFallback, type LookupAttempt } from "./resolve-lookup.mjs";
 
 const numericId = /^\d{3,24}$/;
 const riotName = /^[\p{L}\p{N} _.'-]{3,16}$/u;
@@ -145,27 +146,35 @@ async function lookupTeenPattiGoldWithDirectLeg(input: RapidApiGameInput) {
   return primary;
 }
 
-/**
- * Free Fire direct leg: keyless GoPay FREEFIRE only, no keyed leg in front
- * (self-reliant: zero third-party runtime). Live-verified 2026-10-13 and
- * re-verified 2026-10-17 (docs sample 1958604115 resolves; bogus IDs give
- * the explicit Unknown User 404 that gates not-found).
- */
-async function lookupFreeFireDirect(input: RapidApiGameInput) {
+async function lookupGoPayPrimaryWithRapidApiFallback(
+  providerGame: RapidApiGame,
+  input: RapidApiGameInput,
+  lookupGoPay: () => Promise<LookupAttempt>,
+) {
+  return resolveUnavailableFallback(lookupGoPay, () => lookupRapidApiGame(providerGame, input));
+}
+
+/** GoPay stays primary; the game-matched RapidAPI route runs only when it is unavailable. */
+async function lookupFreeFireWithFallback(input: RapidApiGameInput, providerGame: RapidApiGame) {
   const playerId = "playerId" in input ? input.playerId : "";
-  return lookupGoPayFreeFire(playerId);
+  return lookupGoPayPrimaryWithRapidApiFallback(
+    providerGame,
+    input,
+    () => lookupGoPayFreeFire(playerId),
+  );
 }
 
 /**
- * PUBG Mobile direct leg: keyless GoPay PUBGM only, no keyed leg in front
- * (self-reliant: zero third-party runtime). Live-verified 2026-10-17
- * (Global sample 5204837417 resolves to "Agus๛haji"; bogus IDs give the
- * explicit Invalid user account 404 that gates not-found). Never use the
- * PUBG_MOBILE code (echoes the ID); the echo guard catches it anyway.
+ * PUBG Mobile uses the game-matched broker only when GoPay is unavailable.
+ * Never use the PUBG_MOBILE GoPay code, which echoes the queried ID.
  */
-async function lookupPubgMobileDirect(input: RapidApiGameInput) {
+async function lookupPubgMobileWithFallback(input: RapidApiGameInput) {
   const playerId = "playerId" in input ? input.playerId : "";
-  return lookupGoPayGameFallback("PUBGM", playerId);
+  return lookupGoPayPrimaryWithRapidApiFallback(
+    "pubg-mobile",
+    input,
+    () => lookupGoPayGameFallback("PUBGM", playerId),
+  );
 }
 
 /**
@@ -255,7 +264,7 @@ const configs: Record<string, { providerGame?: RapidApiGame; config: Omit<IdGame
       gameLabel: "PUBG Mobile Global",
       publicSource: "eidren_pubg_mobile",
       notFoundCode: "PUBG_PLAYER_NOT_FOUND",
-      internalProvider: "eidren_pubg_mobile_direct",
+      internalProvider: "eidren_pubg_mobile_chain",
       fields: [{ key: "playerId", label: "Character ID", example: "5204837417", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
@@ -403,7 +412,7 @@ const configs: Record<string, { providerGame?: RapidApiGame; config: Omit<IdGame
       gameLabel: "Free Fire",
       publicSource: "eidren_free_fire",
       notFoundCode: "FREE_FIRE_PLAYER_NOT_FOUND",
-      internalProvider: "eidren_free_fire_direct",
+      internalProvider: "eidren_free_fire_chain",
       fields: [{ key: "playerId", label: "UID", example: "1958604115", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
@@ -414,7 +423,7 @@ const configs: Record<string, { providerGame?: RapidApiGame; config: Omit<IdGame
       gameLabel: "Free Fire Global",
       publicSource: "eidren_free_fire_global",
       notFoundCode: "FREE_FIRE_GLOBAL_PLAYER_NOT_FOUND",
-      internalProvider: "eidren_free_fire_global_direct",
+      internalProvider: "eidren_free_fire_global_chain",
       fields: [{ key: "playerId", label: "UID", example: "12341234", minLength: 3, maxLength: 24, pattern: numericId }],
     },
   },
@@ -688,10 +697,10 @@ export function createRapidApiGameHandler(game: keyof typeof configs) {
       }
       const providerGame = entry.providerGame;
       if (!providerGame) return { kind: "unavailable", diagnostic: { reason: "missing_route_config" } };
-      // Free Fire + PUBG Mobile: direct keyless GoPay legs, no keyed primary
-      // (self-reliant: zero third-party runtime). Same FC Mobile precedent.
+      // GoPay-primary chains retain their existing direct legs; RapidAPI is
+      // called only when GoPay is unavailable. FC Mobile remains direct-only.
       if (providerGame === "free-fire" || providerGame === "free-fire-global") {
-        return lookupFreeFireDirect(input as RapidApiGameInput);
+        return lookupFreeFireWithFallback(input as RapidApiGameInput, providerGame);
       }
       if (providerGame === "genshin-impact") {
         return lookupGenshinWithFallback(input as RapidApiGameInput);
@@ -700,7 +709,7 @@ export function createRapidApiGameHandler(game: keyof typeof configs) {
         return lookupAovWithDirectLegs(input as RapidApiGameInput);
       }
       if (providerGame === "pubg-mobile") {
-        return lookupPubgMobileDirect(input as RapidApiGameInput);
+        return lookupPubgMobileWithFallback(input as RapidApiGameInput);
       }
       if (providerGame === "dragon-raja") {
         return lookupDragonRajaWithDirectLeg(input as RapidApiGameInput);
