@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { bulkGameSlugs, BULK_GAMES } from "../bulk-games.mjs";
+import { normalizeHealthSource } from "../health-source.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,10 +36,11 @@ export async function GET() {
 
   const bySource = new Map<string, { total: number; errors: number }>();
   for (const row of rows) {
-    const bucket = bySource.get(row.source) || { total: 0, errors: 0 };
+    const source = normalizeHealthSource(row.source);
+    const bucket = bySource.get(source) || { total: 0, errors: 0 };
     bucket.total += 1;
     if (row.status === "upstream_error" || row.status === "rate_limited") bucket.errors += 1;
-    bySource.set(row.source, bucket);
+    bySource.set(source, bucket);
   }
 
   const games: Record<string, { status: "operational" | "degraded" | "unknown"; checks: number; errorRate: number | null }> = {};
