@@ -46,7 +46,7 @@ async function resolveItem(game: string, raw: BulkItemInput, index: number, requ
   const playerKey = ledgerPlayerKey(input);
   const ledgerHit = await readIdentityLedger(entry.publicSource, playerKey);
   if (ledgerHit) {
-    void persistLookupLog({ status: "success", responseMs: Date.now() - lookupStartedAt, source: entry.publicSource });
+    void persistLookupLog({ status: "success", responseMs: Date.now() - lookupStartedAt, source: "eidren_identity_ledger" });
     void recordIdentityLedgerHit(entry.publicSource, playerKey);
     return {
       index, game, status: "verified", nickname: ledgerHit.nickname, input,

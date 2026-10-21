@@ -217,7 +217,7 @@ export function createGameLookupHandler(config: GameLookupConfig) {
       void persistLookupLog({
         status: "success",
         responseMs: Date.now() - requestStartedAt,
-        source: config.logSource,
+        source: "eidren_identity_ledger",
       });
       void recordIdentityLedgerHit(config.publicSource, playerKey);
       return NextResponse.json(

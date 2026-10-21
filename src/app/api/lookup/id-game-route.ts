@@ -133,7 +133,7 @@ export function createIdGameLookupHandler(config: IdGameLookupConfig) {
     const ledgerHit = await readIdentityLedger(config.publicSource, playerKey);
     if (ledgerHit) {
       await recordDeveloperRequest({ ...developerAuth, endpoint: config.endpoint, requestId, status: 200, responseMs: Date.now() - requestStartedAt });
-      void persistLookupLog({ status: "success", responseMs: Date.now() - requestStartedAt, source: config.publicSource });
+      void persistLookupLog({ status: "success", responseMs: Date.now() - requestStartedAt, source: "eidren_identity_ledger" });
       void recordIdentityLedgerHit(config.publicSource, playerKey);
       return NextResponse.json({
         success: true,
