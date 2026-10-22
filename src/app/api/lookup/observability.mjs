@@ -1,7 +1,7 @@
 import { performance } from "node:perf_hooks";
 
 const OUTCOMES = new Set(["success", "not_found", "rate_limited", "unavailable"]);
-const DIAGNOSTIC_REASONS = new Set(["missing_config", "invalid_input", "http_error", "network_or_timeout", "unrecognized_response", "provider_error", "identity_echo"]);
+const DIAGNOSTIC_REASONS = new Set(["missing_config", "invalid_input", "http_error", "network_or_timeout", "unrecognized_response", "provider_error", "identity_echo", "quota_exhausted"]);
 const RESPONSE_KINDS = new Set(["id_game_checker_schema", "nested_status_error", "gateway_message_json", "enka_player_schema", "enka_error_schema", "other_json_object", "json_array", "empty_or_non_json"]);
 const MESSAGE_CODES = new Set([
   "absent", "unlisted", "id_found", "id_not_found", "no_content_0", "no_content", "no_content_n",

@@ -125,6 +125,23 @@ test("identity echo telemetry is allowlisted and excludes the compared player ID
   assert.equal(lines[0].includes("comparedValue"), false);
 });
 
+test("quota exhaustion telemetry surfaces the daily-cap state", async () => {
+  const lines = [];
+  await observeProvider({
+    requestId: "req-quota-exhausted",
+    provider: "volsever_game_checker",
+    lookup: async () => ({
+      kind: "rate_limited",
+      diagnostic: { reason: "quota_exhausted", statusCode: 429 },
+    }),
+    logger: (line) => lines.push(line),
+  });
+
+  const event = JSON.parse(lines[0]);
+  assert.equal(event.outcome, "rate_limited");
+  assert.equal(event.failureReason, "quota_exhausted");
+  assert.equal(event.upstreamStatus, 429);
+});
 
 test("provider response kind telemetry logs only an allowlisted schema label", async () => {
   const lines = [];
