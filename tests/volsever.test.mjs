@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { classifyVolseverResponse, lookupVolseverMlbb } from "../src/app/api/lookup/providers/volsever.mjs";
+import { VOLSEVER_GAME_ROUTES, classifyVolseverResponse, lookupVolseverGame, lookupVolseverMlbb } from "../src/app/api/lookup/providers/volsever.mjs";
 
 test("classifies only Volsever's documented confirmed MLBB envelope as success", () => {
   assert.deepEqual(classifyVolseverResponse(200, {
@@ -59,4 +59,43 @@ test("returns missing_config without a Volsever key and rejects malformed IDs be
     if (previousKey === undefined) delete process.env.VOLSEVER_API_KEY;
     else process.env.VOLSEVER_API_KEY = previousKey;
   }
+});
+
+test("generic leg calls the registered gateway slug without a zone by default", async () => {
+  let capturedUrl;
+  const result = await lookupVolseverGame("pubg-mobile", "5920831844", {
+    apiKey: "test-volsever-key",
+    fetchImpl: async (url) => {
+      capturedUrl = new URL(String(url));
+      return new Response(JSON.stringify({
+        status: true, code: 200, message: "ID Found",
+        data: { game: "PUBG Mobile 3 (Global)", username: "PubgPlayer", user_id: "5920831844", zone: null },
+      }), { status: 200 });
+    },
+  });
+  assert.equal(capturedUrl.pathname, "/proxy/api/game/pubg-mobile-global");
+  assert.equal(capturedUrl.searchParams.get("id"), "5920831844");
+  assert.equal(capturedUrl.searchParams.has("zone"), false);
+  assert.deepEqual(result, { kind: "success", nickname: "PubgPlayer", source: "volsever_game_checker" });
+});
+
+test("generic leg rejects unregistered games and bad inputs before any fetch", async () => {
+  let fetchCalled = false;
+  const spy = async () => { fetchCalled = true; throw new Error("must not fetch"); };
+  assert.deepEqual(await lookupVolseverGame("teen-patti-gold", "100439992784", { apiKey: "t", fetchImpl: spy }), {
+    kind: "unavailable", diagnostic: { reason: "invalid_input" },
+  });
+  assert.deepEqual(await lookupVolseverGame("pubg-mobile", "  ", { apiKey: "t", fetchImpl: spy }), {
+    kind: "unavailable", diagnostic: { reason: "invalid_input" },
+  });
+  assert.equal(fetchCalled, false);
+});
+
+test("registry covers only live-probed gateway routes", () => {
+  assert.equal(VOLSEVER_GAME_ROUTES["pubg-mobile"].slug, "pubg-mobile-global");
+  assert.equal(VOLSEVER_GAME_ROUTES["call-of-duty-mobile"].slug, "codm-garena");
+  assert.equal(VOLSEVER_GAME_ROUTES["free-fire"].slug, "freefire");
+  assert.ok(!("teen-patti-gold" in VOLSEVER_GAME_ROUTES));
+  assert.ok(!("fc-mobile" in VOLSEVER_GAME_ROUTES));
+  assert.ok(!("metal-slug" in VOLSEVER_GAME_ROUTES));
 });

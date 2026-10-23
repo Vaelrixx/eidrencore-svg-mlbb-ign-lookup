@@ -10,6 +10,7 @@ import { lookupCodashopDirect } from "./providers/codashop-direct.mjs";
 import { lookupCodashopInitpay } from "./providers/codashop-initpay.mjs";
 import { CODM_IDENTITY_PATTERN, classifyCodmInput } from "./providers/codm-input.mjs";
 import { resolveUnavailableFallback, type LookupAttempt } from "./resolve-lookup.mjs";
+import { VOLSEVER_GAME_ROUTES, lookupVolseverGame } from "./providers/volsever.mjs";
 
 const numericId = /^\d{3,24}$/;
 const riotName = /^[\p{L}\p{N} _.'-]{3,16}$/u;
@@ -22,6 +23,27 @@ const supercellTag = /^#?[0289PYLQGRJCUV]{3,20}$/i;
 const uniteTrainerId = /^[A-Za-z0-9]{5,12}$/;
 // Point Blank: Zepetto account username (top-up sites label it "ID Zepetto").
 const pointBlankId = /^[A-Za-z0-9][A-Za-z0-9_.@-]{2,31}$/;
+
+/**
+ * Volsever last resort: runs the existing chain first; only when it is
+ * unavailable AND the game has a live-probed Volsever route, the Volsever
+ * leg runs. Unregistered games skip it with zero network calls.
+ */
+async function withVolseverLastResort(
+  game: string,
+  input: RapidApiGameInput,
+  runChain: () => Promise<LookupAttempt>,
+): Promise<LookupAttempt> {
+  const chained = await runChain();
+  if (chained.kind !== "unavailable" || !(game in VOLSEVER_GAME_ROUTES)) return chained;
+  const playerId = "playerId" in input && typeof input.playerId === "string" ? input.playerId : "";
+  const server = "server" in input && typeof input.server === "string" ? input.server : "";
+  const attempt = (await lookupVolseverGame(game, playerId, server ? { zone: server } : {})) as LookupAttempt;
+  if (attempt.kind === "success" || attempt.kind === "not_found" || attempt.kind === "rate_limited") {
+    return attempt;
+  }
+  return chained;
+}
 
 /**
  * Genshin chain: keyed primary first, then the keyless showcase fallback.
@@ -681,62 +703,64 @@ export function createRapidApiGameHandler(game: keyof typeof configs) {
   const config: IdGameLookupConfig = {
     ...entry.config,
     lookup: async (input) => {
-      if (game === "honkai-star-rail") {
-        return lookupEnkaIdentity("hsr", (input as { playerId: string }).playerId);
-      }
-      if (game === "zenless-zone-zero") {
-        return lookupZzzWithFallback((input as { playerId: string }).playerId);
-      }
-      if (game === "8-ball-pool") {
-        const playerId = "playerId" in input ? (input as { playerId: string }).playerId : "";
-        return lookupCodashopInitpay("8-ball-pool", playerId);
-      }
-      if (game === "super-sus") {
-        const playerId = "playerId" in input ? (input as { playerId: string }).playerId : "";
-        return lookupCodashopInitpay("super-sus", playerId);
-      }
-      const providerGame = entry.providerGame;
-      if (!providerGame) return { kind: "unavailable", diagnostic: { reason: "missing_route_config" } };
-      // GoPay-primary chains retain their existing direct legs; RapidAPI is
-      // called only when GoPay is unavailable. FC Mobile remains direct-only.
-      if (providerGame === "free-fire" || providerGame === "free-fire-global") {
-        return lookupFreeFireWithFallback(input as RapidApiGameInput, providerGame);
-      }
-      if (providerGame === "genshin-impact") {
-        return lookupGenshinWithFallback(input as RapidApiGameInput);
-      }
-      if (providerGame === "arena-of-valor") {
-        return lookupAovWithDirectLegs(input as RapidApiGameInput);
-      }
-      if (providerGame === "pubg-mobile") {
-        return lookupPubgMobileWithFallback(input as RapidApiGameInput);
-      }
-      if (providerGame === "dragon-raja") {
-        return lookupDragonRajaWithDirectLeg(input as RapidApiGameInput);
-      }
-      if (providerGame === "point-blank") {
-        return lookupPointBlankWithDirectLeg(input as RapidApiGameInput);
-      }
-      if (providerGame === "metal-slug") {
-        return lookupMetalSlugWithDirectLeg(input as RapidApiGameInput);
-      }
-      if (providerGame === "teen-patti-gold") {
-        return lookupTeenPattiGoldWithDirectLeg(input as RapidApiGameInput);
-      }
-      if (providerGame === "pubg-lite") {
-        return lookupWithGoPayFallback("pubg-lite", input as RapidApiGameInput, "PUBG_ID");
-      }
-      if (providerGame === "jawaker") {
-        return lookupJawakerWithFallback(input as RapidApiGameInput);
-      }
-      if (providerGame === "fc-mobile") {
-        const playerId = "playerId" in input ? (input as { playerId: string }).playerId : "";
-        return lookupFcMobile(playerId);
-      }
-      if (providerGame === "cod-mobile-garena") {
-        return lookupCodmSplit(input as RapidApiGameInput);
-      }
-      return lookupRapidApiGame(providerGame, input as RapidApiGameInput);
+      return withVolseverLastResort(game, input as RapidApiGameInput, async () => {
+        if (game === "honkai-star-rail") {
+          return lookupEnkaIdentity("hsr", (input as { playerId: string }).playerId);
+        }
+        if (game === "zenless-zone-zero") {
+          return lookupZzzWithFallback((input as { playerId: string }).playerId);
+        }
+        if (game === "8-ball-pool") {
+          const playerId = "playerId" in input ? (input as { playerId: string }).playerId : "";
+          return lookupCodashopInitpay("8-ball-pool", playerId);
+        }
+        if (game === "super-sus") {
+          const playerId = "playerId" in input ? (input as { playerId: string }).playerId : "";
+          return lookupCodashopInitpay("super-sus", playerId);
+        }
+        const providerGame = entry.providerGame;
+        if (!providerGame) return { kind: "unavailable", diagnostic: { reason: "missing_route_config" } };
+        // GoPay-primary chains retain their existing direct legs; RapidAPI is
+        // called only when GoPay is unavailable. FC Mobile remains direct-only.
+        if (providerGame === "free-fire" || providerGame === "free-fire-global") {
+          return lookupFreeFireWithFallback(input as RapidApiGameInput, providerGame);
+        }
+        if (providerGame === "genshin-impact") {
+          return lookupGenshinWithFallback(input as RapidApiGameInput);
+        }
+        if (providerGame === "arena-of-valor") {
+          return lookupAovWithDirectLegs(input as RapidApiGameInput);
+        }
+        if (providerGame === "pubg-mobile") {
+          return lookupPubgMobileWithFallback(input as RapidApiGameInput);
+        }
+        if (providerGame === "dragon-raja") {
+          return lookupDragonRajaWithDirectLeg(input as RapidApiGameInput);
+        }
+        if (providerGame === "point-blank") {
+          return lookupPointBlankWithDirectLeg(input as RapidApiGameInput);
+        }
+        if (providerGame === "metal-slug") {
+          return lookupMetalSlugWithDirectLeg(input as RapidApiGameInput);
+        }
+        if (providerGame === "teen-patti-gold") {
+          return lookupTeenPattiGoldWithDirectLeg(input as RapidApiGameInput);
+        }
+        if (providerGame === "pubg-lite") {
+          return lookupWithGoPayFallback("pubg-lite", input as RapidApiGameInput, "PUBG_ID");
+        }
+        if (providerGame === "jawaker") {
+          return lookupJawakerWithFallback(input as RapidApiGameInput);
+        }
+        if (providerGame === "fc-mobile") {
+          const playerId = "playerId" in input ? (input as { playerId: string }).playerId : "";
+          return lookupFcMobile(playerId);
+        }
+        if (providerGame === "cod-mobile-garena") {
+          return lookupCodmSplit(input as RapidApiGameInput);
+        }
+        return lookupRapidApiGame(providerGame, input as RapidApiGameInput);
+      });
     },
   };
   return createIdGameLookupHandler(config);

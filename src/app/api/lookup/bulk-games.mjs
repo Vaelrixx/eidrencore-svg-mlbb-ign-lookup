@@ -21,7 +21,7 @@ import { lookupJawakerVerifyUser } from "./providers/jawaker-verify-user.mjs";
 import { lookupCodashopDirect } from "./providers/codashop-direct.mjs";
 import { lookupCodashopInitpay } from "./providers/codashop-initpay.mjs";
 import { lookupRapidApi } from "./providers/rapidapi.mjs";
-import { lookupVolseverMlbb } from "./providers/volsever.mjs";
+import { VOLSEVER_GAME_ROUTES, lookupVolseverGame, lookupVolseverMlbb } from "./providers/volsever.mjs";
 import { lookupIsan } from "./providers/isan.mjs";
 import { lookupWhoPlays } from "./providers/whoplays.mjs";
 import { lookupGoPayGames } from "./providers/gopay-games.mjs";
@@ -68,6 +68,20 @@ async function keyedWithGoPayFallback(game, input, gopayCode) {
 
 async function lookupGoPayPrimaryWithRapidApiFallback(game, input, lookupGoPay) {
   return resolveUnavailableFallback(lookupGoPay, () => lookupRapidApiGame(game, input));
+}
+
+// Mirrors the single route: existing chain first, Volsever only when the
+// chain is unavailable and the game has a live-probed Volsever route.
+async function withVolseverLastResort(game, input, runChain) {
+  const chained = await runChain();
+  if (chained.kind !== "unavailable" || !(game in VOLSEVER_GAME_ROUTES)) return chained;
+  const playerId = typeof input?.playerId === "string" ? input.playerId : "";
+  const server = typeof input?.server === "string" ? input.server : "";
+  const attempt = await lookupVolseverGame(game, playerId, server ? { zone: server } : {});
+  if (attempt.kind === "success" || attempt.kind === "not_found" || attempt.kind === "rate_limited") {
+    return attempt;
+  }
+  return chained;
 }
 
 // Mirrors the single route: keyed primary, then our own CodaShop
@@ -181,7 +195,7 @@ export const BULK_MAX_ITEMS = 100;
 export const BULK_MAX_BYTES = 131072;
 export const BULK_CONCURRENCY = 10;
 
-export const BULK_GAMES = {
+const BULK_GAMES_RAW = {
   mlbb: {
     kind: "identity",
     gameLabel: "Mobile Legends: Bang Bang",
@@ -541,6 +555,17 @@ export const BULK_GAMES = {
     lookup: async (input) => lookupPointBlankWithDirectLegs(input),
   }),
 };
+
+// Every identity-game bulk lookup mirrors its single route: existing chain
+// first, Volsever only as last resort on registered games. Tag-kind
+// (Supercell) entries keep their official-API-only lookup.
+export const BULK_GAMES = Object.fromEntries(
+  Object.entries(BULK_GAMES_RAW).map(([slug, entry]) => {
+    if (entry?.kind !== "identity" || typeof entry.lookup !== "function") return [slug, entry];
+    const runChain = entry.lookup;
+    return [slug, { ...entry, lookup: (input) => withVolseverLastResort(slug, input, () => runChain(input)) }];
+  }),
+);
 
 export function bulkGameSlugs() {
   return Object.keys(BULK_GAMES);
