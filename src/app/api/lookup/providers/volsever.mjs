@@ -42,6 +42,13 @@ export const VOLSEVER_GAME_ROUTES = Object.freeze({
 export function classifyVolseverResponse(httpStatus, payload, playerId) {
   const root = payload && typeof payload === "object" && !Array.isArray(payload) ? payload : null;
   if (httpStatus === 429) {
+    // Re-probe 2026-10-22: the key carries a 45 req/day service cap whose
+    // envelope is {error:"SERVICE_LIMIT_EXCEEDED", limitType:"daily"},
+    // distinct from the 15 req/min anti-spam 429. Surface the daily-cap
+    // state so ops reads it as degraded-fallback, not provider outage.
+    if (root?.error === "SERVICE_LIMIT_EXCEEDED" && root?.limitType === "daily") {
+      return { kind: "rate_limited", diagnostic: { reason: "quota_exhausted", statusCode: 429 } };
+    }
     return { kind: "rate_limited", diagnostic: { reason: "http_error", statusCode: 429 } };
   }
   // Live-verified 2026-10-19: bogus MLBB IDs return exactly

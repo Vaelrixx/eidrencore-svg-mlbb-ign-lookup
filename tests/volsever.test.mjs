@@ -23,6 +23,21 @@ test("does not call a 404 or an echoed ID a verified missing/success verdict", (
   }, "12345678").kind, "unavailable");
 });
 
+test("distinguishes daily-quota exhaustion from anti-spam rate limiting", () => {
+  assert.deepEqual(classifyVolseverResponse(429, {
+    status: false, code: 429, error: "SERVICE_LIMIT_EXCEEDED", limitType: "daily",
+    message: "Service daily limit exceeded for Game ID Checker (45 requests/daily)",
+  }, "12345678"), {
+    kind: "rate_limited", diagnostic: { reason: "quota_exhausted", statusCode: 429 },
+  });
+  assert.deepEqual(classifyVolseverResponse(429, {
+    status: false, code: 429, error: "ANTI_SPAM_LIMIT_EXCEEDED",
+    message: "Anti-spam limit exceeded (15 req/minute)",
+  }, "12345678"), {
+    kind: "rate_limited", diagnostic: { reason: "http_error", statusCode: 429 },
+  });
+});
+
 test("sends MLBB player and zone values with the documented X-API-KEY header", async () => {
   let capturedUrl;
   let capturedInit;
