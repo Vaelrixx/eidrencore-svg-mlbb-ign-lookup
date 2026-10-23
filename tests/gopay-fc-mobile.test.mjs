@@ -57,3 +57,19 @@ test("non-string IDs and network failures degrade without leaking details", asyn
   assert.deepEqual(net, { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } });
   assert.equal(JSON.stringify(net).includes("private socket"), false);
 });
+
+test("rate-limited outcomes are returned but never cached", async () => {
+  const cache = createProviderCache();
+  let calls = 0;
+  const fetchImpl = async () => {
+    calls += 1;
+    if (calls === 1) return new Response(JSON.stringify({ message: "slow" }), { status: 429 });
+    return new Response(JSON.stringify(valid), { status: 200 });
+  };
+  const first = await lookupFcMobile("1856150661662899105", { fetchImpl, cache });
+  assert.equal(first.kind, "rate_limited");
+  const second = await lookupFcMobile("1856150661662899105", { fetchImpl, cache });
+  assert.equal(second.kind, "success");
+  assert.equal(second.nickname, "FcPlayer");
+  assert.equal(calls, 2);
+});
