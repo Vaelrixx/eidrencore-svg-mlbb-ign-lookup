@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 const WINDOW_MINUTES = 60;
 const MIN_SAMPLES = 3;
 
-type LogRow = { status: string; source: string };
+type LogRow = { status: string; source: string; failure_reason: string | null };
 
 /**
  * Public per-game health rollup from the last hour of lookup logs.
@@ -22,7 +22,7 @@ export async function GET() {
   try {
     const { data, error } = await createAdminClient()
       .from("lookup_logs")
-      .select("status,source")
+      .select("status,source,failure_reason")
       .gte("created_at", since)
       .limit(5000);
     if (error) throw error;
@@ -34,21 +34,27 @@ export async function GET() {
     );
   }
 
-  const bySource = new Map<string, { total: number; errors: number }>();
+  const bySource = new Map<string, { total: number; errors: number; quotaExhausted: number }>();
   for (const row of rows) {
     const source = normalizeHealthSource(row.source);
-    const bucket = bySource.get(source) || { total: 0, errors: 0 };
+    const bucket = bySource.get(source) || { total: 0, errors: 0, quotaExhausted: 0 };
     bucket.total += 1;
-    if (row.status === "upstream_error" || row.status === "rate_limited") bucket.errors += 1;
+    // Daily-quota exhaustion is a degraded-fallback signal, not a game
+    // outage: count it separately and keep it out of the error rate.
+    if (row.status === "rate_limited" && row.failure_reason === "quota_exhausted") {
+      bucket.quotaExhausted += 1;
+    } else if (row.status === "upstream_error" || row.status === "rate_limited") {
+      bucket.errors += 1;
+    }
     bySource.set(source, bucket);
   }
 
-  const games: Record<string, { status: "operational" | "degraded" | "unknown"; checks: number; errorRate: number | null }> = {};
+  const games: Record<string, { status: "operational" | "degraded" | "unknown"; checks: number; errorRate: number | null; quotaExhausted: boolean; quotaExhaustedChecks: number }> = {};
   for (const slug of bulkGameSlugs()) {
     const entry = BULK_GAMES[slug as keyof typeof BULK_GAMES] as { publicSource: string };
-    const bucket = bySource.get(entry.publicSource) || { total: 0, errors: 0 };
+    const bucket = bySource.get(entry.publicSource) || { total: 0, errors: 0, quotaExhausted: 0 };
     if (bucket.total < MIN_SAMPLES) {
-      games[slug] = { status: "unknown", checks: bucket.total, errorRate: null };
+      games[slug] = { status: "unknown", checks: bucket.total, errorRate: null, quotaExhausted: bucket.quotaExhausted > 0, quotaExhaustedChecks: bucket.quotaExhausted };
       continue;
     }
     const errorRate = bucket.errors / bucket.total;
@@ -56,6 +62,8 @@ export async function GET() {
       status: errorRate >= 0.5 ? "degraded" : "operational",
       checks: bucket.total,
       errorRate: Math.round(errorRate * 1000) / 1000,
+      quotaExhausted: bucket.quotaExhausted > 0,
+      quotaExhaustedChecks: bucket.quotaExhausted,
     };
   }
 

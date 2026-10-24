@@ -152,6 +152,21 @@ test("unknown log statuses and sources cannot inject arbitrary values", async ()
   assert.equal(captured, undefined);
 });
 
+test("allowlisted failure reasons persist; anything else is omitted", async () => {
+  const bodies = [];
+  const fetchImpl = async (_url, init) => {
+    bodies.push(JSON.parse(init.body));
+    return new Response(null, { status: 201 });
+  };
+  await persistLookupLog({ status: "rate_limited", responseMs: 5, source: "eidren_valorant", failureReason: "quota_exhausted" }, { env: baseEnv, fetchImpl });
+  await persistLookupLog({ status: "rate_limited", responseMs: 5, source: "eidren_valorant", failureReason: "SECRET_REASON" }, { env: baseEnv, fetchImpl });
+  await persistLookupLog({ status: "rate_limited", responseMs: 5, source: "eidren_valorant" }, { env: baseEnv, fetchImpl });
+  assert.deepEqual(bodies[0], { status: "rate_limited", response_ms: 5, source: "eidren_valorant", failure_reason: "quota_exhausted" });
+  assert.deepEqual(bodies[1], { status: "rate_limited", response_ms: 5, source: "eidren_valorant" });
+  assert.deepEqual(bodies[2], { status: "rate_limited", response_ms: 5, source: "eidren_valorant" });
+  assert.equal(JSON.stringify(bodies).includes("SECRET"), false);
+});
+
 test("playground limiter stores only an HMAC of the account and uses a daily window", async () => {
   let body;
   const result = await enforcePlaygroundLimit("11111111-2222-3333-4444-555555555555", {

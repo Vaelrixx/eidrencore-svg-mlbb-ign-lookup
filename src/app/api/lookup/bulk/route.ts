@@ -78,14 +78,14 @@ async function resolveItem(game: string, raw: BulkItemInput, index: number, requ
     };
   }
   if (attempt.kind === "not_found") {
-    void persistLookupLog({ status: "not_found", responseMs: Date.now() - lookupStartedAt, source: entry.publicSource });
+    void persistLookupLog({ status: "not_found", responseMs: Date.now() - lookupStartedAt, source: entry.publicSource, failureReason: attempt.diagnostic?.reason });
     return { index, game, status: "not_found", code: entry.notFoundCode, error: `No ${entry.gameLabel} account was found for item ${index}.` };
   }
   if (attempt.kind === "rate_limited") {
-    void persistLookupLog({ status: "rate_limited", responseMs: Date.now() - lookupStartedAt, source: entry.publicSource });
+    void persistLookupLog({ status: "rate_limited", responseMs: Date.now() - lookupStartedAt, source: entry.publicSource, failureReason: attempt.diagnostic?.reason });
     return { index, game, status: "rate_limited", code: "SERVICE_RATE_LIMIT", error: `Eidren is rate-limiting ${entry.gameLabel} requests right now. Retry item ${index} shortly.` };
   }
-  void persistLookupLog({ status: "upstream_error", responseMs: Date.now() - lookupStartedAt, source: entry.publicSource });
+  void persistLookupLog({ status: "upstream_error", responseMs: Date.now() - lookupStartedAt, source: entry.publicSource, failureReason: attempt.diagnostic?.reason });
   return { index, game, status: "unavailable", code: "SERVICE_UNAVAILABLE", error: `Eidren couldn't verify item ${index} (${entry.gameLabel}) right now. Please retry shortly.` };
 }
 
