@@ -43,8 +43,9 @@ async function loggedError(
   startedAt: number,
   logStatus: "invalid_input" | "not_found" | "upstream_error" | "rate_limited",
   extraHeaders: Record<string, string> = {},
+  failureReason?: string,
 ) {
-  void persistLookupLog({ status: logStatus, responseMs: Date.now() - startedAt, source: config.publicSource });
+  void persistLookupLog({ status: logStatus, responseMs: Date.now() - startedAt, source: config.publicSource, failureReason });
   return errorResponse(message, status, code, requestId, extraHeaders);
 }
 
@@ -167,15 +168,15 @@ export function createIdGameLookupHandler(config: IdGameLookupConfig) {
 
     if (attempt.kind === "not_found") {
       await recordDeveloperRequest({ ...developerAuth, endpoint: config.endpoint, requestId, status: 404, responseMs: Date.now() - requestStartedAt });
-      return loggedError(config, `No ${config.gameLabel} account was found for those lookup details.`, 404, config.notFoundCode, requestId, requestStartedAt, "not_found");
+      return loggedError(config, `No ${config.gameLabel} account was found for those lookup details.`, 404, config.notFoundCode, requestId, requestStartedAt, "not_found", {}, attempt.diagnostic?.reason);
     }
     if (attempt.kind === "rate_limited") {
       await recordDeveloperRequest({ ...developerAuth, endpoint: config.endpoint, requestId, status: 429, responseMs: Date.now() - requestStartedAt });
-      return loggedError(config, `Eidren is rate-limiting ${config.gameLabel} requests right now. Try again shortly.`, 429, "SERVICE_RATE_LIMIT", requestId, requestStartedAt, "rate_limited", { "Retry-After": "30" });
+      return loggedError(config, `Eidren is rate-limiting ${config.gameLabel} requests right now. Try again shortly.`, 429, "SERVICE_RATE_LIMIT", requestId, requestStartedAt, "rate_limited", { "Retry-After": "30" }, attempt.diagnostic?.reason);
     }
 
     await recordDeveloperRequest({ ...developerAuth, endpoint: config.endpoint, requestId, status: 502, responseMs: Date.now() - requestStartedAt });
-    return loggedError(config, `Eidren couldn't verify this ${config.gameLabel} identity right now. Please retry shortly.`, 502, "SERVICE_UNAVAILABLE", requestId, requestStartedAt, "upstream_error");
+    return loggedError(config, `Eidren couldn't verify this ${config.gameLabel} identity right now. Please retry shortly.`, 502, "SERVICE_UNAVAILABLE", requestId, requestStartedAt, "upstream_error", {}, attempt.diagnostic?.reason);
   }
 
   async function GET() {

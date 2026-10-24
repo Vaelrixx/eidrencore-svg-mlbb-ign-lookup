@@ -8,6 +8,9 @@ const REQUEST_TIMEOUT_MS = 1200;
 // cross-region latency (e.g. Railway iad -> Supabase ap-northeast-1).
 const LOG_TIMEOUT_MS = 1500;
 const LOG_STATUSES = new Set(["success", "invalid_input", "not_found", "upstream_error", "rate_limited"]);
+// Mirrors the telemetry allowlist in observability.mjs: only bounded
+// diagnostic reasons may reach the database, never raw payloads.
+const LOG_FAILURE_REASONS = new Set(["missing_config", "invalid_input", "http_error", "network_or_timeout", "unrecognized_response", "provider_error", "identity_echo", "quota_exhausted"]);
 const LOG_SOURCES = new Set([
   "mlbb_lookup_api",
   "community_lookup",
@@ -187,12 +190,13 @@ export async function enforcePlaygroundLimit(userId, {
  * Store only the bounded outcome, latency and source label. Never pass request
  * IDs, client hashes, player IDs, zone IDs, nicknames, URLs or provider payloads.
  */
-export async function persistLookupLog({ status, responseMs, source = "mlbb_lookup_api" }, options = {}) {
+export async function persistLookupLog({ status, responseMs, source = "mlbb_lookup_api", failureReason = null }, options = {}) {
   if (!LOG_STATUSES.has(status)) return { persisted: false, reason: "invalid_status" };
   const payload = {
     status,
     response_ms: Number.isFinite(responseMs) ? Math.max(0, Math.min(2_147_483_647, Math.round(responseMs))) : null,
     source: LOG_SOURCES.has(source) ? source : "mlbb_lookup_api",
+    ...(typeof failureReason === "string" && LOG_FAILURE_REASONS.has(failureReason) ? { failure_reason: failureReason } : {}),
   };
   const result = await requestSupabase("lookup_logs", payload, { timeoutMs: LOG_TIMEOUT_MS, ...options });
   return { persisted: result.configured && result.ok, configured: result.configured };
