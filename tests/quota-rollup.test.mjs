@@ -28,3 +28,25 @@ test("status rollup separates quota exhaustion from the error rate", () => {
   assert.ok(src.includes("quotaExhausted:"));
   assert.ok(src.includes("quotaExhaustedChecks:"));
 });
+
+// Supercell-family routes (game, clan, profile, rankings) share the same
+// loggedError shape: the reason passes positionally and forwards into
+// persistLookupLog. Site counts exclude the pre-existing missing_config
+// guard reads, which are not log calls.
+const extraRoutes = [
+  { file: "../src/app/api/lookup/game-route.ts", logSites: 4 },
+  { file: "../src/app/api/lookup/clan-route.ts", logSites: 4 },
+  { file: "../src/app/api/lookup/profile-route.ts", logSites: 3 },
+  { file: "../src/app/api/lookup/rankings-route.ts", logSites: 4 },
+];
+for (const route of extraRoutes) {
+  test(`${route.file} threads terminal diagnostics into lookup logs`, () => {
+    const src = readFileSync(new URL(route.file, import.meta.url), "utf8");
+    assert.ok(src.includes("failureReason?: string"));
+    assert.ok(src.includes("failureReason,"));
+    // Count only reason args passed to loggedError (trailing-argument lines),
+    // not the missing_config guard reads.
+    const occurrences = src.split("attempt.diagnostic?.reason,").length - 1;
+    assert.equal(occurrences, route.logSites);
+  });
+}
