@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { classifyInitpayResponse, INITPAY_GAMES, lookupCodashopInitpay } from "../src/app/api/lookup/providers/codashop-initpay.mjs";
+import { createProviderCache } from "../src/app/api/lookup/providers/provider-cache.mjs";
 
 // Shapes captured live 2026-10-18 against order-sg.codashop.com/initPayment.action.
 test("empty errorCode with a username resolves as success and decodes the name", () => {
@@ -318,4 +319,36 @@ test("unknown games and blank IDs fail closed without a network call", async () 
   assert.equal((await lookupCodashopInitpay("nope", "12345", "", { fetchImpl })).diagnostic.reason, "provider_error");
   assert.equal((await lookupCodashopInitpay("8-ball-pool", " ", "", { fetchImpl })).diagnostic.reason, "provider_error");
   assert.equal(calls, 0);
+});
+test("rate-limited outcomes are returned but never cached", async () => {
+  const cache = createProviderCache();
+  let calls = 0;
+  const fetchImpl = async () => {
+    calls += 1;
+    if (calls === 1) return new Response(JSON.stringify({ message: "slow" }), { status: 429 });
+    return new Response(JSON.stringify({ errorCode: "", confirmationFields: { username: "Test%20Player" } }), { status: 200 });
+  };
+  const first = await lookupCodashopInitpay("8-ball-pool", "12345", "", { fetchImpl, cache });
+  assert.equal(first.kind, "rate_limited");
+  const second = await lookupCodashopInitpay("8-ball-pool", "12345", "", { fetchImpl, cache });
+  assert.equal(second.kind, "success");
+  assert.equal(second.nickname, "Test Player");
+  assert.equal(calls, 2);
+});
+test("a throttled primary price point falls through to the fallback leg", async () => {
+  const cache = createProviderCache();
+  let calls = 0;
+  const fetchImpl = async () => {
+    calls += 1;
+    if (calls === 1) return new Response(JSON.stringify({ message: "slow" }), { status: 429 });
+    return new Response(JSON.stringify({ errorCode: "", confirmationFields: { username: "Pb%20Player" } }), { status: 200 });
+  };
+  const result = await lookupCodashopInitpay("point-blank", "12345", "", {
+    fetchImpl,
+    cache,
+    env: { CODASHOP_POINT_BLANK_ENABLED: "true" },
+  });
+  assert.equal(result.kind, "success");
+  assert.equal(result.nickname, "Pb Player");
+  assert.equal(calls, 2);
 });

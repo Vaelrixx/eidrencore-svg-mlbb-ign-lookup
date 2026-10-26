@@ -257,9 +257,9 @@ export async function lookupCodashopInitpay(game, playerId, zoneId = "", {
         } catch {
           attempt = { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
         }
-        if (attempt.kind !== "unavailable") return attempt;
+        if (attempt.kind !== "unavailable" && attempt.kind !== "rate_limited") return attempt;
       }
-      if (attempt?.kind === "unavailable") throw new TransientUpstreamError(attempt);
+      if (attempt?.kind === "unavailable" || attempt?.kind === "rate_limited") throw new TransientUpstreamError(attempt);
       return attempt;
     });
     return value;
