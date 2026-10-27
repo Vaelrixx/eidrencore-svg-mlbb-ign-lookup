@@ -68,11 +68,13 @@ async function loggedError(
   startedAt: number,
   logStatus: LogStatus,
   extraHeaders: Record<string, string> = {},
+  failureReason?: string,
 ) {
   void persistLookupLog({
     status: logStatus,
     responseMs: Date.now() - startedAt,
     source: config.logSource,
+    failureReason,
   });
   return jsonError(message, status, code, requestId, extraHeaders);
 }
@@ -257,6 +259,8 @@ export function createClanLookupHandler(config: ClanLookupConfig) {
         requestId,
         requestStartedAt,
         "not_found",
+        {},
+        attempt.diagnostic?.reason,
       );
     }
 
@@ -272,6 +276,7 @@ export function createClanLookupHandler(config: ClanLookupConfig) {
         requestStartedAt,
         "rate_limited",
         { "Retry-After": String(retryAfter) },
+        attempt.diagnostic?.reason,
       );
     }
 
@@ -285,6 +290,8 @@ export function createClanLookupHandler(config: ClanLookupConfig) {
         requestId,
         requestStartedAt,
         "upstream_error",
+        {},
+        attempt.diagnostic?.reason,
       );
     }
 
@@ -297,6 +304,8 @@ export function createClanLookupHandler(config: ClanLookupConfig) {
       requestId,
       requestStartedAt,
       "upstream_error",
+      {},
+      attempt.diagnostic?.reason,
     );
   }
 

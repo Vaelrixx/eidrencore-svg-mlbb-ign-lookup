@@ -60,6 +60,7 @@ async function loggedError(
   startedAt: number,
   logStatus: LogStatus,
   extraHeaders: Record<string, string> = {},
+  failureReason?: string,
 ) {
   // Best-effort background write: persistLookupLog never throws, and a slow
   // database must not delay the response.
@@ -67,6 +68,7 @@ async function loggedError(
     status: logStatus,
     responseMs: Date.now() - startedAt,
     source: config.logSource,
+    failureReason,
   });
   return jsonError(message, status, code, requestId, extraHeaders);
 }
@@ -273,6 +275,8 @@ export function createGameLookupHandler(config: GameLookupConfig) {
         requestId,
         requestStartedAt,
         "not_found",
+        {},
+        attempt.diagnostic?.reason,
       );
     }
 
@@ -288,6 +292,7 @@ export function createGameLookupHandler(config: GameLookupConfig) {
         requestStartedAt,
         "rate_limited",
         { "Retry-After": String(retryAfter) },
+        attempt.diagnostic?.reason,
       );
     }
 
@@ -302,6 +307,8 @@ export function createGameLookupHandler(config: GameLookupConfig) {
         requestId,
         requestStartedAt,
         "upstream_error",
+        {},
+        attempt.diagnostic?.reason,
       );
     }
 
@@ -314,6 +321,8 @@ export function createGameLookupHandler(config: GameLookupConfig) {
       requestId,
       requestStartedAt,
       "upstream_error",
+      {},
+      attempt.diagnostic?.reason,
     );
   }
 

@@ -58,11 +58,13 @@ async function loggedError(
   startedAt: number,
   logStatus: LogStatus,
   extraHeaders: Record<string, string> = {},
+  failureReason?: string,
 ) {
   void persistLookupLog({
     status: logStatus,
     responseMs: Date.now() - startedAt,
     source: config.logSource,
+    failureReason,
   });
   return jsonError(message, status, code, requestId, extraHeaders);
 }
@@ -216,6 +218,8 @@ export function createProfileLookupHandler(config: ProfileLookupConfig) {
         requestId,
         requestStartedAt,
         "not_found",
+        {},
+        attempt.diagnostic?.reason,
       );
     }
     if (attempt.kind === "rate_limited") {
@@ -230,6 +234,7 @@ export function createProfileLookupHandler(config: ProfileLookupConfig) {
         requestStartedAt,
         "rate_limited",
         { "Retry-After": String(retryAfter) },
+        attempt.diagnostic?.reason,
       );
     }
     await recordDeveloperRequest({ ...developerAuth, endpoint: config.endpoint, requestId, status: 502, responseMs: Date.now() - requestStartedAt });
@@ -241,6 +246,8 @@ export function createProfileLookupHandler(config: ProfileLookupConfig) {
       requestId,
       requestStartedAt,
       "upstream_error",
+      {},
+      attempt.diagnostic?.reason,
     );
   }
 
