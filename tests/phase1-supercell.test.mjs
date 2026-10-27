@@ -316,3 +316,31 @@ test("profile lookup fails over on proxy outage and reports not_found", async ()
   });
   assert.deepEqual(missing, { kind: "not_found" });
 });
+test("rate-limited and unavailable profiles are returned but never cached", async () => {
+  const cache = createProviderCache();
+  const env = { BRAWL_STARS_API_KEY: "k" };
+  let limited = 0;
+  const limitedImpl = async () => {
+    limited += 1;
+    if (limited === 1) return jsonResponse(429, { reason: "throttled" });
+    return jsonResponse(200, { tag: "#2PP", name: "StarPlayer" });
+  };
+  const first = await lookupSupercellProfile("brawl-stars", "#2PP", { fetchImpl: limitedImpl, env, cache });
+  assert.equal(first.kind, "rate_limited");
+  const second = await lookupSupercellProfile("brawl-stars", "#2PP", { fetchImpl: limitedImpl, env, cache });
+  assert.equal(second.kind, "success");
+  assert.equal(second.profile.name, "StarPlayer");
+  assert.equal(limited, 2);
+  // Network outage hits both failover legs (2 calls), then the retry re-fetches (3rd call).
+  let down = 0;
+  const downImpl = async () => {
+    down += 1;
+    if (down <= 2) throw new Error("socket down");
+    return jsonResponse(200, { tag: "#8PP", name: "StarPlayer" });
+  };
+  const third = await lookupSupercellProfile("brawl-stars", "#8PP", { fetchImpl: downImpl, env, cache });
+  assert.equal(third.kind, "unavailable");
+  const fourth = await lookupSupercellProfile("brawl-stars", "#8PP", { fetchImpl: downImpl, env, cache });
+  assert.equal(fourth.kind, "success");
+  assert.equal(down, 3);
+});
