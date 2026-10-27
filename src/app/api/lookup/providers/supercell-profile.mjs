@@ -22,6 +22,14 @@ import { providerCache } from "./provider-cache.mjs";
 
 export const PROFILE_CACHE_TTL_SECONDS = 300;
 
+/** Sentinel: thrown to keep transient misses out of the cache (rejections are never cached). */
+class TransientUpstreamError extends Error {
+  constructor(attempt) {
+    super("transient upstream outcome");
+    this.attempt = attempt;
+  }
+}
+
 function record(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : null;
 }
@@ -109,24 +117,33 @@ export async function lookupSupercellProfile(game, tag, {
   const normalized = normalizeSupercellTag(tag);
   if (!normalized) return { kind: "unavailable", diagnostic: { reason: "provider_error" } };
   const cacheKey = `supercell:profile:${game}:${normalized}`;
-  const { value, cached } = await cache.getOrLoad(cacheKey, PROFILE_CACHE_TTL_SECONDS, async () => {
-    const fetched = await fetchSupercellPathWithFallback(
-      game,
-      `/v1/players/${encodeURIComponent(normalized)}`,
-      { fetchImpl, env },
-    );
-    if (!fetched.ok) return fetched.attempt;
-    const classified = classifyProfileResponse(fetched.status, fetched.payload, fetched.source);
-    if (classified.kind !== "success") return classified;
-    const profile = summarizeProfile(game, fetched.payload);
-    if (!profile) {
-      return {
-        kind: "unavailable",
-        diagnostic: { reason: "unrecognized_response", statusCode: fetched.status },
-      };
-    }
-    return { kind: "success", profile, source: classified.source };
-  });
-  if (value?.kind === "success") return { ...value, cached };
-  return value;
+  try {
+    const { value, cached } = await cache.getOrLoad(cacheKey, PROFILE_CACHE_TTL_SECONDS, async () => {
+      const fetched = await fetchSupercellPathWithFallback(
+        game,
+        `/v1/players/${encodeURIComponent(normalized)}`,
+        { fetchImpl, env },
+      );
+      // Cache stable verdicts only; transient misses always re-fetch.
+      if (!fetched.ok) throw new TransientUpstreamError(fetched.attempt);
+      const classified = classifyProfileResponse(fetched.status, fetched.payload, fetched.source);
+      if (classified.kind !== "success" && classified.kind !== "not_found") {
+        throw new TransientUpstreamError(classified);
+      }
+      if (classified.kind !== "success") return classified;
+      const profile = summarizeProfile(game, fetched.payload);
+      if (!profile) {
+        throw new TransientUpstreamError({
+          kind: "unavailable",
+          diagnostic: { reason: "unrecognized_response", statusCode: fetched.status },
+        });
+      }
+      return { kind: "success", profile, source: classified.source };
+    });
+    if (value?.kind === "success") return { ...value, cached };
+    return value;
+  } catch (error) {
+    if (error instanceof TransientUpstreamError) return error.attempt;
+    return { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
+  }
 }
