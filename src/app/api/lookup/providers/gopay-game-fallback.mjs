@@ -180,7 +180,7 @@ export async function lookupGoPayGameFallback(gameCode, playerId, options = {}) 
         attempt = { kind: "unavailable", diagnostic: { reason: "network_or_timeout" } };
       }
       // Cache stable verdicts only; transient misses always re-fetch.
-      if (attempt?.kind === "unavailable") throw new TransientUpstreamError(attempt);
+      if (attempt?.kind === "unavailable" || attempt?.kind === "rate_limited") throw new TransientUpstreamError(attempt);
       return attempt;
     });
     if (value?.kind === "success") return { ...value, cached };
